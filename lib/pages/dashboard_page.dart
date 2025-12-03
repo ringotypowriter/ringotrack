@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:go_router/go_router.dart';
 import 'package:ringotrack/widgets/ringo_heatmap.dart';
 
 // 以 1440x900 作为设计尺寸，配合 flutter_screenutil 做适配
@@ -31,7 +32,7 @@ class DashboardPage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _buildTopBar(theme),
+                _buildTopBar(context, theme),
                 const Divider(height: 1),
                 Expanded(
                   child: Padding(
@@ -68,7 +69,7 @@ class DashboardPage extends StatelessWidget {
     );
   }
 
-  Widget _buildTopBar(ThemeData theme) {
+  Widget _buildTopBar(BuildContext context, ThemeData theme) {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 64.w, vertical: 18.h),
       child: Row(
@@ -90,7 +91,14 @@ class DashboardPage extends StatelessWidget {
             ),
           ),
           const Spacer(),
-          Text('设置', style: theme.textTheme.bodyMedium),
+          GestureDetector(
+            onTap: () => context.go('/settings'),
+            behavior: HitTestBehavior.opaque,
+            child: Text(
+              '设置',
+              style: theme.textTheme.bodyMedium,
+            ),
+          ),
         ],
       ),
     );
