@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ringotrack/domain/app_database.dart';
 import 'package:ringotrack/domain/drawing_app_preferences.dart';
 import 'package:ringotrack/domain/drawing_app_preferences_controller.dart';
+import 'package:ringotrack/domain/theme_controller.dart';
 import 'package:ringotrack/domain/usage_repository.dart';
 import 'package:ringotrack/domain/usage_service.dart';
 import 'package:ringotrack/platform/foreground_app_tracker.dart';
@@ -47,6 +48,9 @@ final usageServiceProvider = Provider<UsageService>((ref) {
 
   return service;
 });
+
+// 主题
+final appThemeProvider = appThemeControllerProvider;
 
 /// 最近一年的使用数据（按日期 -> AppId -> Duration），带实时增量刷新
 final yearlyUsageByDateProvider =

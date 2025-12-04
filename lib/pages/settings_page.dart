@@ -4,7 +4,9 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ringotrack/domain/drawing_app_preferences.dart';
 import 'package:ringotrack/domain/drawing_app_preferences_controller.dart';
+import 'package:ringotrack/domain/theme_controller.dart';
 import 'package:ringotrack/providers.dart';
+import 'package:ringotrack/theme/app_theme.dart';
 import 'package:ringotrack/widgets/logs_view_sheet.dart';
 
 const _cardBorder = Color(0xFFE1E7DF);
@@ -101,196 +103,204 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final isWide = constraints.maxWidth > 1080;
-        final cardWidth = isWide
-            ? (constraints.maxWidth - 16.w) / 2
-            : constraints.maxWidth;
-
-        return Wrap(
-          spacing: 16.w,
-          runSpacing: 16.h,
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            SizedBox(
-              width: cardWidth,
-              child: _sectionCard(
-                theme,
-                title: '追踪的软件',
-                subtitle: '配置需要计入时长的绘画/美术软件列表。',
-                icon: Icons.brush_outlined,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _dataTile(
-                      theme,
-                      title: '已追踪的软件',
-                      helper: '仅以下软件会被计入时长，留空则使用内置默认列表。',
-                      child: prefsAsync.when(
-                        data: (prefs) => _buildTrackedList(theme, prefs),
-                        loading: () => const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 12),
-                          child: LinearProgressIndicator(minHeight: 4),
-                        ),
-                        error: (err, _) => _errorText(theme, '加载失败: $err'),
-                      ),
-                    ),
-                    SizedBox(height: 14.h),
-                    _dataTile(
-                      theme,
-                      title: '添加新软件',
-                      helper:
-                          '推荐优先使用下方“从内置列表选择”。如果你的绘画软件不在列表中，可以在这里输入该软件在系统里的识别名（例如 Photoshop.exe 或 com.adobe.photoshop），不区分大小写。',
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: TextField(
-                                  controller: _addAppController,
-                                  decoration: const InputDecoration(
-                                    labelText: '软件名称或系统识别名',
-                                    prefixIcon: Icon(Icons.add_circle_outline),
-                                  ),
-                                  onSubmitted: (_) => _onAddTrackedApp(),
-                                ),
-                              ),
-                              SizedBox(width: 10.w),
-                              FilledButton.icon(
-                                onPressed: _onAddTrackedApp,
-                                icon: const Icon(Icons.add, size: 18),
-                                label: const Text('添加'),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: 10.h),
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: TextButton.icon(
-                              onPressed: _showBuiltInAppPicker,
-                              icon: const Icon(
-                                Icons.list_alt_outlined,
-                                size: 18,
-                              ),
-                              label: const Text('从内置列表选择'),
-                              style: TextButton.styleFrom(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: 10.w,
-                                  vertical: 8.h,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+            _sectionCard(
+              theme,
+              title: '主题色',
+              subtitle: '选择喜欢的主题主色，立即应用到全局界面。',
+              icon: Icons.palette_outlined,
+              child: _buildThemePicker(theme),
             ),
-            SizedBox(
-              width: cardWidth,
-              child: _sectionCard(
-                theme,
-                title: '数据管理',
-                subtitle: '按软件清理、按日期删除或一次性清空，操作不可撤销。',
-                icon: Icons.storage_rounded,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _dataTile(
-                      theme,
-                      title: '删除某个软件的数据',
-                      helper:
-                          '从下拉框中选择一款软件，将清除它在所有日期的使用记录。',
-                      child: prefsAsync.when(
-                        data: (prefs) =>
-                            _buildDeleteByAppSelector(theme, prefs),
-                        loading: () => const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 12),
-                          child: LinearProgressIndicator(minHeight: 4),
-                        ),
-                        error: (err, _) =>
-                            _errorText(theme, '加载失败: $err'),
-                      ),
-                    ),
-                    SizedBox(height: 14.h),
-                    _dataTile(
-                      theme,
-                      title: '删除日期范围（全部软件）',
-                      helper: '选择起止日期后执行。',
-                      child: Wrap(
-                        spacing: 10.w,
-                        runSpacing: 10.h,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        children: [
-                          OutlinedButton.icon(
-                            onPressed: () => _pickDate(isStart: true),
-                            icon: const Icon(Icons.calendar_today, size: 16),
-                            label: Text(
-                              _formatDate(_rangeStart, label: '开始日期'),
-                            ),
-                          ),
-                          OutlinedButton.icon(
-                            onPressed: () => _pickDate(isStart: false),
-                            icon: const Icon(Icons.event, size: 16),
-                            label: Text(_formatDate(_rangeEnd, label: '结束日期')),
-                          ),
-                          FilledButton.icon(
-                            onPressed: _onDeleteDateRange,
-                            icon: const Icon(
-                              Icons.cleaning_services_outlined,
-                              size: 18,
-                            ),
-                            label: const Text('删除范围'),
-                          ),
-                        ],
-                      ),
-                    ),
-                    SizedBox(height: 14.h),
-                    _dataTile(
-                      theme,
-                      title: '清空全部数据',
-                      helper: '危险操作，请确认后执行。',
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: TextButton.icon(
-                          onPressed: _onClearAll,
-                          icon: const Icon(
-                            Icons.warning_amber_rounded,
-                            color: Colors.red,
-                          ),
-                          label: const Text('清空记录'),
-                          style: TextButton.styleFrom(
-                            foregroundColor: Colors.red,
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 12.w,
-                              vertical: 10.h,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: 14.h),
-                    _dataTile(
-                      theme,
-                      title: '日志',
-                      helper: '在查看软件运行的详细日志。(如软件出现问题可以提交给开发者)',
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: TextButton.icon(
-                          onPressed: _showLogsViewSheet,
-                          icon: const Icon(Icons.article_outlined),
-                          label: const Text('查看本地日志'),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+            SizedBox(height: 16.h),
+            _trackingSection(theme, prefsAsync),
+            SizedBox(height: 16.h),
+            _dataSection(theme, prefsAsync),
           ],
         );
       },
+    );
+  }
+
+  Widget _trackingSection(
+    ThemeData theme,
+    AsyncValue<DrawingAppPreferences> prefsAsync,
+  ) {
+    return _sectionCard(
+      theme,
+      title: '追踪的软件',
+      subtitle: '配置需要计入时长的绘画/美术软件列表。',
+      icon: Icons.brush_outlined,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _dataTile(
+            theme,
+            title: '已追踪的软件',
+            helper: '仅以下软件会被计入时长，留空则使用内置默认列表。',
+            child: prefsAsync.when(
+              data: (prefs) => _buildTrackedList(theme, prefs),
+              loading: () => const Padding(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                child: LinearProgressIndicator(minHeight: 4),
+              ),
+              error: (err, _) => _errorText(theme, '加载失败: $err'),
+            ),
+          ),
+          SizedBox(height: 14.h),
+          _dataTile(
+            theme,
+            title: '添加新软件',
+            helper:
+                '推荐优先使用下方“从内置列表选择”。如果你的绘画软件不在列表中，可以在这里输入该软件在系统里的识别名（例如 Photoshop.exe 或 com.adobe.photoshop），不区分大小写。',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _addAppController,
+                        decoration: const InputDecoration(
+                          labelText: '软件名称或系统识别名',
+                          prefixIcon: Icon(Icons.add_circle_outline),
+                        ),
+                        onSubmitted: (_) => _onAddTrackedApp(),
+                      ),
+                    ),
+                    SizedBox(width: 10.w),
+                    FilledButton.icon(
+                      onPressed: _onAddTrackedApp,
+                      icon: const Icon(Icons.add, size: 18),
+                      label: const Text('添加'),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 10.h),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: _showBuiltInAppPicker,
+                    icon: const Icon(
+                      Icons.list_alt_outlined,
+                      size: 18,
+                    ),
+                    label: const Text('从内置列表选择'),
+                    style: TextButton.styleFrom(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 10.w,
+                        vertical: 8.h,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _dataSection(
+    ThemeData theme,
+    AsyncValue<DrawingAppPreferences> prefsAsync,
+  ) {
+    return _sectionCard(
+      theme,
+      title: '数据管理',
+      subtitle: '按软件清理、按日期删除或一次性清空，操作不可撤销。',
+      icon: Icons.storage_rounded,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _dataTile(
+            theme,
+            title: '删除某个软件的数据',
+            helper: '从下拉框中选择一款软件，将清除它在所有日期的使用记录。',
+            child: prefsAsync.when(
+              data: (prefs) => _buildDeleteByAppSelector(theme, prefs),
+              loading: () => const Padding(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                child: LinearProgressIndicator(minHeight: 4),
+              ),
+              error: (err, _) => _errorText(theme, '加载失败: $err'),
+            ),
+          ),
+          SizedBox(height: 14.h),
+          _dataTile(
+            theme,
+            title: '删除日期范围（全部软件）',
+            helper: '选择起止日期后执行。',
+            child: Wrap(
+              spacing: 10.w,
+              runSpacing: 10.h,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: () => _pickDate(isStart: true),
+                  icon: const Icon(Icons.calendar_today, size: 16),
+                  label: Text(
+                    _formatDate(_rangeStart, label: '开始日期'),
+                  ),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () => _pickDate(isStart: false),
+                  icon: const Icon(Icons.event, size: 16),
+                  label: Text(_formatDate(_rangeEnd, label: '结束日期')),
+                ),
+                FilledButton.icon(
+                  onPressed: _onDeleteDateRange,
+                  icon: const Icon(
+                    Icons.cleaning_services_outlined,
+                    size: 18,
+                  ),
+                  label: const Text('删除范围'),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(height: 14.h),
+          _dataTile(
+            theme,
+            title: '清空全部数据',
+            helper: '危险操作，请确认后执行。',
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: _onClearAll,
+                icon: const Icon(
+                  Icons.warning_amber_rounded,
+                  color: Colors.red,
+                ),
+                label: const Text('清空记录'),
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.red,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 12.w,
+                    vertical: 10.h,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          SizedBox(height: 14.h),
+          _dataTile(
+            theme,
+            title: '日志',
+            helper: '在查看软件运行的详细日志。(如软件出现问题可以提交给开发者)',
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: _showLogsViewSheet,
+                icon: const Icon(Icons.article_outlined),
+                label: const Text('查看本地日志'),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -833,6 +843,38 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
   }
 
+  Widget _buildThemePicker(ThemeData theme) {
+    final themeAsync = ref.watch(appThemeProvider);
+    final currentId = themeAsync.asData?.value.id ?? AppThemeId.ringoGreen;
+    final onSurfaceVariant = theme.colorScheme.onSurfaceVariant;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Wrap(
+          spacing: 12.w,
+          runSpacing: 12.h,
+          children: [
+            for (final t in availableThemes)
+              _ThemeDot(
+                theme: t,
+                isSelected: t.id == currentId,
+                onTap: () =>
+                    ref.read(appThemeProvider.notifier).setTheme(t.id),
+              ),
+          ],
+        ),
+        SizedBox(height: 10.h),
+        Text(
+          '会立即保存到偏好设置中，并在下次启动时自动应用。',
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: onSurfaceVariant,
+          ),
+        ),
+      ],
+    );
+  }
+
   Future<void> _showLogsViewSheet() async {
     await showModalBottomSheet<void>(
       context: context,
@@ -849,5 +891,57 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(message)));
+  }
+}
+
+class _ThemeDot extends StatelessWidget {
+  const _ThemeDot({
+    required this.theme,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  final AppTheme theme;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final ring = isSelected ? theme.primary : Colors.grey.shade300;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 48.r,
+            height: 48.r,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: ring, width: 3),
+              color: theme.primary.withOpacity(0.9),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(height: 6.h),
+          Text(
+            theme.name,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                  color: isSelected
+                      ? Theme.of(context).colorScheme.onSurface
+                      : Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+          ),
+        ],
+      ),
+    );
   }
 }

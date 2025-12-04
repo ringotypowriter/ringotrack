@@ -976,7 +976,7 @@ class _TabButton extends StatelessWidget {
   const _TabButton({
     required this.label,
     required this.isSelected,
-    this.selectedColor = const Color(0xFF4AC26B),
+    required this.selectedColor,
   });
 
   final String label;
