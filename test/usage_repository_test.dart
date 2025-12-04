@@ -54,5 +54,59 @@ void main() {
       expect(range.containsKey(day2), isTrue);
       expect(range.containsKey(day3), isTrue);
     });
+
+    test('deleteByAppId removes only the target app', () async {
+      final day = DateTime(2025, 1, 1);
+
+      await repo.mergeUsage({
+        day: {
+          'Photoshop.exe': const Duration(minutes: 10),
+          'ClipStudio': const Duration(minutes: 20),
+        },
+      });
+
+      await repo.deleteByAppId('Photoshop.exe');
+
+      final range =
+          await repo.loadRange(DateTime(2025, 1, 1), DateTime(2025, 1, 1));
+
+      expect(range[day]!.containsKey('Photoshop.exe'), isFalse);
+      expect(range[day]!['ClipStudio']!.inMinutes, 20);
+    });
+
+    test('deleteByDateRange removes all apps within range', () async {
+      final d1 = DateTime(2025, 1, 1);
+      final d2 = DateTime(2025, 1, 2);
+      final d3 = DateTime(2025, 1, 3);
+
+      await repo.mergeUsage({
+        d1: {'App': const Duration(minutes: 10)},
+        d2: {'App': const Duration(minutes: 20)},
+        d3: {'App': const Duration(minutes: 30)},
+      });
+
+      await repo.deleteByDateRange(d1, d2);
+
+      final range = await repo.loadRange(d1, d3);
+
+      expect(range.containsKey(d1), isFalse);
+      expect(range.containsKey(d2), isFalse);
+      expect(range.containsKey(d3), isTrue);
+    });
+
+    test('clearAll removes every record', () async {
+      final day = DateTime(2025, 1, 1);
+
+      await repo.mergeUsage({
+        day: {'App': const Duration(minutes: 10)},
+      });
+
+      await repo.clearAll();
+
+      final range =
+          await repo.loadRange(DateTime(2025, 1, 1), DateTime(2025, 1, 1));
+
+      expect(range.isEmpty, isTrue);
+    });
   });
 }

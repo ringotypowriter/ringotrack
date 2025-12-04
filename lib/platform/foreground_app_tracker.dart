@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:io';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:ringotrack/domain/usage_models.dart';
@@ -19,13 +18,13 @@ class _MacOsForegroundAppTracker implements ForegroundAppTracker {
       );
     }
 
-    _subscription = _eventChannel
-        .receiveBroadcastStream()
-        .listen(_handleEvent, onError: _handleError);
+    _subscription = _eventChannel.receiveBroadcastStream().listen(
+      _handleEvent,
+      onError: _handleError,
+    );
   }
 
-  static const _eventChannel =
-      EventChannel('ringotrack/foreground_app_events');
+  static const _eventChannel = EventChannel('ringotrack/foreground_app_events');
 
   final _controller = StreamController<ForegroundAppEvent>.broadcast();
   late final StreamSubscription<dynamic> _subscription;
@@ -39,8 +38,10 @@ class _MacOsForegroundAppTracker implements ForegroundAppTracker {
       final tsMillis = event['timestamp'] as num?;
       if (appId == null || tsMillis == null) return;
 
-      final timestamp =
-          DateTime.fromMillisecondsSinceEpoch(tsMillis.toInt(), isUtc: false);
+      final timestamp = DateTime.fromMillisecondsSinceEpoch(
+        tsMillis.toInt(),
+        isUtc: false,
+      );
 
       if (kDebugMode) {
         debugPrint(
@@ -49,9 +50,7 @@ class _MacOsForegroundAppTracker implements ForegroundAppTracker {
         );
       }
 
-      _controller.add(
-        ForegroundAppEvent(appId: appId, timestamp: timestamp),
-      );
+      _controller.add(ForegroundAppEvent(appId: appId, timestamp: timestamp));
     }
   }
 
