@@ -23,7 +23,8 @@ final foregroundAppTrackerProvider = Provider<ForegroundAppTracker>((ref) {
 
 final drawingAppFilterProvider = Provider<bool Function(String)>((ref) {
   final prefsAsync = ref.watch(drawingAppPrefsControllerProvider);
-  final prefs = prefsAsync.value ??
+  final prefs =
+      prefsAsync.value ??
       const DrawingAppPreferences(trackedAppIds: defaultTrackedAppIds);
 
   return buildAppFilter(prefs);
@@ -85,3 +86,97 @@ final yearlyUsageByDateProvider =
         );
       }
     });
+
+/// 仪表盘指标：今日 / 本周 / 本月 / 连续天数 + 数据更新时间
+final dashboardMetricsProvider = Provider<AsyncValue<DashboardMetrics>>((ref) {
+  final usageAsync = ref.watch(yearlyUsageByDateProvider);
+
+  return usageAsync.whenData((usageByDate) {
+    final today = _normalizeDay(DateTime.now());
+    final weekStart = _startOfWeekSundayFirst(today);
+    final monthStart = DateTime(today.year, today.month, 1);
+
+    var todayTotal = Duration.zero;
+    var weekTotal = Duration.zero;
+    var monthTotal = Duration.zero;
+
+    usageByDate.forEach((day, perApp) {
+      final normalizedDay = _normalizeDay(day);
+      final totalForDay = perApp.values.fold(Duration.zero, (a, b) => a + b);
+
+      if (normalizedDay == today) {
+        todayTotal += totalForDay;
+      }
+      if (!normalizedDay.isBefore(weekStart) && !normalizedDay.isAfter(today)) {
+        weekTotal += totalForDay;
+      }
+      if (normalizedDay.year == today.year &&
+          normalizedDay.month == today.month &&
+          !normalizedDay.isAfter(today) &&
+          !normalizedDay.isBefore(monthStart)) {
+        monthTotal += totalForDay;
+      }
+    });
+
+    final streakDays = _calculateCurrentStreak(usageByDate, today);
+
+    return DashboardMetrics(
+      today: todayTotal,
+      thisWeek: weekTotal,
+      thisMonth: monthTotal,
+      streakDays: streakDays,
+      lastUpdatedAt: DateTime.now(),
+    );
+  });
+});
+
+class DashboardMetrics {
+  DashboardMetrics({
+    required this.today,
+    required this.thisWeek,
+    required this.thisMonth,
+    required this.streakDays,
+    required this.lastUpdatedAt,
+  });
+
+  final Duration today;
+  final Duration thisWeek;
+  final Duration thisMonth;
+  final int streakDays;
+  final DateTime lastUpdatedAt;
+}
+
+DateTime _startOfWeekSundayFirst(DateTime date) {
+  final normalized = _normalizeDay(date);
+  final weekday = normalized.weekday % 7; // 周日 = 0
+  return normalized.subtract(Duration(days: weekday));
+}
+
+DateTime _normalizeDay(DateTime date) {
+  return DateTime(date.year, date.month, date.day);
+}
+
+int _calculateCurrentStreak(
+  Map<DateTime, Map<String, Duration>> usageByDate,
+  DateTime today,
+) {
+  var streak = 0;
+  var cursor = today;
+
+  while (true) {
+    final dayKey = _normalizeDay(cursor);
+    final perApp = usageByDate[dayKey];
+    final hasUsage =
+        perApp != null &&
+        perApp.values.any((duration) => duration > Duration.zero);
+
+    if (!hasUsage) {
+      break;
+    }
+
+    streak++;
+    cursor = cursor.subtract(const Duration(days: 1));
+  }
+
+  return streak;
+}

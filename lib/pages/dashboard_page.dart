@@ -29,6 +29,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     final start = DateTime(today.year, 1, 1);
 
     final asyncUsage = ref.watch(yearlyUsageByDateProvider);
+    final metricsAsync = ref.watch(dashboardMetricsProvider);
 
     return Scaffold(
       body: Center(
@@ -54,7 +55,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              _buildSummaryRow(theme),
+                              _buildSummaryRow(theme, metricsAsync),
                               const SizedBox(height: 40),
                               _buildTabs(theme),
                               const SizedBox(height: 16),
@@ -69,7 +70,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                           ),
                         ),
                         const SizedBox(height: 16),
-                        _buildFooter(theme),
+                        _buildFooter(theme, metricsAsync),
                       ],
                     ),
                   ),
@@ -114,8 +115,31 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     );
   }
 
-  Widget _buildSummaryRow(ThemeData theme) {
+  Widget _buildSummaryRow(
+    ThemeData theme,
+    AsyncValue<DashboardMetrics> metricsAsync,
+  ) {
     final titles = ['今日时长', '本周时长', '本月时长', '连续天数'];
+
+    String valueFor(int index) {
+      return metricsAsync.when(
+        data: (metrics) {
+          switch (index) {
+            case 0:
+              return _formatDuration(metrics.today);
+            case 1:
+              return _formatDuration(metrics.thisWeek);
+            case 2:
+              return _formatDuration(metrics.thisMonth);
+            case 3:
+              return '${metrics.streakDays} 天';
+          }
+          return '—';
+        },
+        loading: () => '计算中…',
+        error: (_, __) => '—',
+      );
+    }
 
     return Row(
       children: [
@@ -143,7 +167,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text(
-                        i == 3 ? '12 天' : '0h 00m',
+                        valueFor(i),
                         style: theme.textTheme.headlineSmall?.copyWith(
                           fontWeight: FontWeight.w500,
                           letterSpacing: -0.2,
@@ -587,16 +611,44 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     );
   }
 
-  Widget _buildFooter(ThemeData theme) {
+  Widget _buildFooter(
+    ThemeData theme,
+    AsyncValue<DashboardMetrics> metricsAsync,
+  ) {
+    final text = metricsAsync.when(
+      data: (metrics) => '数据更新于 ${_formatLastUpdated(metrics.lastUpdatedAt)}',
+      loading: () => '数据更新中…',
+      error: (_, __) => '数据加载失败，稍后自动重试',
+    );
+
     return Center(
       child: Text(
-        '数据更新于 2 分钟前',
+        text,
         style: theme.textTheme.bodySmall?.copyWith(
           color: Colors.black54,
           fontSize: theme.textTheme.bodySmall?.fontSize?.sp,
         ),
       ),
     );
+  }
+
+  String _formatDuration(Duration duration) {
+    final hours = duration.inHours;
+    final minutes = duration.inMinutes.remainder(60);
+    return '${hours}h ${minutes.toString().padLeft(2, '0')}m';
+  }
+
+  String _formatLastUpdated(DateTime timestamp) {
+    final now = DateTime.now();
+    final diff = now.difference(timestamp);
+
+    if (diff.inSeconds < 30) return '刚刚';
+    if (diff.inMinutes < 1) return '${diff.inSeconds} 秒前';
+    if (diff.inHours < 1) return '${diff.inMinutes} 分钟前';
+    if (diff.inHours < 24) return '${diff.inHours} 小时前';
+
+    String twoDigits(int v) => v.toString().padLeft(2, '0');
+    return '${timestamp.month}月${timestamp.day}日 ${twoDigits(timestamp.hour)}:${twoDigits(timestamp.minute)}';
   }
 }
 
