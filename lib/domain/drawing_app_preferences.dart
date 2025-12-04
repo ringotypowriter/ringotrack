@@ -155,6 +155,21 @@ const List<TrackedApp> defaultTrackedApps = [
     ],
   ),
   TrackedApp(
+    logicalId: 'blender',
+    displayName: 'Blender',
+    iconAsset: 'assets/tracked_apps/blender.png',
+    ids: [
+      AppIdentifier(
+        platform: AppPlatform.macos,
+        value: 'org.blenderfoundation.blender',
+      ),
+      AppIdentifier(
+        platform: AppPlatform.windows,
+        value: 'blender.exe',
+      ),
+    ],
+  ),
+  TrackedApp(
     logicalId: 'figma',
     displayName: 'Figma',
     iconAsset: 'assets/tracked_apps/figma.png',
