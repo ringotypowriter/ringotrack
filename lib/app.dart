@@ -77,16 +77,22 @@ class RingoTrackApp extends StatelessWidget {
       minTextAdapt: true,
       splitScreenMode: true,
       builder: (context, child) {
-        const seedGreen = Color(0xFF2CB36B);
+        // 全局主色：沿用原先 Dashboard 上那种更明亮的绿色
+        const ringoGreen = Color(0xFF4AC26B);
+        final baseScheme = ColorScheme.fromSeed(
+          seedColor: ringoGreen,
+          brightness: Brightness.light,
+          surface: Colors.white,
+        );
+
         return MaterialApp.router(
           title: 'RingoTrack',
           debugShowCheckedModeBanner: false,
           theme: ThemeData(
             useMaterial3: true,
-            colorScheme: ColorScheme.fromSeed(
-              seedColor: seedGreen,
-              brightness: Brightness.light,
-              surface: Colors.white,
+            colorScheme: baseScheme.copyWith(
+              primary: ringoGreen,
+              onPrimary: Colors.white,
             ),
             scaffoldBackgroundColor: const Color(0xFFF6F8F5),
             textTheme: ThemeData.light().textTheme.apply(
@@ -109,12 +115,12 @@ class RingoTrackApp extends StatelessWidget {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: seedGreen, width: 1.4),
+                borderSide: const BorderSide(color: ringoGreen, width: 1.4),
               ),
             ),
             elevatedButtonTheme: ElevatedButtonThemeData(
               style: ElevatedButton.styleFrom(
-                backgroundColor: seedGreen,
+                backgroundColor: ringoGreen,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 18,
@@ -128,7 +134,7 @@ class RingoTrackApp extends StatelessWidget {
             ),
             filledButtonTheme: FilledButtonThemeData(
               style: FilledButton.styleFrom(
-                backgroundColor: seedGreen,
+                backgroundColor: ringoGreen,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 18,
@@ -141,7 +147,7 @@ class RingoTrackApp extends StatelessWidget {
             ),
             textButtonTheme: TextButtonThemeData(
               style: TextButton.styleFrom(
-                foregroundColor: seedGreen,
+                foregroundColor: ringoGreen,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 12,
                   vertical: 10,
@@ -153,7 +159,7 @@ class RingoTrackApp extends StatelessWidget {
             ),
             outlinedButtonTheme: OutlinedButtonThemeData(
               style: OutlinedButton.styleFrom(
-                foregroundColor: seedGreen,
+                foregroundColor: ringoGreen,
                 side: const BorderSide(color: Color(0xFFB9D6C5)),
                 padding: const EdgeInsets.symmetric(
                   horizontal: 16,

@@ -93,8 +93,8 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
           Container(
             width: 10.r,
             height: 10.r,
-            decoration: const BoxDecoration(
-              color: Color(0xFF4AC26B),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primary,
               shape: BoxShape.circle,
             ),
           ),
@@ -107,10 +107,11 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
             ),
           ),
           const Spacer(),
-          GestureDetector(
-            onTap: () => context.go('/settings'),
-            behavior: HitTestBehavior.opaque,
-            child: Text('设置', style: theme.textTheme.bodyMedium),
+          IconButton(
+            onPressed: () => context.go('/settings'),
+            icon: const Icon(Icons.settings_outlined),
+            color: theme.colorScheme.primary,
+            tooltip: '设置',
           ),
         ],
       ),
@@ -188,7 +189,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
   }
 
   Widget _buildTabs(ThemeData theme) {
-    final selectedColor = const Color(0xFF4AC26B);
+    final selectedColor = theme.colorScheme.primary;
 
     return Row(
       children: [
@@ -296,7 +297,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                 start: start,
                 end: end,
                 dailyTotals: totals,
-                baseColor: const Color(0xFF4AC26B),
+                baseColor: theme.colorScheme.primary,
                 tileSize: tileSize,
                 spacing: spacing,
                 showMonthLabels: showMonthLabels,
@@ -454,6 +455,8 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
   }
 
   Widget _buildLegend(ThemeData theme) {
+    final baseColor = theme.colorScheme.primary;
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
@@ -471,7 +474,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                 width: 10.r,
                 height: 10.r,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF4AC26B).withOpacity(opacity),
+                  color: baseColor.withOpacity(opacity),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),

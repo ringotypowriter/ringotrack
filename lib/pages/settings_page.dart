@@ -7,8 +7,6 @@ import 'package:ringotrack/domain/drawing_app_preferences_controller.dart';
 import 'package:ringotrack/providers.dart';
 import 'package:ringotrack/widgets/logs_view_sheet.dart';
 
-const _accent = Color(0xFF2CB36B);
-const _deepAccent = Color(0xFF1F7A4A);
 const _cardBorder = Color(0xFFE1E7DF);
 
 class SettingsPage extends ConsumerStatefulWidget {
@@ -67,13 +65,15 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 
   Widget _buildTopBar(ThemeData theme, BuildContext context) {
+    final onSurface = theme.colorScheme.onSurface;
+
     return Row(
       children: [
         Container(
           width: 12.r,
           height: 12.r,
-          decoration: const BoxDecoration(
-            color: _accent,
+          decoration: BoxDecoration(
+            color: theme.colorScheme.primary,
             shape: BoxShape.circle,
           ),
         ),
@@ -83,7 +83,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           style: theme.textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.w600,
             letterSpacing: 0.2,
-            color: const Color(0xFF1C2B20),
+            color: onSurface,
           ),
         ),
         const Spacer(),
@@ -311,6 +311,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     required Widget child,
     required IconData icon,
   }) {
+    final primary = theme.colorScheme.primary;
+    final onSurface = theme.colorScheme.onSurface;
+    final onSurfaceVariant = theme.colorScheme.onSurfaceVariant;
+
     return Container(
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
@@ -333,10 +337,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               Container(
                 padding: EdgeInsets.all(10.r),
                 decoration: BoxDecoration(
-                  color: _accent.withOpacity(0.12),
+                  color: primary.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(12.r),
                 ),
-                child: Icon(icon, color: _deepAccent),
+                child: Icon(icon, color: primary),
               ),
               SizedBox(width: 12.w),
               Expanded(
@@ -347,14 +351,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                       title,
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w700,
-                        color: const Color(0xFF1B2B20),
+                        color: onSurface,
                       ),
                     ),
                     SizedBox(height: 4.h),
                     Text(
                       subtitle,
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: const Color(0xFF4C5A52),
+                        color: onSurfaceVariant,
                         height: 1.35,
                       ),
                     ),
@@ -376,11 +380,15 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     required String helper,
     required Widget child,
   }) {
+    final surfaceTint = theme.colorScheme.primary.withOpacity(0.03);
+    final onSurface = theme.colorScheme.onSurface;
+    final onSurfaceVariant = theme.colorScheme.onSurfaceVariant;
+
     return Container(
       width: double.infinity,
       padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
       decoration: BoxDecoration(
-        color: const Color(0xFFF3F7F2),
+        color: surfaceTint,
         borderRadius: BorderRadius.circular(14.r),
         border: Border.all(color: _cardBorder),
       ),
@@ -391,14 +399,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             title,
             style: theme.textTheme.bodyMedium?.copyWith(
               fontWeight: FontWeight.w700,
-              color: const Color(0xFF1D2C21),
+              color: onSurface,
             ),
           ),
           SizedBox(height: 4.h),
           Text(
             helper,
             style: theme.textTheme.bodySmall?.copyWith(
-              color: const Color(0xFF516157),
+              color: onSurfaceVariant,
             ),
           ),
           SizedBox(height: 10.h),
@@ -409,27 +417,34 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 
   Widget _errorText(ThemeData theme, String message) {
+    final error = theme.colorScheme.error;
+    final errorContainer = theme.colorScheme.errorContainer;
+
     return Container(
       width: double.infinity,
       padding: EdgeInsets.all(12.r),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFF1F0),
+        color: errorContainer.withOpacity(0.16),
         borderRadius: BorderRadius.circular(12.r),
-        border: Border.all(color: const Color(0xFFFFC5C1)),
+        border: Border.all(color: errorContainer),
       ),
       child: Text(
         message,
-        style: theme.textTheme.bodyMedium?.copyWith(color: Colors.red[700]),
+        style: theme.textTheme.bodyMedium?.copyWith(color: error),
       ),
     );
   }
 
   Widget _buildTrackedList(ThemeData theme, DrawingAppPreferences prefs) {
+    final primary = theme.colorScheme.primary;
+    final onSurface = theme.colorScheme.onSurface;
+    final onSurfaceVariant = theme.colorScheme.onSurfaceVariant;
+
     if (prefs.trackedApps.isEmpty) {
       return Text(
         '当前未配置软件，将使用内置默认列表。',
         style: theme.textTheme.bodySmall?.copyWith(
-          color: const Color(0xFF4C5A52),
+          color: onSurfaceVariant,
         ),
       );
     }
@@ -458,7 +473,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     width: 28.r,
                     height: 28.r,
                     decoration: BoxDecoration(
-                      color: _accent.withOpacity(0.16),
+                      color: primary.withOpacity(0.16),
                       borderRadius: BorderRadius.circular(8.r),
                     ),
                     alignment: Alignment.center,
@@ -468,7 +483,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                           : '?',
                       style: theme.textTheme.bodyMedium?.copyWith(
                         fontWeight: FontWeight.w700,
-                        color: _deepAccent,
+                        color: primary,
                       ),
                     ),
                   ),
@@ -480,7 +495,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                         Text(
                           app.displayName,
                           style: theme.textTheme.bodyMedium?.copyWith(
-                            color: const Color(0xFF1F2B24),
+                            color: onSurface,
                             fontWeight: FontWeight.w600,
                           ),
                           overflow: TextOverflow.ellipsis,
@@ -493,7 +508,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                               return Text(
                                 '未配置平台标识',
                                 style: theme.textTheme.bodySmall?.copyWith(
-                                  color: const Color(0xFF6A7A70),
+                                  color: onSurfaceVariant,
                                 ),
                               );
                             }
@@ -504,7 +519,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                             return Text(
                               idTexts,
                               style: theme.textTheme.bodySmall?.copyWith(
-                                color: const Color(0xFF6A7A70),
+                                color: onSurfaceVariant,
                               ),
                               overflow: TextOverflow.ellipsis,
                             );
@@ -518,7 +533,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     icon: const Icon(Icons.close_rounded, size: 18),
                     splashRadius: 18.r,
                     tooltip: '移除该软件',
-                    color: _deepAccent,
+                    color: primary,
                   ),
                 ],
               ),
@@ -599,7 +614,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   Text(
                     '这些是常见的绘画/美术软件，点“添加”即可加入追踪列表。',
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: const Color(0xFF4C5A52),
+                      color: theme.colorScheme.onSurfaceVariant,
                     ),
                   ),
                   SizedBox(height: 14.h),
@@ -616,7 +631,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                   vertical: 8.h,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFF3F7F2),
+                                  color: theme.colorScheme.primary
+                                      .withOpacity(0.03),
                                   borderRadius: BorderRadius.circular(12.r),
                                   border: Border.all(color: _cardBorder),
                                 ),

@@ -7,6 +7,7 @@ class RingoHeatmap extends StatelessWidget {
     required this.end,
     required this.dailyTotals,
     this.baseColor = Colors.green,
+    this.emptyColor = const Color(0xFFE3E3E3),
     this.tileSize = 14,
     this.spacing = 4,
     this.showMonthLabels = true,
@@ -23,6 +24,7 @@ class RingoHeatmap extends StatelessWidget {
   final DateTime end;
   final Map<DateTime, Duration> dailyTotals;
   final Color baseColor;
+  final Color emptyColor;
   final double tileSize;
   final double spacing;
   final bool showMonthLabels;
@@ -270,13 +272,11 @@ class RingoHeatmap extends StatelessWidget {
     return normalized.subtract(Duration(days: weekday));
   }
 
-  static const Color _emptyColor = Color(0xFFE3E3E3);
-
   Color _colorForDuration(Duration duration) {
     final minutes = duration.inMinutes;
     if (minutes <= 0) {
       // 0 记录使用中性灰色，效果与 GitHub 类似
-      return _emptyColor;
+      return emptyColor;
     }
     if (minutes < 60) {
       return baseColor.withOpacity(0.4);
