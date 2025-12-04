@@ -102,27 +102,53 @@ typedef _RtGetForegroundAppNative =
 typedef _RtGetForegroundAppDart = ffi.Pointer<_RtForegroundAppInfo> Function();
 
 class _WindowsForegroundAppTracker implements ForegroundAppTracker {
-  _WindowsForegroundAppTracker() {
-    if (kDebugMode) {
-      debugPrint('[ForegroundAppTracker] using Windows implementation');
-    }
-    _startPolling();
-  }
-
   static const _logTag = 'foreground_tracker_windows';
 
-  static final ffi.DynamicLibrary _lib = ffi.DynamicLibrary.process();
-
-  static final _RtGetForegroundAppDart _rtGetForegroundApp = _lib
-      .lookupFunction<_RtGetForegroundAppNative, _RtGetForegroundAppDart>(
-        'rt_get_foreground_app',
-      );
+  /// 已解析的 native 函数指针；如果为 null，则表示当前进程中没有导出
+  /// `rt_get_foreground_app`，此时本跟踪器会静默失效而不是导致崩溃。
+  final _RtGetForegroundAppDart? _rtGetForegroundApp;
 
   final _controller = StreamController<ForegroundAppEvent>.broadcast();
   Timer? _timer;
 
   String? _lastAppId;
   int? _lastPid;
+
+  _WindowsForegroundAppTracker()
+      : _rtGetForegroundApp = _loadNativeFunction() {
+    if (kDebugMode) {
+      debugPrint('[ForegroundAppTracker] using Windows implementation');
+    }
+
+    if (_rtGetForegroundApp == null) {
+      AppLogService.instance.logError(
+        _logTag,
+        'rt_get_foreground_app symbol not found; Windows tracker disabled',
+      );
+      return;
+    }
+
+    _startPolling();
+  }
+
+  static _RtGetForegroundAppDart? _loadNativeFunction() {
+    try {
+      final lib = ffi.DynamicLibrary.process();
+      return lib.lookupFunction<_RtGetForegroundAppNative,
+          _RtGetForegroundAppDart>('rt_get_foreground_app');
+    } catch (e, st) {
+      AppLogService.instance.logError(
+        _logTag,
+        'lookup rt_get_foreground_app failed: $e\n$st',
+      );
+      if (kDebugMode) {
+        debugPrint(
+          '[ForegroundAppTracker][Windows] lookup rt_get_foreground_app failed: $e',
+        );
+      }
+      return null;
+    }
+  }
 
   @override
   Stream<ForegroundAppEvent> get events => _controller.stream;
@@ -136,8 +162,14 @@ class _WindowsForegroundAppTracker implements ForegroundAppTracker {
   }
 
   void _pollOnce() {
+    final rtGetForegroundApp = _rtGetForegroundApp;
+    if (rtGetForegroundApp == null) {
+      // 初始化阶段未找到 native 符号，直接返回避免无意义的轮询。
+      return;
+    }
+
     try {
-      final ptr = _rtGetForegroundApp();
+      final ptr = rtGetForegroundApp();
       if (ptr == ffi.Pointer<_RtForegroundAppInfo>.fromAddress(0)) {
         AppLogService.instance.logError(
           _logTag,
