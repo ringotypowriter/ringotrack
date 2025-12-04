@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:ringotrack/domain/usage_models.dart';
 
@@ -11,6 +12,13 @@ abstract class ForegroundAppTracker {
 
 class _MacOsForegroundAppTracker implements ForegroundAppTracker {
   _MacOsForegroundAppTracker() {
+    if (kDebugMode) {
+      debugPrint(
+        '[ForegroundAppTracker] _MacOsForegroundAppTracker initialized, '
+        'subscribing to EventChannel',
+      );
+    }
+
     _subscription = _eventChannel
         .receiveBroadcastStream()
         .listen(_handleEvent, onError: _handleError);
@@ -33,6 +41,14 @@ class _MacOsForegroundAppTracker implements ForegroundAppTracker {
 
       final timestamp =
           DateTime.fromMillisecondsSinceEpoch(tsMillis.toInt(), isUtc: false);
+
+      if (kDebugMode) {
+        debugPrint(
+          '[ForegroundAppTracker] macOS event: appId=$appId '
+          'timestamp=${timestamp.toIso8601String()}',
+        );
+      }
+
       _controller.add(
         ForegroundAppEvent(appId: appId, timestamp: timestamp),
       );
@@ -40,7 +56,9 @@ class _MacOsForegroundAppTracker implements ForegroundAppTracker {
   }
 
   void _handleError(Object error) {
-    // 暂时忽略错误，后续可以接入日志系统
+    if (kDebugMode) {
+      debugPrint('[ForegroundAppTracker] error: $error');
+    }
   }
 }
 
@@ -50,11 +68,24 @@ class _NoopForegroundAppTracker implements ForegroundAppTracker {
 }
 
 ForegroundAppTracker createForegroundAppTracker() {
+  if (kDebugMode) {
+    debugPrint(
+      '[ForegroundAppTracker] createForegroundAppTracker: '
+      'Platform.isMacOS=${Platform.isMacOS}',
+    );
+  }
+
   if (Platform.isMacOS) {
+    if (kDebugMode) {
+      debugPrint('[ForegroundAppTracker] using macOS implementation');
+    }
     return _MacOsForegroundAppTracker();
+  }
+
+  if (kDebugMode) {
+    debugPrint('[ForegroundAppTracker] using noop implementation');
   }
 
   // TODO: Windows 平台后续接 win32 FFI 实现
   return _NoopForegroundAppTracker();
 }
-

@@ -3,25 +3,6 @@ import FlutterMacOS
 
 @main
 class AppDelegate: FlutterAppDelegate {
-  private var foregroundAppStreamHandler: ForegroundAppStreamHandler?
-
-  override func applicationDidFinishLaunching(_ notification: Notification) {
-    super.applicationDidFinishLaunching(notification)
-
-    guard let controller = mainFlutterWindow?.contentViewController as? FlutterViewController else {
-      return
-    }
-
-    let eventChannel = FlutterEventChannel(
-      name: "ringotrack/foreground_app_events",
-      binaryMessenger: controller.engine.binaryMessenger
-    )
-
-    let handler = ForegroundAppStreamHandler()
-    eventChannel.setStreamHandler(handler)
-    foregroundAppStreamHandler = handler
-  }
-
   override func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
     return true
   }
@@ -36,7 +17,8 @@ class ForegroundAppStreamHandler: NSObject, FlutterStreamHandler {
   private var observer: Any?
 
   func onListen(withArguments arguments: Any?, eventSink events: @escaping FlutterEventSink) -> FlutterError? {
-    eventSink = events
+    NSLog("[RingoTrack] ForegroundAppStreamHandler onListen")
+    self.eventSink = events
 
     let center = NSWorkspace.shared.notificationCenter
     observer = center.addObserver(
@@ -56,6 +38,7 @@ class ForegroundAppStreamHandler: NSObject, FlutterStreamHandler {
 
     // 初次监听时主动发一次当前前台应用
     if let frontmost = NSWorkspace.shared.frontmostApplication {
+      NSLog("[RingoTrack] ForegroundAppStreamHandler initial frontmost: \(frontmost.bundleIdentifier ?? "unknown")")
       emitEvent(for: frontmost)
     }
 
@@ -63,6 +46,7 @@ class ForegroundAppStreamHandler: NSObject, FlutterStreamHandler {
   }
 
   func onCancel(withArguments arguments: Any?) -> FlutterError? {
+    NSLog("[RingoTrack] ForegroundAppStreamHandler onCancel")
     if let observer = observer {
       NSWorkspace.shared.notificationCenter.removeObserver(observer)
     }
@@ -76,6 +60,8 @@ class ForegroundAppStreamHandler: NSObject, FlutterStreamHandler {
 
     let bundleId = app.bundleIdentifier ?? "unknown"
     let timestampMillis = Int(Date().timeIntervalSince1970 * 1000)
+
+     NSLog("[RingoTrack] ForegroundAppStreamHandler emitEvent bundleId=\(bundleId) timestampMillis=\(timestampMillis)")
 
     sink([
       "appId": bundleId,

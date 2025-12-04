@@ -8,18 +8,27 @@ import 'package:ringotrack/widgets/ringo_heatmap.dart';
 const double _heatmapTileSize = 13;
 const double _heatmapTileSpacing = 3;
 
-class DashboardPage extends ConsumerWidget {
+enum DashboardTab { overview, perApp, group }
+
+class DashboardPage extends ConsumerStatefulWidget {
   const DashboardPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DashboardPage> createState() => _DashboardPageState();
+}
+
+class _DashboardPageState extends ConsumerState<DashboardPage> {
+  DashboardTab _selectedTab = DashboardTab.overview;
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
     final today = DateTime.now();
     final end = DateTime(today.year, 12, 31);
     final start = DateTime(today.year, 1, 1);
 
-    final asyncTotals = ref.watch(yearlyDailyTotalsProvider);
+    final asyncUsage = ref.watch(yearlyUsageByDateProvider);
 
     return Scaffold(
       body: Center(
@@ -53,7 +62,8 @@ class DashboardPage extends ConsumerWidget {
                                 theme,
                                 start: start,
                                 end: end,
-                                asyncTotals: asyncTotals,
+                                asyncUsage: asyncUsage,
+                                selectedTab: _selectedTab,
                               ),
                             ],
                           ),
@@ -156,11 +166,44 @@ class DashboardPage extends ConsumerWidget {
 
     return Row(
       children: [
-        _TabButton(label: '总览', isSelected: true, selectedColor: selectedColor),
+        GestureDetector(
+          onTap: () {
+            setState(() {
+              _selectedTab = DashboardTab.overview;
+            });
+          },
+          child: _TabButton(
+            label: '总览',
+            isSelected: _selectedTab == DashboardTab.overview,
+            selectedColor: selectedColor,
+          ),
+        ),
         SizedBox(width: 8.w),
-        const _TabButton(label: '按软件', isSelected: false),
+        GestureDetector(
+          onTap: () {
+            setState(() {
+              _selectedTab = DashboardTab.perApp;
+            });
+          },
+          child: _TabButton(
+            label: '按软件',
+            isSelected: _selectedTab == DashboardTab.perApp,
+            selectedColor: selectedColor,
+          ),
+        ),
         SizedBox(width: 8.w),
-        const _TabButton(label: '分组', isSelected: false),
+        GestureDetector(
+          onTap: () {
+            setState(() {
+              _selectedTab = DashboardTab.group;
+            });
+          },
+          child: _TabButton(
+            label: '分组',
+            isSelected: _selectedTab == DashboardTab.group,
+            selectedColor: selectedColor,
+          ),
+        ),
       ],
     );
   }
@@ -169,7 +212,8 @@ class DashboardPage extends ConsumerWidget {
     ThemeData theme, {
     required DateTime start,
     required DateTime end,
-    required AsyncValue<Map<DateTime, Duration>> asyncTotals,
+    required AsyncValue<Map<DateTime, Map<String, Duration>>> asyncUsage,
+    required DashboardTab selectedTab,
   }) {
     final normalizedStart = DateTime(start.year, start.month, start.day);
     final normalizedEnd = DateTime(end.year, end.month, end.day);
@@ -211,11 +255,9 @@ class DashboardPage extends ConsumerWidget {
             weekdayColumnWidth +
             gapBetweenWeekdayAndGrid;
 
-        Widget heatmapChild;
-
-        heatmapChild = asyncTotals.when(
-          data: (dailyTotals) {
-            if (dailyTotals.isEmpty) {
+        final heatmapChild = asyncUsage.when(
+          data: (usageByDate) {
+            if (usageByDate.isEmpty) {
               return Center(
                 child: Text(
                   '开始打开你喜欢的绘画软件，RingoTrack 会在这里记录你的创作小绿砖',
@@ -227,17 +269,112 @@ class DashboardPage extends ConsumerWidget {
               );
             }
 
-            return SizedBox(
-              width: gridWidth,
-              child: Align(
-                alignment: Alignment.topLeft,
-                child: RingoHeatmap(
-                  start: start,
-                  end: end,
-                  dailyTotals: dailyTotals,
-                  baseColor: const Color(0xFF4AC26B),
-                  tileSize: tileSize,
-                  spacing: spacing,
+            if (selectedTab == DashboardTab.overview) {
+              final totals = <DateTime, Duration>{};
+              usageByDate.forEach((day, perApp) {
+                totals[day] = perApp.values.fold(
+                  Duration.zero,
+                  (a, b) => a + b,
+                );
+              });
+
+              return SizedBox(
+                width: gridWidth,
+                child: Align(
+                  alignment: Alignment.topLeft,
+                  child: RingoHeatmap(
+                    start: start,
+                    end: end,
+                    dailyTotals: totals,
+                    baseColor: const Color(0xFF4AC26B),
+                    tileSize: tileSize,
+                    spacing: spacing,
+                  ),
+                ),
+              );
+            }
+
+            if (selectedTab == DashboardTab.perApp) {
+              final perApp = <String, Map<DateTime, Duration>>{};
+
+              usageByDate.forEach((day, appMap) {
+                appMap.forEach((appId, duration) {
+                  final byDate = perApp.putIfAbsent(
+                    appId,
+                    () => <DateTime, Duration>{},
+                  );
+                  byDate[day] = (byDate[day] ?? Duration.zero) + duration;
+                });
+              });
+
+              final appIds = perApp.keys.toList()
+                ..sort((a, b) {
+                  Duration totalFor(String id) =>
+                      perApp[id]!.values.fold(Duration.zero, (x, y) => x + y);
+
+                  return totalFor(b).compareTo(totalFor(a));
+                });
+
+              return SizedBox(
+                height: 260.h,
+                child: ListView.builder(
+                  itemCount: appIds.length,
+                  itemBuilder: (context, index) {
+                    final appId = appIds[index];
+                    final appDaily = perApp[appId]!;
+
+                    return Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8.h),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            appId,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: Colors.black87,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          SizedBox(height: 4.h),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildWeekdayLabels(
+                                theme,
+                                tileSize: tileSize,
+                                spacing: spacing,
+                                columnWidth: weekdayColumnWidth,
+                              ),
+                              SizedBox(width: gapBetweenWeekdayAndGrid),
+                              SizedBox(
+                                width: gridWidth,
+                                child: Align(
+                                  alignment: Alignment.topLeft,
+                                  child: RingoHeatmap(
+                                    start: start,
+                                    end: end,
+                                    dailyTotals: appDaily,
+                                    baseColor: const Color(0xFF4AC26B),
+                                    tileSize: tileSize,
+                                    spacing: spacing,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              );
+            }
+
+            return Center(
+              child: Text(
+                '分组视图开发中……',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: Colors.black54,
                 ),
               ),
             );
@@ -281,25 +418,34 @@ class DashboardPage extends ConsumerWidget {
                 gridStartXWithinContent: gridStartXWithinContent,
               ),
               SizedBox(height: 24.h),
-              SizedBox(
-                width: innerWidth,
-                child: Padding(
-                  padding: EdgeInsets.only(left: leftOffsetWithinInner),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildWeekdayLabels(
-                        theme,
-                        tileSize: tileSize,
-                        spacing: spacing,
-                        columnWidth: weekdayColumnWidth,
-                      ),
-                      SizedBox(width: gapBetweenWeekdayAndGrid),
-                      SizedBox(width: gridWidth, child: heatmapChild),
-                    ],
+              if (selectedTab == DashboardTab.overview)
+                SizedBox(
+                  width: innerWidth,
+                  child: Padding(
+                    padding: EdgeInsets.only(left: leftOffsetWithinInner),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildWeekdayLabels(
+                          theme,
+                          tileSize: tileSize,
+                          spacing: spacing,
+                          columnWidth: weekdayColumnWidth,
+                        ),
+                        SizedBox(width: gapBetweenWeekdayAndGrid),
+                        SizedBox(width: gridWidth, child: heatmapChild),
+                      ],
+                    ),
+                  ),
+                )
+              else
+                SizedBox(
+                  width: innerWidth,
+                  child: Padding(
+                    padding: EdgeInsets.only(left: leftOffsetWithinInner),
+                    child: heatmapChild,
                   ),
                 ),
-              ),
               SizedBox(height: 24.h),
               _buildLegend(theme),
             ],
@@ -458,7 +604,7 @@ class _TabButton extends StatelessWidget {
   const _TabButton({
     required this.label,
     required this.isSelected,
-    this.selectedColor = const Color(0xFF0F4D32),
+    this.selectedColor = const Color(0xFF4AC26B),
   });
 
   final String label;

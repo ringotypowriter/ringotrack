@@ -119,10 +119,13 @@ class RingoHeatmap extends StatelessWidget {
     return normalized.subtract(Duration(days: weekday));
   }
 
+  static const Color _emptyColor = Color(0xFFE3E3E3);
+
   Color _colorForDuration(Duration duration) {
     final minutes = duration.inMinutes;
     if (minutes <= 0) {
-      return baseColor.withOpacity(0.05);
+      // 0 记录使用中性灰色，效果与 GitHub 类似
+      return _emptyColor;
     }
     if (minutes < 60) {
       return baseColor.withOpacity(0.4);

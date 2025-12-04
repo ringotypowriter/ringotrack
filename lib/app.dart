@@ -137,25 +137,42 @@ final usageServiceProvider = Provider<UsageService>((ref) {
   return service;
 });
 
-/// 最近一年的「合并视图」日总时长（所有 App 汇总）
-final yearlyDailyTotalsProvider =
-    FutureProvider<Map<DateTime, Duration>>((ref) async {
-  // 确保 UsageService 已经初始化并开始消费事件
-  ref.watch(usageServiceProvider);
-
+/// 最近一年的使用数据（按日期 -> AppId -> Duration），带实时增量刷新
+final yearlyUsageByDateProvider =
+    StreamProvider<Map<DateTime, Map<String, Duration>>>((ref) async* {
+  // 确保 UsageService 已启动
+  final service = ref.watch(usageServiceProvider);
   final repo = ref.watch(usageRepositoryProvider);
+
   final today = DateTime.now();
   final start = DateTime(today.year, 1, 1);
   final end = DateTime(today.year, 12, 31);
 
+  // 初始全量
   final usageByDate = await repo.loadRange(start, end);
+  yield usageByDate;
 
-  final totals = <DateTime, Duration>{};
-  usageByDate.forEach((day, perApp) {
-    totals[day] =
-        perApp.values.fold(Duration.zero, (a, b) => a + b);
-  });
+  // 后续增量：使用 UsageService.deltaStream 做增量合并
+  await for (final delta in service.deltaStream) {
+    if (delta.isEmpty) continue;
 
-  return totals;
+    delta.forEach((day, perApp) {
+      final existingPerApp =
+          usageByDate.putIfAbsent(day, () => <String, Duration>{});
+
+      perApp.forEach((appId, duration) {
+        existingPerApp[appId] =
+            (existingPerApp[appId] ?? Duration.zero) + duration;
+      });
+    });
+
+    yield Map<DateTime, Map<String, Duration>>.fromEntries(
+      usageByDate.entries.map(
+        (e) => MapEntry(
+          e.key,
+          Map<String, Duration>.from(e.value),
+        ),
+      ),
+    );
+  }
 });
-
