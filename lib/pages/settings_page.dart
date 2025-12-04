@@ -4,7 +4,6 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ringotrack/domain/drawing_app_preferences.dart';
 import 'package:ringotrack/domain/drawing_app_preferences_controller.dart';
-import 'package:ringotrack/domain/theme_controller.dart';
 import 'package:ringotrack/providers.dart';
 import 'package:ringotrack/theme/app_theme.dart';
 import 'package:ringotrack/widgets/logs_view_sheet.dart';
@@ -163,7 +162,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                       child: TextField(
                         controller: _addAppController,
                         decoration: const InputDecoration(
-                          labelText: '软件名称或系统识别名',
+                          labelText: '软件名称(Windows)或系统识别名(MacOS)',
                           prefixIcon: Icon(Icons.add_circle_outline),
                         ),
                         onSubmitted: (_) => _onAddTrackedApp(),
@@ -182,10 +181,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   alignment: Alignment.centerLeft,
                   child: TextButton.icon(
                     onPressed: _showBuiltInAppPicker,
-                    icon: const Icon(
-                      Icons.list_alt_outlined,
-                      size: 18,
-                    ),
+                    icon: const Icon(Icons.list_alt_outlined, size: 18),
                     label: const Text('从内置列表选择'),
                     style: TextButton.styleFrom(
                       padding: EdgeInsets.symmetric(
@@ -241,9 +237,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 OutlinedButton.icon(
                   onPressed: () => _pickDate(isStart: true),
                   icon: const Icon(Icons.calendar_today, size: 16),
-                  label: Text(
-                    _formatDate(_rangeStart, label: '开始日期'),
-                  ),
+                  label: Text(_formatDate(_rangeStart, label: '开始日期')),
                 ),
                 OutlinedButton.icon(
                   onPressed: () => _pickDate(isStart: false),
@@ -252,10 +246,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 ),
                 FilledButton.icon(
                   onPressed: _onDeleteDateRange,
-                  icon: const Icon(
-                    Icons.cleaning_services_outlined,
-                    size: 18,
-                  ),
+                  icon: const Icon(Icons.cleaning_services_outlined, size: 18),
                   label: const Text('删除范围'),
                 ),
               ],
@@ -743,10 +734,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         ),
         FilledButton.icon(
           onPressed: () => _onDeleteAppDataByLogicalId(apps, currentLogicalId),
-          icon: const Icon(
-            Icons.delete_sweep_outlined,
-            size: 18,
-          ),
+          icon: const Icon(Icons.delete_sweep_outlined, size: 18),
           label: const Text('删除数据'),
         ),
       ],
@@ -757,8 +745,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     List<TrackedApp> apps,
     String logicalId,
   ) async {
-    final app =
-        apps.firstWhere((a) => a.logicalId == logicalId, orElse: () => apps[0]);
+    final app = apps.firstWhere(
+      (a) => a.logicalId == logicalId,
+      orElse: () => apps[0],
+    );
 
     if (app.ids.isEmpty) {
       _showSnack('该软件没有可识别的系统标识，无法删除数据');
@@ -859,17 +849,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               _ThemeDot(
                 theme: t,
                 isSelected: t.id == currentId,
-                onTap: () =>
-                    ref.read(appThemeProvider.notifier).setTheme(t.id),
+                onTap: () => ref.read(appThemeProvider.notifier).setTheme(t.id),
               ),
           ],
         ),
         SizedBox(height: 10.h),
         Text(
           '会立即保存到偏好设置中，并在下次启动时自动应用。',
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: onSurfaceVariant,
-          ),
+          style: theme.textTheme.bodySmall?.copyWith(color: onSurfaceVariant),
         ),
       ],
     );
@@ -934,11 +921,11 @@ class _ThemeDot extends StatelessWidget {
           Text(
             theme.name,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                  color: isSelected
-                      ? Theme.of(context).colorScheme.onSurface
-                      : Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+              color: isSelected
+                  ? Theme.of(context).colorScheme.onSurface
+                  : Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
         ],
       ),
