@@ -36,7 +36,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: theme.colorScheme.background,
+      backgroundColor: theme.colorScheme.surface,
       body: Center(
         child: ConstrainedBox(
           constraints: BoxConstraints(maxWidth: 1440.w, maxHeight: 900.h),

@@ -32,6 +32,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     final metricsAsync = ref.watch(dashboardMetricsProvider);
 
     return Scaffold(
+      backgroundColor: theme.colorScheme.surface,
       body: Center(
         child: ConstrainedBox(
           constraints: BoxConstraints(maxWidth: 1440.w, maxHeight: 900.h),
@@ -265,31 +266,54 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
         // 基于设计尺寸做一个合理的夹紧，避免过大或过小
         tileSize = tileSize.clamp(baseTileSize * 0.9, baseTileSize * 1.4);
 
-        final gridWidth = weekCount * tileSize + (weekCount - 1) * spacing;
+        Widget buildHeatmap(
+          Map<DateTime, Duration> totals, {
+          bool showMonthLabels = true,
+          Widget? placeholder,
+        }) {
+          return SizedBox(
+            width: innerWidth,
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: RingoHeatmap(
+                start: start,
+                end: end,
+                dailyTotals: totals,
+                baseColor: const Color(0xFF4AC26B),
+                tileSize: tileSize,
+                spacing: spacing,
+                showMonthLabels: showMonthLabels,
+                showWeekdayLabels: true,
+                weekdayLabelWidth: weekdayColumnWidth,
+                weekdayLabelGap: gapBetweenWeekdayAndGrid,
+                headerToGridSpacing: 24.h,
+                monthLabelStyle: theme.textTheme.bodyMedium?.copyWith(
+                  color: Colors.black87,
+                ),
+                weekdayLabelStyle: theme.textTheme.bodySmall?.copyWith(
+                  fontSize: 15.sp,
+                  color: Colors.black54,
+                ),
+                emptyPlaceholder: placeholder,
+              ),
+            ),
+          );
+        }
 
-        // 整体（星期列 + 间距 + 网格）在卡片内部水平居中
-        final totalHeatmapWidth =
-            weekdayColumnWidth + gapBetweenWeekdayAndGrid + gridWidth;
-        final leftOffsetWithinInner = ((innerWidth - totalHeatmapWidth) / 2)
-            .clamp(0.0, double.infinity);
-
-        // 网格起始位置（相对于卡片内容区域左侧），用于让月份标题与格子列对齐
-        final gridStartXWithinContent =
-            leftOffsetWithinInner +
-            weekdayColumnWidth +
-            gapBetweenWeekdayAndGrid;
+        Widget buildEmptyPlaceholder() {
+          return Text(
+            '开始打开你喜欢的绘画软件，RingoTrack 会在这里记录你的创作小绿砖',
+            style: theme.textTheme.bodyMedium?.copyWith(color: Colors.black54),
+            textAlign: TextAlign.center,
+          );
+        }
 
         final heatmapChild = asyncUsage.when(
           data: (usageByDate) {
             if (usageByDate.isEmpty) {
-              return Center(
-                child: Text(
-                  '开始打开你喜欢的绘画软件，RingoTrack 会在这里记录你的创作小绿砖',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: Colors.black54,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
+              return buildHeatmap(
+                const {},
+                placeholder: buildEmptyPlaceholder(),
               );
             }
 
@@ -302,20 +326,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                 );
               });
 
-              return SizedBox(
-                width: gridWidth,
-                child: Align(
-                  alignment: Alignment.topLeft,
-                  child: RingoHeatmap(
-                    start: start,
-                    end: end,
-                    dailyTotals: totals,
-                    baseColor: const Color(0xFF4AC26B),
-                    tileSize: tileSize,
-                    spacing: spacing,
-                  ),
-                ),
-              );
+              return buildHeatmap(totals, placeholder: buildEmptyPlaceholder());
             }
 
             if (selectedTab == DashboardTab.perApp) {
@@ -352,40 +363,18 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            appId,
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: Colors.black87,
-                              fontWeight: FontWeight.w500,
+                          Center(
+                            child: Text(
+                              appId,
+                              style: theme.textTheme.titleSmall?.copyWith(
+                                color: Colors.black87,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              textAlign: TextAlign.center,
                             ),
                           ),
-                          SizedBox(height: 4.h),
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _buildWeekdayLabels(
-                                theme,
-                                tileSize: tileSize,
-                                spacing: spacing,
-                                columnWidth: weekdayColumnWidth,
-                              ),
-                              SizedBox(width: gapBetweenWeekdayAndGrid),
-                              SizedBox(
-                                width: gridWidth,
-                                child: Align(
-                                  alignment: Alignment.topLeft,
-                                  child: RingoHeatmap(
-                                    start: start,
-                                    end: end,
-                                    dailyTotals: appDaily,
-                                    baseColor: const Color(0xFF4AC26B),
-                                    tileSize: tileSize,
-                                    spacing: spacing,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
+                          SizedBox(height: 8.h),
+                          buildHeatmap(appDaily, showMonthLabels: true),
                         ],
                       ),
                     );
@@ -431,143 +420,13 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildMonthHeader(
-                theme: theme,
-                start: start,
-                end: end,
-                calendarStart: calendarStart,
-                weekCount: weekCount,
-                tileSize: tileSize,
-                spacing: spacing,
-                gridStartXWithinContent: gridStartXWithinContent,
-              ),
-              SizedBox(height: 24.h),
-              if (selectedTab == DashboardTab.overview)
-                SizedBox(
-                  width: innerWidth,
-                  child: Padding(
-                    padding: EdgeInsets.only(left: leftOffsetWithinInner),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildWeekdayLabels(
-                          theme,
-                          tileSize: tileSize,
-                          spacing: spacing,
-                          columnWidth: weekdayColumnWidth,
-                        ),
-                        SizedBox(width: gapBetweenWeekdayAndGrid),
-                        SizedBox(width: gridWidth, child: heatmapChild),
-                      ],
-                    ),
-                  ),
-                )
-              else
-                SizedBox(
-                  width: innerWidth,
-                  child: Padding(
-                    padding: EdgeInsets.only(left: leftOffsetWithinInner),
-                    child: heatmapChild,
-                  ),
-                ),
+              heatmapChild,
               SizedBox(height: 24.h),
               _buildLegend(theme),
             ],
           ),
         );
       },
-    );
-  }
-
-  Widget _buildMonthHeader({
-    required ThemeData theme,
-    required DateTime start,
-    required DateTime end,
-    required DateTime calendarStart,
-    required int weekCount,
-    required double tileSize,
-    required double spacing,
-    required double gridStartXWithinContent,
-  }) {
-    final normalizedStart = DateTime(start.year, start.month, start.day);
-    final normalizedEnd = DateTime(end.year, end.month, end.day);
-
-    final labels = <_MonthPosition>[];
-    final year = start.year;
-
-    for (var month = 1; month <= 12; month++) {
-      final firstDayOfMonth = DateTime(year, month, 1);
-      if (firstDayOfMonth.isBefore(normalizedStart) ||
-          firstDayOfMonth.isAfter(normalizedEnd)) {
-        continue;
-      }
-
-      final diffDays = firstDayOfMonth.difference(calendarStart).inDays;
-      final columnIndex = diffDays ~/ 7;
-
-      labels.add(_MonthPosition(month: month, columnIndex: columnIndex));
-    }
-
-    final labelHeight = ((theme.textTheme.bodyMedium?.fontSize ?? 14).sp) * 1.4;
-
-    return SizedBox(
-      height: labelHeight,
-      child: Stack(
-        children: [
-          for (final label in labels)
-            Positioned(
-              left:
-                  gridStartXWithinContent +
-                  label.columnIndex * (tileSize + spacing),
-              child: Text(
-                '${label.month}月',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: Colors.black87,
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildWeekdayLabels(
-    ThemeData theme, {
-    required double tileSize,
-    required double spacing,
-    required double columnWidth,
-  }) {
-    const labels = ['日', '一', '二', '三', '四', '五', '六'];
-
-    return SizedBox(
-      width: columnWidth,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          for (var i = 0; i < labels.length; i++)
-            Padding(
-              padding: EdgeInsets.only(
-                bottom: i == labels.length - 1 ? 0 : spacing,
-              ),
-              child: SizedBox(
-                height: tileSize,
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: FittedBox(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      labels[i],
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        fontSize: 15.sp,
-                        color: Colors.black54,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
     );
   }
 
@@ -684,11 +543,4 @@ class _TabButton extends StatelessWidget {
       ),
     );
   }
-}
-
-class _MonthPosition {
-  const _MonthPosition({required this.month, required this.columnIndex});
-
-  final int month;
-  final int columnIndex;
 }

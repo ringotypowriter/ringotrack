@@ -9,6 +9,14 @@ class RingoHeatmap extends StatelessWidget {
     this.baseColor = Colors.green,
     this.tileSize = 14,
     this.spacing = 4,
+    this.showMonthLabels = true,
+    this.showWeekdayLabels = true,
+    this.weekdayLabelWidth = 24,
+    this.weekdayLabelGap = 20,
+    this.headerToGridSpacing = 16,
+    this.monthLabelStyle,
+    this.weekdayLabelStyle,
+    this.emptyPlaceholder,
   });
 
   final DateTime start;
@@ -17,6 +25,14 @@ class RingoHeatmap extends StatelessWidget {
   final Color baseColor;
   final double tileSize;
   final double spacing;
+  final bool showMonthLabels;
+  final bool showWeekdayLabels;
+  final double weekdayLabelWidth;
+  final double weekdayLabelGap;
+  final double headerToGridSpacing;
+  final TextStyle? monthLabelStyle;
+  final TextStyle? weekdayLabelStyle;
+  final Widget? emptyPlaceholder;
 
   @override
   Widget build(BuildContext context) {
@@ -38,16 +54,151 @@ class RingoHeatmap extends StatelessWidget {
     final weekCount = (totalDays / 7).ceil();
 
     final gridWidth = weekCount * tileSize + (weekCount - 1) * spacing;
+    final gridHeight = 7 * tileSize + 6 * spacing;
+    final totalWidth =
+        (showWeekdayLabels ? weekdayLabelWidth + weekdayLabelGap : 0) +
+            gridWidth;
+
+    final resolvedMonthLabelStyle = monthLabelStyle ??
+        Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Colors.black87,
+            );
+
+    final resolvedWeekdayLabelStyle = weekdayLabelStyle ??
+        Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Colors.black54,
+            );
+
+    final monthLabelHeight =
+        (resolvedMonthLabelStyle?.fontSize ?? 14) * 1.4;
+
+    final children = <Widget>[];
+
+    if (showMonthLabels) {
+      children.add(
+        SizedBox(
+          height: monthLabelHeight,
+          child: Stack(
+            children: _buildMonthLabels(
+              style: resolvedMonthLabelStyle,
+              calendarStart: calendarStart,
+              normalizedStart: normalizedStart,
+              normalizedEnd: normalizedEnd,
+            ),
+          ),
+        ),
+      );
+
+      children.add(SizedBox(height: headerToGridSpacing));
+    }
+
+    final gridArea = normalizedTotals.isEmpty && emptyPlaceholder != null
+        ? SizedBox(
+            width: gridWidth,
+            height: gridHeight,
+            child: Center(child: emptyPlaceholder),
+          )
+        : SizedBox(
+            width: gridWidth,
+            child: _buildGrid(
+              calendarStart: calendarStart,
+              weekCount: weekCount,
+              normalizedStart: normalizedStart,
+              normalizedEnd: normalizedEnd,
+              normalizedTotals: normalizedTotals,
+            ),
+          );
+
+    children.add(
+      Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (showWeekdayLabels)
+            SizedBox(
+              width: weekdayLabelWidth,
+              child: _buildWeekdayLabels(
+                spacing: spacing,
+                tileSize: tileSize,
+                style: resolvedWeekdayLabelStyle,
+              ),
+            ),
+          if (showWeekdayLabels) SizedBox(width: weekdayLabelGap),
+          gridArea,
+        ],
+      ),
+    );
 
     return SizedBox(
-      width: gridWidth,
-      child: _buildGrid(
-        calendarStart: calendarStart,
-        weekCount: weekCount,
-        normalizedStart: normalizedStart,
-        normalizedEnd: normalizedEnd,
-        normalizedTotals: normalizedTotals,
+      width: totalWidth,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: children,
       ),
+    );
+  }
+
+  List<Widget> _buildMonthLabels({
+    required TextStyle? style,
+    required DateTime calendarStart,
+    required DateTime normalizedStart,
+    required DateTime normalizedEnd,
+  }) {
+    final labels = <_MonthPosition>[];
+    final year = normalizedStart.year;
+
+    for (var month = 1; month <= 12; month++) {
+      final firstDayOfMonth = DateTime(year, month, 1);
+      if (firstDayOfMonth.isBefore(normalizedStart) ||
+          firstDayOfMonth.isAfter(normalizedEnd)) {
+        continue;
+      }
+
+      final diffDays = firstDayOfMonth.difference(calendarStart).inDays;
+      final columnIndex = diffDays ~/ 7;
+
+      labels.add(_MonthPosition(month: month, columnIndex: columnIndex));
+    }
+
+    return labels
+        .map(
+          (label) => Positioned(
+            left: (showWeekdayLabels
+                    ? weekdayLabelWidth + weekdayLabelGap
+                    : 0) +
+                label.columnIndex * (tileSize + spacing),
+            child: Text('${label.month}月', style: style),
+          ),
+        )
+        .toList();
+  }
+
+  Widget _buildWeekdayLabels({
+    required double tileSize,
+    required double spacing,
+    required TextStyle? style,
+  }) {
+    const labels = ['日', '一', '二', '三', '四', '五', '六'];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (var i = 0; i < labels.length; i++)
+          Padding(
+            padding: EdgeInsets.only(
+              bottom: i == labels.length - 1 ? 0 : spacing,
+            ),
+            child: SizedBox(
+              height: tileSize,
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: FittedBox(
+                  alignment: Alignment.centerLeft,
+                  child: Text(labels[i], style: style),
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 
@@ -142,4 +293,11 @@ class RingoHeatmap extends StatelessWidget {
     final d = day.day.toString().padLeft(2, '0');
     return 'day-$y-$m-$d';
   }
+}
+
+class _MonthPosition {
+  const _MonthPosition({required this.month, required this.columnIndex});
+
+  final int month;
+  final int columnIndex;
 }

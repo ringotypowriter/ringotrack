@@ -86,7 +86,6 @@ class RingoTrackApp extends StatelessWidget {
             colorScheme: ColorScheme.fromSeed(
               seedColor: seedGreen,
               brightness: Brightness.light,
-              background: const Color(0xFFF6F8F5),
               surface: Colors.white,
             ),
             scaffoldBackgroundColor: const Color(0xFFF6F8F5),
@@ -117,7 +116,10 @@ class RingoTrackApp extends StatelessWidget {
               style: ElevatedButton.styleFrom(
                 backgroundColor: seedGreen,
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 12,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -128,7 +130,10 @@ class RingoTrackApp extends StatelessWidget {
               style: FilledButton.styleFrom(
                 backgroundColor: seedGreen,
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 12,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -137,7 +142,10 @@ class RingoTrackApp extends StatelessWidget {
             textButtonTheme: TextButtonThemeData(
               style: TextButton.styleFrom(
                 foregroundColor: seedGreen,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),
@@ -147,7 +155,10 @@ class RingoTrackApp extends StatelessWidget {
               style: OutlinedButton.styleFrom(
                 foregroundColor: seedGreen,
                 side: const BorderSide(color: Color(0xFFB9D6C5)),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
