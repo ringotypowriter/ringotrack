@@ -48,6 +48,13 @@ class UsageAggregator {
     return _usage.map((key, value) => MapEntry(key, Map.of(value)));
   }
 
+  /// 取出当前累计的 usage 并清空内部缓存，用于与持久化层做增量同步。
+  Map<DateTime, Map<String, Duration>> drainUsage() {
+    final snapshot = usageByDate;
+    _usage.clear();
+    return snapshot;
+  }
+
   void onForegroundAppChanged(ForegroundAppEvent event) {
     if (_currentAppId != null && _currentStart != null) {
       _addInterval(_currentAppId!, _currentStart!, event.timestamp);
@@ -89,4 +96,3 @@ class UsageAggregator {
     }
   }
 }
-

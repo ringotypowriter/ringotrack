@@ -1,27 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
+import 'package:ringotrack/app.dart';
 import 'package:ringotrack/widgets/ringo_heatmap.dart';
 
-// 以 1440x900 作为设计尺寸，配合 flutter_screenutil 做适配
 const double _heatmapTileSize = 13;
 const double _heatmapTileSpacing = 3;
 
-class DashboardPage extends StatelessWidget {
-  const DashboardPage({
-    super.key,
-    required this.start,
-    required this.end,
-    required this.dailyTotals,
-  });
-
-  final DateTime start;
-  final DateTime end;
-  final Map<DateTime, Duration> dailyTotals;
+class DashboardPage extends ConsumerWidget {
+  const DashboardPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+
+    final today = DateTime.now();
+    final end = DateTime(today.year, 12, 31);
+    final start = DateTime(today.year, 1, 1);
+
+    final asyncTotals = ref.watch(yearlyDailyTotalsProvider);
 
     return Scaffold(
       body: Center(
@@ -51,7 +49,12 @@ class DashboardPage extends StatelessWidget {
                               const SizedBox(height: 40),
                               _buildTabs(theme),
                               const SizedBox(height: 16),
-                              _buildHeatmapShell(theme),
+                              _buildHeatmapShell(
+                                theme,
+                                start: start,
+                                end: end,
+                                asyncTotals: asyncTotals,
+                              ),
                             ],
                           ),
                         ),
@@ -94,10 +97,7 @@ class DashboardPage extends StatelessWidget {
           GestureDetector(
             onTap: () => context.go('/settings'),
             behavior: HitTestBehavior.opaque,
-            child: Text(
-              '设置',
-              style: theme.textTheme.bodyMedium,
-            ),
+            child: Text('设置', style: theme.textTheme.bodyMedium),
           ),
         ],
       ),
@@ -165,7 +165,12 @@ class DashboardPage extends StatelessWidget {
     );
   }
 
-  Widget _buildHeatmapShell(ThemeData theme) {
+  Widget _buildHeatmapShell(
+    ThemeData theme, {
+    required DateTime start,
+    required DateTime end,
+    required AsyncValue<Map<DateTime, Duration>> asyncTotals,
+  }) {
     final normalizedStart = DateTime(start.year, start.month, start.day);
     final normalizedEnd = DateTime(end.year, end.month, end.day);
     final calendarStart = _startOfWeek(normalizedStart);
@@ -206,6 +211,49 @@ class DashboardPage extends StatelessWidget {
             weekdayColumnWidth +
             gapBetweenWeekdayAndGrid;
 
+        Widget heatmapChild;
+
+        heatmapChild = asyncTotals.when(
+          data: (dailyTotals) {
+            if (dailyTotals.isEmpty) {
+              return Center(
+                child: Text(
+                  '开始打开你喜欢的绘画软件，RingoTrack 会在这里记录你的创作小绿砖',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: Colors.black54,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              );
+            }
+
+            return SizedBox(
+              width: gridWidth,
+              child: Align(
+                alignment: Alignment.topLeft,
+                child: RingoHeatmap(
+                  start: start,
+                  end: end,
+                  dailyTotals: dailyTotals,
+                  baseColor: const Color(0xFF4AC26B),
+                  tileSize: tileSize,
+                  spacing: spacing,
+                ),
+              ),
+            );
+          },
+          loading: () =>
+              const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+          error: (error, stack) => Center(
+            child: Text(
+              '加载数据出错了',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: Colors.redAccent,
+              ),
+            ),
+          ),
+        );
+
         return Container(
           key: const ValueKey('dashboard-heatmap-shell'),
           decoration: BoxDecoration(
@@ -224,6 +272,8 @@ class DashboardPage extends StatelessWidget {
             children: [
               _buildMonthHeader(
                 theme: theme,
+                start: start,
+                end: end,
                 calendarStart: calendarStart,
                 weekCount: weekCount,
                 tileSize: tileSize,
@@ -245,20 +295,7 @@ class DashboardPage extends StatelessWidget {
                         columnWidth: weekdayColumnWidth,
                       ),
                       SizedBox(width: gapBetweenWeekdayAndGrid),
-                      SizedBox(
-                        width: gridWidth,
-                        child: Align(
-                          alignment: Alignment.topLeft,
-                          child: RingoHeatmap(
-                            start: start,
-                            end: end,
-                            dailyTotals: dailyTotals,
-                            baseColor: const Color(0xFF4AC26B),
-                            tileSize: tileSize,
-                            spacing: spacing,
-                          ),
-                        ),
-                      ),
+                      SizedBox(width: gridWidth, child: heatmapChild),
                     ],
                   ),
                 ),
@@ -274,6 +311,8 @@ class DashboardPage extends StatelessWidget {
 
   Widget _buildMonthHeader({
     required ThemeData theme,
+    required DateTime start,
+    required DateTime end,
     required DateTime calendarStart,
     required int weekCount,
     required double tileSize,

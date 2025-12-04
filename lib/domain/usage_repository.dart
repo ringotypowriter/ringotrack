@@ -1,39 +1,31 @@
-class UsageRepository {
-  UsageRepository();
+import 'package:ringotrack/domain/app_database.dart';
 
-  final Map<DateTime, Map<String, Duration>> _store = {};
+/// UsageRepository 抽象，后续如果需要可以有内存版 / SQLite 版等多种实现。
+abstract class UsageRepository {
+  Future<Map<DateTime, Map<String, Duration>>> loadRange(
+    DateTime start,
+    DateTime end,
+  );
 
-  Map<DateTime, Map<String, Duration>> loadRange(
+  Future<void> mergeUsage(Map<DateTime, Map<String, Duration>> delta);
+}
+
+class SqliteUsageRepository implements UsageRepository {
+  SqliteUsageRepository(this._db);
+
+  final AppDatabase _db;
+
+  @override
+  Future<Map<DateTime, Map<String, Duration>>> loadRange(
     DateTime start,
     DateTime end,
   ) {
-    final startDay = DateTime(start.year, start.month, start.day);
-    final endDay = DateTime(end.year, end.month, end.day);
-
-    final result = <DateTime, Map<String, Duration>>{};
-
-    for (final entry in _store.entries) {
-      final day = entry.key;
-      if (day.isBefore(startDay) || day.isAfter(endDay)) {
-        continue;
-      }
-      result[day] = Map.of(entry.value);
-    }
-
-    return result;
+    return _db.loadRange(start, end);
   }
 
-  void mergeUsage(Map<DateTime, Map<String, Duration>> delta) {
-    for (final entry in delta.entries) {
-      final dayKey = DateTime(entry.key.year, entry.key.month, entry.key.day);
-      final targetPerApp = _store.putIfAbsent(dayKey, () => {});
-
-      for (final appEntry in entry.value.entries) {
-        final appId = appEntry.key;
-        final duration = appEntry.value;
-        targetPerApp[appId] = (targetPerApp[appId] ?? Duration.zero) + duration;
-      }
-    }
+  @override
+  Future<void> mergeUsage(Map<DateTime, Map<String, Duration>> delta) {
+    return _db.mergeUsage(delta);
   }
 }
 

@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ringotrack/app.dart';
 
 void main() {
-  runApp(const RingoTrackApp());
+  runApp(
+    const ProviderScope(
+      child: RingoTrackApp(),
+    ),
+  );
 }
