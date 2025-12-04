@@ -6,6 +6,57 @@
 
 ---
 
+## 0. 当前实现进度概览（截至 2025-12-04）
+
+### 0.1 Feature 级 Test Case 状态
+
+| 用例 | 描述 | 状态 | 主要实现 / 测试位置 |
+| ---- | ---- | ---- | -------------------- |
+| TC-F-01 ~ TC-F-05 | 采集并统计绘画软件使用时长（单 app、多次会话、跨天、过滤、动态配置） | ✅ 核心逻辑已通过单元测试 | `UsageAggregator`（`lib/domain/usage_models.dart`）、`UsageService`、`test/usage_aggregator_test.dart` |
+| TC-F-06 | 最近 30 天 / 全年合并视图渲染 | 🟡 基础渲染已完成，细节交互待补 | `RingoHeatmap`、`DashboardPage`、`test/ringo_heatmap_test.dart` |
+| TC-F-07 | 按软件分行视图渲染 | 🟡 app 维度数据与 UI 架子已具备 | `DashboardPage._buildHeatmapShell`，后续需补充「一行一 app」布局与交互测试 |
+| TC-F-08 | 当日详情弹窗 | ⚪ 未实现 | 需补充日详情弹窗组件 + 对应 widget test |
+| TC-F-09 | 无数据时的空状态 | 🟡 日历空状态文案已在 `RingoHeatmap` 调用处实现 | `DashboardPage._buildHeatmapShell`；可再补充 Golden / widget test 覆盖 |
+
+> 状态说明：✅ 已实现并有测试；🟡 主要逻辑已具备，仍有交互 / 样式 / 测试欠缺；⚪ 尚未实现。
+
+### 0.2 技术模块进度
+
+- 采集层（`ForegroundAppTracker`）
+  - macOS：`_MacOsForegroundAppTracker` 通过 `EventChannel('ringotrack/foreground_app_events')` 与原生侧对接，负责监听前台 App 变化事件并记录日志；仍需在 Runner 中补齐插件注册和权限提示策略。
+  - Windows：`_WindowsForegroundAppTracker` 已集成 FFI 轮询 `rt_get_foreground_app`，能够解析 exe 路径 / 标题 / pid，并做去抖；仍需完善 C 侧实现与错误码处理。
+- 统计归并层（`UsageAggregator` / `UsageAnalysis`）
+  - `UsageAggregator` 已完全实现跨天拆分、非绘画软件过滤、动态绘画软件集，并通过 `test/usage_aggregator_test.dart` 覆盖 TC-F-01 ~ TC-F-05。
+  - `UsageAnalysis` 已提供按日、按周、按 app、按星期统计能力，并有对应单元测试（`test/usage_analysis_test.dart`）。
+- 存储层（`UsageRepository` / Drift）
+  - SQLite 仓储 `SqliteUsageRepository` 已完成增量 merge / 范围查询 / 删除等操作，测试用 in-memory DB 覆盖主要路径（`test/usage_repository_test.dart`）。
+- 应用服务层（`UsageService`）
+  - 已将 `ForegroundAppTracker` + `UsageAggregator` + `UsageRepository` 串联，并通过 Riverpod Provider 在应用启动时构建，支持实时 delta 推送给 UI（`usageServiceProvider` + `yearlyUsageByDateProvider`）。
+- UI 层
+  - Dashboard 主界面与 GitHub 风格热力图组件已经初步完成，并有部分 widget test（`test/ringo_heatmap_test.dart`）。
+  - 设置 / 绘画软件页面的基本结构与偏好持久化逻辑已具备（`drawing_app_preferences*` 系列及其测试）。
+
+### 0.3 v0.1 剩余工作清单（建议顺序）
+
+1. 完成 Feature 级 UI 细节 & 交互  
+   - [ ] TC-F-06：补齐「最近 30 天」与「全年」视图切换、hover tooltip 文案（与 `UsageAnalysis` 打通）。  
+   - [ ] TC-F-07：在「按软件」视图中，将热力图布局改为「一行一个 app」，并支持按软件筛选 / 折叠。  
+   - [ ] TC-F-08：实现「当日详情弹窗」组件，并用 widget test 验证数据正确性。  
+   - [ ] TC-F-09：为热力图空状态补充 widget test / Golden test。  
+
+2. 采集层与原生工程集成收尾  
+   - [ ] 在 macOS Runner 中完成 `ringotrack/foreground_app_events` EventChannel 的发送逻辑与权限提示。  
+   - [ ] 在 Windows C / DLL 层实现 `rt_get_foreground_app`，并与 `_RtForegroundAppInfo` 结构体对齐，同时补充基础日志。  
+
+3. 产品体验打磨  
+   - [ ] 仪表盘顶部时间范围选择器（7 天 / 30 天 / 365 天）对齐 `docs/product-design.md` 和 `docs/user_stories.md`。  
+   - [ ] 「软件管理」页交互补全：当前前台应用一键加入为绘画软件、展示名编辑体验优化。  
+   - [ ] 空状态 / 新手引导文案与 UI 风格对齐产品设计文档中的基调。  
+
+> v0.1 之外的高级特性（SQLite 长期存储优化、多设备同步等），保持在项目级文档的「Future Enhancements」中规划，待 v0.1 稳定后再正式立项。
+
+---
+
 ## 1. 测试用例总览（Feature 层）
 
 ### 1.1 Feature：记录绘画软件使用时长
@@ -266,4 +317,3 @@
   - 模块分层和各层测试关注点。
 
 后续可以基于这些 Test Case 先写测试，再按模块实现采集、统计、存储和 UI 渲染逻辑，实现一个小而精确的 RingoTrack v0.1。 
-
