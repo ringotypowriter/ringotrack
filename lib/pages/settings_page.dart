@@ -133,56 +133,72 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               child: _sectionCard(
                 theme,
                 title: '追踪的软件',
-                subtitle: '仅列出的软件会计入时长，支持 bundleId / exe 名，自动大小写忽略。',
+                subtitle: '配置需要计入时长的绘画/美术软件列表。',
                 icon: Icons.brush_outlined,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    prefsAsync.when(
-                      data: (prefs) => _buildTrackedList(theme, prefs),
-                      loading: () => const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 12),
-                        child: LinearProgressIndicator(minHeight: 4),
+                    _dataTile(
+                      theme,
+                      title: '已追踪的软件',
+                      helper: '仅以下软件会被计入时长，留空则使用内置默认列表。',
+                      child: prefsAsync.when(
+                        data: (prefs) => _buildTrackedList(theme, prefs),
+                        loading: () => const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 12),
+                          child: LinearProgressIndicator(minHeight: 4),
+                        ),
+                        error: (err, _) => _errorText(theme, '加载失败: $err'),
                       ),
-                      error: (err, _) => _errorText(theme, '加载失败: $err'),
                     ),
                     SizedBox(height: 14.h),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: _addAppController,
-                            decoration: const InputDecoration(
-                              labelText: '新增 bundleId / exe',
-                              prefixIcon: Icon(Icons.add_circle_outline),
-                            ),
-                            onSubmitted: (_) => _onAddTrackedApp(),
+                    _dataTile(
+                      theme,
+                      title: '添加新软件',
+                      helper: '支持 bundleId / exe 名，自动大小写忽略。',
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: TextField(
+                                  controller: _addAppController,
+                                  decoration: const InputDecoration(
+                                    labelText: '新增 bundleId / exe',
+                                    prefixIcon: Icon(Icons.add_circle_outline),
+                                  ),
+                                  onSubmitted: (_) => _onAddTrackedApp(),
+                                ),
+                              ),
+                              SizedBox(width: 10.w),
+                              FilledButton.icon(
+                                onPressed: _onAddTrackedApp,
+                                icon: const Icon(Icons.add, size: 18),
+                                label: const Text('添加'),
+                              ),
+                            ],
                           ),
-                        ),
-                        SizedBox(width: 10.w),
-                        FilledButton.icon(
-                          onPressed: _onAddTrackedApp,
-                          icon: const Icon(Icons.add, size: 18),
-                          label: const Text('添加'),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 16.h),
-                    Text(
-                      '内置参考',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: const Color(0xFF4C5A52),
-                        fontWeight: FontWeight.w600,
+                          SizedBox(height: 10.h),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: TextButton.icon(
+                              onPressed: _showBuiltInAppPicker,
+                              icon: const Icon(
+                                Icons.list_alt_outlined,
+                                size: 18,
+                              ),
+                              label: const Text('从内置列表选择'),
+                              style: TextButton.styleFrom(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 10.w,
+                                  vertical: 8.h,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                    SizedBox(height: 8.h),
-                    Wrap(
-                      spacing: 8.w,
-                      runSpacing: 8.h,
-                      children: [
-                        for (final appId in defaultTrackedAppIds)
-                          _ghostChip(appId),
-                      ],
                     ),
                   ],
                 ),
@@ -434,7 +450,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   Widget _buildTrackedList(ThemeData theme, DrawingAppPreferences prefs) {
     if (prefs.trackedAppIds.isEmpty) {
       return Text(
-        '当前未配置软件，将使用默认列表。',
+        '当前未配置软件，将使用内置默认列表。',
         style: theme.textTheme.bodySmall?.copyWith(
           color: const Color(0xFF4C5A52),
         ),
@@ -443,24 +459,52 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
     final sorted = prefs.trackedAppIds.toList()..sort();
 
-    return Wrap(
-      spacing: 10.w,
-      runSpacing: 10.h,
-      children: [
-        for (final appId in sorted)
-          InputChip(
-            label: Text(appId),
-            labelStyle: theme.textTheme.bodySmall?.copyWith(
-              color: const Color(0xFF1F2B24),
-              fontWeight: FontWeight.w600,
-            ),
-            backgroundColor: _accent.withOpacity(0.1),
-            deleteIconColor: _deepAccent,
-            side: const BorderSide(color: Color(0xFFB9D6C5)),
-            onDeleted: () => _onRemoveTrackedApp(appId),
-            padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
-          ),
-      ],
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        maxHeight: 260.h,
+      ),
+      child: Scrollbar(
+        child: ListView.separated(
+          shrinkWrap: true,
+          itemCount: sorted.length,
+          itemBuilder: (context, index) {
+            final appId = sorted[index];
+            return Container(
+              padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12.r),
+                border: Border.all(color: _cardBorder),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      appId,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: const Color(0xFF1F2B24),
+                        fontWeight: FontWeight.w600,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => _onRemoveTrackedApp(appId),
+                    icon: const Icon(
+                      Icons.close_rounded,
+                      size: 18,
+                    ),
+                    splashRadius: 18.r,
+                    tooltip: '移除该软件',
+                    color: _deepAccent,
+                  ),
+                ],
+              ),
+            );
+          },
+          separatorBuilder: (context, index) => SizedBox(height: 8.h),
+        ),
+      ),
     );
   }
 
@@ -478,6 +522,133 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final notifier = ref.read(drawingAppPrefsControllerProvider.notifier);
     await notifier.removeApp(appId);
     _showSnack('已移除：$appId');
+  }
+
+  Future<void> _showBuiltInAppPicker() async {
+    final currentPrefs =
+        ref.read(drawingAppPrefsControllerProvider).value ??
+            const DrawingAppPreferences(trackedAppIds: {});
+    final initialTracked =
+        currentPrefs.trackedAppIds.map((e) => e.toLowerCase()).toSet();
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18.r)),
+      ),
+      builder: (context) {
+        final theme = Theme.of(context);
+
+        return Padding(
+          padding: EdgeInsets.only(
+            left: 20.w,
+            right: 20.w,
+            top: 16.h,
+            bottom: 12.h + MediaQuery.of(context).viewInsets.bottom,
+          ),
+          child: StatefulBuilder(
+            builder: (context, setModalState) {
+              final allDefaults = defaultTrackedAppIds.toList()..sort();
+
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        '从内置列表添加软件',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        icon: const Icon(Icons.close_rounded),
+                        splashRadius: 18.r,
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 6.h),
+                  Text(
+                    '这些是常见的绘画/美术软件，点“添加”即可加入追踪列表。',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: const Color(0xFF4C5A52),
+                    ),
+                  ),
+                  SizedBox(height: 14.h),
+                  Flexible(
+                    child: SingleChildScrollView(
+                      child: Column(
+                        children: [
+                          for (final appId in allDefaults)
+                            Padding(
+                              padding: EdgeInsets.only(bottom: 8.h),
+                              child: Container(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 12.w,
+                                  vertical: 8.h,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF3F7F2),
+                                  borderRadius: BorderRadius.circular(12.r),
+                                  border: Border.all(color: _cardBorder),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        appId,
+                                        style: theme.textTheme.bodyMedium
+                                            ?.copyWith(
+                                          color: const Color(0xFF1F2B24),
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Builder(
+                                      builder: (context) {
+                                        final isAdded = initialTracked.contains(
+                                          appId.toLowerCase(),
+                                        );
+                                        return TextButton(
+                                          onPressed: isAdded
+                                              ? null
+                                              : () async {
+                                                  final notifier = ref.read(
+                                                    drawingAppPrefsControllerProvider
+                                                        .notifier,
+                                                  );
+                                                  await notifier.addApp(appId);
+                                                  setModalState(() {
+                                                    initialTracked.add(
+                                                      appId.toLowerCase(),
+                                                    );
+                                                  });
+                                                  _showSnack('已添加：$appId');
+                                                },
+                                          child: Text(isAdded ? '已添加' : '添加'),
+                                        );
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _onDeleteAppData() async {
