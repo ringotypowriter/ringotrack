@@ -76,10 +76,10 @@ class _LogsViewSheetState extends State<LogsViewSheet> {
                   splashRadius: 18.r,
                 ),
               ],
-            ),
+            ), 
             SizedBox(height: 6.h),
             Text(
-              '用于在 Windows release 构建下排查前台窗口采集问题，最新记录在顶部。',
+              '用于跨平台排查前台窗口采集与聚合写库的问题（Windows / macOS 通用），最新记录在顶部。',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: const Color(0xFF4C5A52),
               ),

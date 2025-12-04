@@ -19,7 +19,8 @@ class DrawingAppPreferencesController
   Future<void> addApp(String appId) async {
     final normalized = appId.trim().toLowerCase();
     if (normalized.isEmpty) return;
-    final current = state.value ??
+    final current =
+        state.value ??
         const DrawingAppPreferences(trackedApps: defaultTrackedApps);
 
     // 1. 先看是否命中内置列表的任意 identifier
@@ -47,10 +48,8 @@ class DrawingAppPreferencesController
         updatedApps[index] = existing.addIdentifier(
           matchedDefault.ids.firstWhere(
             (id) => id.value.toLowerCase() == normalized,
-            orElse: () => AppIdentifier(
-              platform: AppPlatform.other,
-              value: normalized,
-            ),
+            orElse: () =>
+                AppIdentifier(platform: AppPlatform.other, value: normalized),
           ),
         );
       }
@@ -78,8 +77,8 @@ class DrawingAppPreferencesController
                 platform: defaultTargetPlatform == TargetPlatform.macOS
                     ? AppPlatform.macos
                     : defaultTargetPlatform == TargetPlatform.windows
-                        ? AppPlatform.windows
-                        : AppPlatform.other,
+                    ? AppPlatform.windows
+                    : AppPlatform.other,
                 value: normalized,
               ),
             ],
@@ -117,13 +116,13 @@ class DrawingAppPreferencesController
         .toSet()
         .toList();
 
-    final List<TrackedApp> apps = [];
     for (final raw in cleaned) {
       await addApp(raw);
     }
 
     // addApp 已经负责持久化和更新 state，这里直接以当前 state 为准。
-    final current = state.value ??
+    final current =
+        state.value ??
         const DrawingAppPreferences(trackedApps: defaultTrackedApps);
     final updated = DrawingAppPreferences(trackedApps: current.trackedApps);
     state = AsyncData(updated);
@@ -133,9 +132,11 @@ class DrawingAppPreferencesController
 
 final drawingAppPrefsRepositoryProvider =
     Provider<DrawingAppPreferencesRepository>((ref) {
-  return SharedPrefsDrawingAppPreferencesRepository();
-});
+      return SharedPrefsDrawingAppPreferencesRepository();
+    });
 
 final drawingAppPrefsControllerProvider =
-    AsyncNotifierProvider<DrawingAppPreferencesController,
-        DrawingAppPreferences>(DrawingAppPreferencesController.new);
+    AsyncNotifierProvider<
+      DrawingAppPreferencesController,
+      DrawingAppPreferences
+    >(DrawingAppPreferencesController.new);

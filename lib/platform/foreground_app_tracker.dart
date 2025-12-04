@@ -20,7 +20,7 @@ class _MacOsForegroundAppTracker implements ForegroundAppTracker {
       );
     }
 
-    _subscription = _eventChannel.receiveBroadcastStream().listen(
+    _eventChannel.receiveBroadcastStream().listen(
       _handleEvent,
       onError: _handleError,
     );
@@ -29,7 +29,6 @@ class _MacOsForegroundAppTracker implements ForegroundAppTracker {
   static const _eventChannel = EventChannel('ringotrack/foreground_app_events');
 
   final _controller = StreamController<ForegroundAppEvent>.broadcast();
-  late final StreamSubscription<dynamic> _subscription;
 
   @override
   Stream<ForegroundAppEvent> get events => _controller.stream;
@@ -52,6 +51,11 @@ class _MacOsForegroundAppTracker implements ForegroundAppTracker {
         );
       }
 
+      AppLogService.instance.logInfo(
+        'foreground_tracker_macos',
+        'appId=$appId timestamp=${timestamp.toIso8601String()}',
+      );
+
       _controller.add(ForegroundAppEvent(appId: appId, timestamp: timestamp));
     }
   }
@@ -60,6 +64,10 @@ class _MacOsForegroundAppTracker implements ForegroundAppTracker {
     if (kDebugMode) {
       debugPrint('[ForegroundAppTracker] error: $error');
     }
+    AppLogService.instance.logError(
+      'foreground_tracker_macos',
+      'error: $error',
+    );
   }
 }
 
@@ -69,7 +77,7 @@ class _NoopForegroundAppTracker implements ForegroundAppTracker {
 }
 
 // 与 Windows C 侧 RtForegroundAppInfo 对齐的 FFI 结构体
-class _RtForegroundAppInfo extends ffi.Struct {
+final class _RtForegroundAppInfo extends ffi.Struct {
   @ffi.Uint64()
   external int timestampMillis;
 
@@ -91,8 +99,7 @@ class _RtForegroundAppInfo extends ffi.Struct {
 
 typedef _RtGetForegroundAppNative =
     ffi.Pointer<_RtForegroundAppInfo> Function();
-typedef _RtGetForegroundAppDart =
-    ffi.Pointer<_RtForegroundAppInfo> Function();
+typedef _RtGetForegroundAppDart = ffi.Pointer<_RtForegroundAppInfo> Function();
 
 class _WindowsForegroundAppTracker implements ForegroundAppTracker {
   _WindowsForegroundAppTracker() {
@@ -108,8 +115,8 @@ class _WindowsForegroundAppTracker implements ForegroundAppTracker {
 
   static final _RtGetForegroundAppDart _rtGetForegroundApp = _lib
       .lookupFunction<_RtGetForegroundAppNative, _RtGetForegroundAppDart>(
-    'rt_get_foreground_app',
-  );
+        'rt_get_foreground_app',
+      );
 
   final _controller = StreamController<ForegroundAppEvent>.broadcast();
   Timer? _timer;
@@ -180,10 +187,7 @@ class _WindowsForegroundAppTracker implements ForegroundAppTracker {
         'foreground changed -> appId=$appId pid=$pid',
       );
     } catch (e, st) {
-      AppLogService.instance.logError(
-        _logTag,
-        'poll error: $e\n$st',
-      );
+      AppLogService.instance.logError(_logTag, 'poll error: $e\n$st');
       if (kDebugMode) {
         debugPrint('[ForegroundAppTracker][Windows] poll error: $e');
       }
@@ -194,7 +198,7 @@ class _WindowsForegroundAppTracker implements ForegroundAppTracker {
     if (fullPath.isEmpty) return '';
 
     // Windows 路径分隔符可能包含 \\ 或 /
-    final normalized = fullPath.replaceAll('\\\', '/');
+    final normalized = fullPath.replaceAll('\\', '/');
     final index = normalized.lastIndexOf('/');
     final fileName = index >= 0 ? normalized.substring(index + 1) : normalized;
 
