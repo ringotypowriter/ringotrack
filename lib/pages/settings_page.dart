@@ -280,17 +280,17 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                         ),
                       ),
                     ),
-	                    SizedBox(height: 14.h),
-	                    _dataTile(
-	                      theme,
-	                      title: '采集日志（跨平台调试）',
-	                      helper: '在本机查看前台窗口采集与聚合写库的详细日志（Windows / macOS 通用）。',
+                    SizedBox(height: 14.h),
+                    _dataTile(
+                      theme,
+                      title: '日志',
+                      helper: '在查看软件运行的详细日志。(如软件出现问题可以提交给开发者)',
                       child: Align(
                         alignment: Alignment.centerLeft,
                         child: TextButton.icon(
                           onPressed: _showLogsViewSheet,
                           icon: const Icon(Icons.article_outlined),
-                          label: const Text('查看采集日志'),
+                          label: const Text('查看本地日志'),
                         ),
                       ),
                     ),
@@ -405,9 +405,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           SizedBox(height: 4.h),
           Text(
             helper,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: onSurfaceVariant,
-            ),
+            style: theme.textTheme.bodySmall?.copyWith(color: onSurfaceVariant),
           ),
           SizedBox(height: 10.h),
           child,
@@ -443,9 +441,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     if (prefs.trackedApps.isEmpty) {
       return Text(
         '当前未配置软件，将使用内置默认列表。',
-        style: theme.textTheme.bodySmall?.copyWith(
-          color: onSurfaceVariant,
-        ),
+        style: theme.textTheme.bodySmall?.copyWith(color: onSurfaceVariant),
       );
     }
 
@@ -631,8 +627,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                   vertical: 8.h,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: theme.colorScheme.primary
-                                      .withOpacity(0.03),
+                                  color: theme.colorScheme.primary.withOpacity(
+                                    0.03,
+                                  ),
                                   borderRadius: BorderRadius.circular(12.r),
                                   border: Border.all(color: _cardBorder),
                                 ),
