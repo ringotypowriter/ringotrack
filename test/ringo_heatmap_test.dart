@@ -133,7 +133,7 @@ void main() {
       };
 
       await tester.pumpWidget(
-        const MaterialApp(
+        MaterialApp(
           home: Scaffold(
             body: RingoHeatmap(
               start: DateTime(2025, 1, 1),
