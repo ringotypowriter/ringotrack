@@ -93,7 +93,7 @@ const List<TrackedApp> defaultTrackedApps = [
   TrackedApp(
     logicalId: 'photoshop',
     displayName: 'Adobe Photoshop',
-    iconAsset: null,
+    iconAsset: 'assets/tracked_apps/photoshop.png',
     ids: [
       AppIdentifier(
         platform: AppPlatform.macos,
@@ -108,7 +108,7 @@ const List<TrackedApp> defaultTrackedApps = [
   TrackedApp(
     logicalId: 'illustrator',
     displayName: 'Adobe Illustrator',
-    iconAsset: null,
+    iconAsset: 'assets/tracked_apps/illustrator.png',
     ids: [
       AppIdentifier(
         platform: AppPlatform.macos,
@@ -123,7 +123,7 @@ const List<TrackedApp> defaultTrackedApps = [
   TrackedApp(
     logicalId: 'clipstudio',
     displayName: 'CLIP STUDIO PAINT',
-    iconAsset: null,
+    iconAsset: 'assets/tracked_apps/clipstudio.png',
     ids: [
       AppIdentifier(
         platform: AppPlatform.macos,
@@ -138,7 +138,7 @@ const List<TrackedApp> defaultTrackedApps = [
   TrackedApp(
     logicalId: 'udmpaint',
     displayName: '优动漫',
-    iconAsset: null,
+    iconAsset: 'assets/tracked_apps/udmpaint.png',
     ids: [
       AppIdentifier(
         platform: AppPlatform.macos,
@@ -157,7 +157,7 @@ const List<TrackedApp> defaultTrackedApps = [
   TrackedApp(
     logicalId: 'figma',
     displayName: 'Figma',
-    iconAsset: null,
+    iconAsset: 'assets/tracked_apps/figma.png',
     ids: [
       AppIdentifier(
         platform: AppPlatform.macos,
@@ -172,7 +172,7 @@ const List<TrackedApp> defaultTrackedApps = [
   TrackedApp(
     logicalId: 'sai',
     displayName: 'SAI',
-    iconAsset: null,
+    iconAsset: 'assets/tracked_apps/sai.png',
     ids: [
       AppIdentifier(
         platform: AppPlatform.windows,
@@ -183,7 +183,7 @@ const List<TrackedApp> defaultTrackedApps = [
   TrackedApp(
     logicalId: 'sai2',
     displayName: 'SAI2',
-    iconAsset: null,
+    iconAsset: 'assets/tracked_apps/sai2.png',
     ids: [
       AppIdentifier(
         platform: AppPlatform.windows,
@@ -224,7 +224,32 @@ class SharedPrefsDrawingAppPreferencesRepository
         return const DrawingAppPreferences(trackedApps: defaultTrackedApps);
       }
 
-      return DrawingAppPreferences(trackedApps: apps);
+      // 兼容旧版本：如果存储中的某些内置应用缺少 iconAsset，
+      // 则根据 logicalId 从最新的 defaultTrackedApps 中补齐图标。
+      final resolvedApps = apps.map((app) {
+        if (app.iconAsset != null) {
+          return app;
+        }
+
+        final matchedDefault = defaultTrackedApps.firstWhere(
+          (d) => d.logicalId == app.logicalId,
+          orElse: () => app,
+        );
+
+        if (identical(matchedDefault, app) ||
+            matchedDefault.iconAsset == null) {
+          return app;
+        }
+
+        return TrackedApp(
+          logicalId: app.logicalId,
+          displayName: app.displayName,
+          iconAsset: matchedDefault.iconAsset,
+          ids: app.ids,
+        );
+      }).toList();
+
+      return DrawingAppPreferences(trackedApps: resolvedApps);
     } catch (_) {
       return const DrawingAppPreferences(trackedApps: defaultTrackedApps);
     }

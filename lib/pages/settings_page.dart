@@ -460,19 +460,29 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     width: 28.r,
                     height: 28.r,
                     decoration: BoxDecoration(
-                      color: primary.withOpacity(0.16),
+                      color: primary.withOpacity(0.12),
                       borderRadius: BorderRadius.circular(8.r),
                     ),
                     alignment: Alignment.center,
-                    child: Text(
-                      app.displayName.isNotEmpty
-                          ? app.displayName.characters.first
-                          : '?',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: primary,
-                      ),
-                    ),
+                    child: app.iconAsset != null
+                        ? ClipRRect(
+                            borderRadius: BorderRadius.circular(6.r),
+                            child: Image.asset(
+                              app.iconAsset!,
+                              width: 22.r,
+                              height: 22.r,
+                              fit: BoxFit.contain,
+                            ),
+                          )
+                        : Text(
+                            app.displayName.isNotEmpty
+                                ? app.displayName.characters.first
+                                : '?',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: primary,
+                            ),
+                          ),
                   ),
                   SizedBox(width: 10.w),
                   Expanded(

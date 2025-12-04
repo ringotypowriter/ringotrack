@@ -102,13 +102,17 @@ class RingoHeatmap extends StatelessWidget {
           )
         : SizedBox(
             width: gridWidth,
-            child: _buildGrid(
-              context: context,
+            height: gridHeight,
+            child: _HeatmapGrid(
               calendarStart: calendarStart,
               weekCount: weekCount,
               normalizedStart: normalizedStart,
               normalizedEnd: normalizedEnd,
               normalizedTotals: normalizedTotals,
+              tileSize: tileSize,
+              spacing: spacing,
+              baseColor: baseColor,
+              emptyColor: emptyColor,
             ),
           );
 
@@ -205,78 +209,141 @@ class RingoHeatmap extends StatelessWidget {
     );
   }
 
-  Widget _buildGrid({
-    required BuildContext context,
-    required DateTime calendarStart,
-    required int weekCount,
-    required DateTime normalizedStart,
-    required DateTime normalizedEnd,
-    required Map<DateTime, Duration> normalizedTotals,
-  }) {
-    // 计算当前视图下的「非 0 天」平均时长和最大时长，
-    // 用于后续做相对/绝对混合的颜色映射。
-    final nonZeroMinutes = normalizedTotals.values
+  DateTime _normalizeDate(DateTime date) {
+    return DateTime(date.year, date.month, date.day);
+  }
+
+  DateTime _startOfWeek(DateTime date) {
+    final normalized = _normalizeDate(date);
+    final weekday = normalized.weekday % 7; // 周日 = 0
+    return normalized.subtract(Duration(days: weekday));
+  }
+}
+
+class _MonthPosition {
+  const _MonthPosition({required this.month, required this.columnIndex});
+
+  final int month;
+  final int columnIndex;
+}
+
+class _HeatmapGrid extends StatefulWidget {
+  const _HeatmapGrid({
+    required this.calendarStart,
+    required this.weekCount,
+    required this.normalizedStart,
+    required this.normalizedEnd,
+    required this.normalizedTotals,
+    required this.tileSize,
+    required this.spacing,
+    required this.baseColor,
+    required this.emptyColor,
+  });
+
+  final DateTime calendarStart;
+  final int weekCount;
+  final DateTime normalizedStart;
+  final DateTime normalizedEnd;
+  final Map<DateTime, Duration> normalizedTotals;
+  final double tileSize;
+  final double spacing;
+  final Color baseColor;
+  final Color emptyColor;
+
+  @override
+  State<_HeatmapGrid> createState() => _HeatmapGridState();
+}
+
+class _HeatmapGridState extends State<_HeatmapGrid> {
+  DateTime? _hoveredDay;
+  Duration _hoveredDuration = Duration.zero;
+
+  late double _avgMinutes;
+  late int _maxMinutes;
+
+  @override
+  void initState() {
+    super.initState();
+    _recomputeStats();
+  }
+
+  @override
+  void didUpdateWidget(covariant _HeatmapGrid oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.normalizedTotals, widget.normalizedTotals)) {
+      _recomputeStats();
+    }
+  }
+
+  void _recomputeStats() {
+    final nonZeroMinutes = widget.normalizedTotals.values
         .where((d) => d.inMinutes > 0)
         .map((d) => d.inMinutes)
         .toList();
 
-    final double avgMinutes;
-    final int maxMinutes;
     if (nonZeroMinutes.isEmpty) {
-      avgMinutes = 0;
-      maxMinutes = 0;
-    } else {
-      final totalMinutes =
-          nonZeroMinutes.fold<int>(0, (sum, m) => sum + m);
-      avgMinutes = totalMinutes / nonZeroMinutes.length;
-      maxMinutes = nonZeroMinutes.reduce((a, b) => a > b ? a : b);
+      _avgMinutes = 0;
+      _maxMinutes = 0;
+      return;
     }
 
+    final totalMinutes =
+        nonZeroMinutes.fold<int>(0, (sum, m) => sum + m);
+    _avgMinutes = totalMinutes / nonZeroMinutes.length;
+    _maxMinutes = nonZeroMinutes.reduce((a, b) => a > b ? a : b);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final columns = <Widget>[];
 
-    for (var week = 0; week < weekCount; week++) {
+    for (var week = 0; week < widget.weekCount; week++) {
       final tiles = <Widget>[];
 
       for (var i = 0; i < 7; i++) {
-        final date = calendarStart.add(Duration(days: week * 7 + i));
-        final normalized = _normalizeDate(date);
-         final isInRange = !normalized.isBefore(normalizedStart) &&
-            !normalized.isAfter(normalizedEnd);
+        final date = widget.calendarStart.add(
+          Duration(days: week * 7 + i),
+        );
+        final normalized = DateTime(date.year, date.month, date.day);
 
-        final duration =
-            isInRange ? normalizedTotals[normalized] ?? Duration.zero : Duration.zero;
+        final isInRange = !normalized.isBefore(widget.normalizedStart) &&
+            !normalized.isAfter(widget.normalizedEnd);
+
+        final duration = isInRange
+            ? widget.normalizedTotals[normalized] ?? Duration.zero
+            : Duration.zero;
 
         final color = isInRange
             ? _colorForDuration(
                 duration,
-                avgMinutes: avgMinutes,
-                maxMinutes: maxMinutes,
+                avgMinutes: _avgMinutes,
+                maxMinutes: _maxMinutes,
               )
             : Colors.transparent;
 
         Widget tile = Container(
           key: ValueKey(_dayKey(normalized)),
-          width: tileSize,
-          height: tileSize,
+          width: widget.tileSize,
+          height: widget.tileSize,
           color: color,
         );
 
         if (isInRange) {
-          final tooltipText = _tooltipLabel(normalized, duration);
-          tile = Tooltip(
-            message: tooltipText,
-            waitDuration: const Duration(milliseconds: 250),
-            decoration: BoxDecoration(
-              color: Colors.black87,
-              borderRadius: BorderRadius.circular(6),
-            ),
-            padding:
-                const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            textStyle: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Colors.white,
-                ),
-            preferBelow: false,
-            verticalOffset: 8,
+          tile = MouseRegion(
+            onEnter: (_) {
+              setState(() {
+                _hoveredDay = normalized;
+                _hoveredDuration = duration;
+              });
+            },
+            onExit: (_) {
+              setState(() {
+                if (_hoveredDay == normalized) {
+                  _hoveredDay = null;
+                  _hoveredDuration = Duration.zero;
+                }
+              });
+            },
             child: tile,
           );
         }
@@ -284,14 +351,15 @@ class RingoHeatmap extends StatelessWidget {
         tiles.add(tile);
 
         if (i != 6) {
-          tiles.add(SizedBox(height: spacing));
+          tiles.add(SizedBox(height: widget.spacing));
         }
       }
 
       columns.add(
         Padding(
-          padding:
-              EdgeInsets.only(right: week == weekCount - 1 ? 0 : spacing),
+          padding: EdgeInsets.only(
+            right: week == widget.weekCount - 1 ? 0 : widget.spacing,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -301,20 +369,57 @@ class RingoHeatmap extends StatelessWidget {
       );
     }
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: columns,
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: columns,
+        ),
+        if (_hoveredDay != null)
+          _buildHoverBubble(context),
+      ],
     );
   }
 
-  DateTime _normalizeDate(DateTime date) {
-    return DateTime(date.year, date.month, date.day);
-  }
+  Widget _buildHoverBubble(BuildContext context) {
+    final hovered = _hoveredDay!;
+    final diffDays =
+        hovered.difference(widget.calendarStart).inDays;
+    final weekIndex = diffDays ~/ 7;
+    final weekdayIndex = diffDays % 7;
 
-  DateTime _startOfWeek(DateTime date) {
-    final normalized = _normalizeDate(date);
-    final weekday = normalized.weekday % 7; // 周日 = 0
-    return normalized.subtract(Duration(days: weekday));
+    final left =
+        weekIndex * (widget.tileSize + widget.spacing);
+    final top =
+        weekdayIndex * (widget.tileSize + widget.spacing) - 32;
+
+    final label = _tooltipLabel(hovered, _hoveredDuration);
+
+    final textStyle = Theme.of(context)
+            .textTheme
+            .bodySmall
+            ?.copyWith(color: Colors.white) ??
+        const TextStyle(
+          color: Colors.white,
+          fontSize: 12,
+        );
+
+    return Positioned(
+      left: left,
+      top: top,
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: 8,
+          vertical: 4,
+        ),
+        decoration: BoxDecoration(
+          color: Colors.black87,
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Text(label, style: textStyle),
+      ),
+    );
   }
 
   String _tooltipLabel(DateTime day, Duration duration) {
@@ -340,14 +445,6 @@ class RingoHeatmap extends StatelessWidget {
     return '$minutes 分钟';
   }
 
-  /// 结合「相对平均值」和「绝对时长」的热力颜色映射。
-  ///
-  /// 设计目标：
-  /// 1. 相对：比自己平时更肝的日子明显更深。
-  ///    - 使用 avgMinutes 作为基准，1.5x、1.75x、2x、2.25x、2.5x 为主要分界。
-  /// 2. 绝对：不让大时长被“平均抹平”，比如 > 5 小时时至少 0.5 的深度。
-  ///    - 以 5h 作为一个绝对基准点，再向前/向后划分多个档位。
-  /// 3. 最终把相对/绝对两种强度取最大值，再离散到 5 个 tier 上映射为透明度。
   Color _colorForDuration(
     Duration duration, {
     required double avgMinutes,
@@ -355,18 +452,14 @@ class RingoHeatmap extends StatelessWidget {
   }) {
     final minutes = duration.inMinutes;
 
-    // 没有记录：用中性灰，保持 GitHub 风格。
     if (minutes <= 0) {
-      return emptyColor;
+      return widget.emptyColor;
     }
 
-    // -------- 相对强度：当前天 vs 非 0 天平均值 --------
     double relativeScore = 0;
     if (avgMinutes > 0) {
       final ratio = minutes / avgMinutes;
 
-      // 这里刻意用分段函数，而不是简单线性，
-      // 在 1.5x、1.75x、2x、2.25x、2.5x 附近设置多个台阶。
       if (ratio < 0.5) {
         relativeScore = 0.10;
       } else if (ratio < 1.0) {
@@ -386,14 +479,6 @@ class RingoHeatmap extends StatelessWidget {
       }
     }
 
-    // -------- 绝对强度：独立于平均值的“肝度” --------
-    //
-    // 以 5h 作为核心基准：
-    // - < 0.5h      : 很浅
-    // - 0.5h–2h     : 稍明显
-    // - 2h–4h       : 中等
-    // - 4h–5h       : 偏深
-    // - ≥ 5h        : 至少 0.5，再继续随总长略微增加
     double absoluteScore;
     if (minutes < 30) {
       absoluteScore = 0.12;
@@ -404,32 +489,22 @@ class RingoHeatmap extends StatelessWidget {
     } else if (minutes < 300) {
       absoluteScore = 0.48;
     } else {
-      // 5h 起步给 0.52，后面根据相对 5h 的倍数缓慢提高。
-      final overBase = minutes / 300.0; // 以 5h 为 1.0
-      // 上限不超过 1.0，避免无限加深。
+      final overBase = minutes / 300.0;
       absoluteScore = 0.52 + (overBase - 1.0) * 0.20;
       if (absoluteScore > 1.0) {
         absoluteScore = 1.0;
       }
     }
 
-    // 如果用户某段时间异常猛（例如 maxMinutes 特别高），
-    // 为了不让普通高强度日子全部被压在浅色，可以用 max 做一点归一化保护。
-    // 这里对所有非 0 日都做一次线性混合，保证随分钟数单调不减。
     if (maxMinutes > 0) {
       final normalized = minutes / maxMinutes;
-      // 稍微抬一抬中高区间的下限，让“中游高强度”不会太暗，
-      // 同时让最高强度的日子稳定落在最深的 tier 上。
       absoluteScore = absoluteScore * 0.7 + normalized * 0.3;
     }
 
-    // -------- 最终强度：取相对 vs 绝对中的最大值 --------
     var intensity = relativeScore > absoluteScore
         ? relativeScore
         : absoluteScore;
 
-    // 强度落在 0.0–1.0 区间；然后映射到 5 个离散 tier，
-    // 保证视觉上有明确的层级感。
     if (intensity < 0.20) {
       intensity = 0.20;
     } else if (intensity < 0.40) {
@@ -442,7 +517,7 @@ class RingoHeatmap extends StatelessWidget {
       intensity = 1.0;
     }
 
-    return baseColor.withOpacity(intensity);
+    return widget.baseColor.withOpacity(intensity);
   }
 
   String _dayKey(DateTime day) {
@@ -451,11 +526,4 @@ class RingoHeatmap extends StatelessWidget {
     final d = day.day.toString().padLeft(2, '0');
     return 'day-$y-$m-$d';
   }
-}
-
-class _MonthPosition {
-  const _MonthPosition({required this.month, required this.columnIndex});
-
-  final int month;
-  final int columnIndex;
 }
