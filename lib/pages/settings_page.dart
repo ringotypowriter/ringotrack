@@ -18,7 +18,8 @@ class SettingsPage extends ConsumerStatefulWidget {
 
 class _SettingsPageState extends ConsumerState<SettingsPage> {
   final TextEditingController _addAppController = TextEditingController();
-  final TextEditingController _deleteAppController = TextEditingController();
+
+  String? _selectedDeleteAppLogicalId;
 
   DateTime? _rangeStart;
   DateTime? _rangeEnd;
@@ -26,7 +27,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   @override
   void dispose() {
     _addAppController.dispose();
-    _deleteAppController.dispose();
     super.dispose();
   }
 
@@ -137,7 +137,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     _dataTile(
                       theme,
                       title: '添加新软件',
-                      helper: '支持 bundleId / exe 名，自动大小写忽略。',
+                      helper:
+                          '推荐优先使用下方“从内置列表选择”。如果你的绘画软件不在列表中，可以在这里输入该软件在系统里的识别名（例如 Photoshop.exe 或 com.adobe.photoshop），不区分大小写。',
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -147,7 +148,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                 child: TextField(
                                   controller: _addAppController,
                                   decoration: const InputDecoration(
-                                    labelText: '新增 bundleId / exe',
+                                    labelText: '软件名称或系统识别名',
                                     prefixIcon: Icon(Icons.add_circle_outline),
                                   ),
                                   onSubmitted: (_) => _onAddTrackedApp(),
@@ -199,28 +200,17 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     _dataTile(
                       theme,
                       title: '删除某个软件的数据',
-                      helper: '输入 bundleId / exe 名，大小写忽略。',
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: TextField(
-                              controller: _deleteAppController,
-                              decoration: const InputDecoration(
-                                prefixIcon: Icon(Icons.apps_outlined),
-                                labelText: '软件标识',
-                              ),
-                            ),
-                          ),
-                          SizedBox(width: 10.w),
-                          OutlinedButton.icon(
-                            onPressed: _onDeleteAppData,
-                            icon: const Icon(
-                              Icons.delete_sweep_outlined,
-                              size: 18,
-                            ),
-                            label: const Text('删除数据'),
-                          ),
-                        ],
+                      helper:
+                          '从下拉框中选择一款软件，将清除它在所有日期的使用记录。',
+                      child: prefsAsync.when(
+                        data: (prefs) =>
+                            _buildDeleteByAppSelector(theme, prefs),
+                        loading: () => const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 12),
+                          child: LinearProgressIndicator(minHeight: 4),
+                        ),
+                        error: (err, _) =>
+                            _errorText(theme, '加载失败: $err'),
                       ),
                     ),
                     SizedBox(height: 14.h),
@@ -695,14 +685,82 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     );
   }
 
-  Future<void> _onDeleteAppData() async {
-    final appId = _deleteAppController.text.trim();
-    if (appId.isEmpty) return;
+  Widget _buildDeleteByAppSelector(
+    ThemeData theme,
+    DrawingAppPreferences prefs,
+  ) {
+    final onSurfaceVariant = theme.colorScheme.onSurfaceVariant;
+
+    if (prefs.trackedApps.isEmpty) {
+      return Text(
+        '当前没有配置追踪的软件，无法按软件删除数据。',
+        style: theme.textTheme.bodySmall?.copyWith(color: onSurfaceVariant),
+      );
+    }
+
+    final apps = [...prefs.trackedApps]
+      ..sort((a, b) => a.displayName.compareTo(b.displayName));
+
+    final currentLogicalId =
+        _selectedDeleteAppLogicalId ?? apps.first.logicalId;
+
+    return Wrap(
+      spacing: 10.w,
+      runSpacing: 10.h,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        SizedBox(
+          width: 260.w,
+          child: DropdownButtonFormField<String>(
+            value: currentLogicalId,
+            decoration: const InputDecoration(
+              prefixIcon: Icon(Icons.apps_outlined),
+            ),
+            items: [
+              for (final app in apps)
+                DropdownMenuItem(
+                  value: app.logicalId,
+                  child: Text(app.displayName),
+                ),
+            ],
+            onChanged: (value) {
+              if (value == null) return;
+              setState(() {
+                _selectedDeleteAppLogicalId = value;
+              });
+            },
+          ),
+        ),
+        FilledButton.icon(
+          onPressed: () => _onDeleteAppDataByLogicalId(apps, currentLogicalId),
+          icon: const Icon(
+            Icons.delete_sweep_outlined,
+            size: 18,
+          ),
+          label: const Text('删除数据'),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _onDeleteAppDataByLogicalId(
+    List<TrackedApp> apps,
+    String logicalId,
+  ) async {
+    final app =
+        apps.firstWhere((a) => a.logicalId == logicalId, orElse: () => apps[0]);
+
+    if (app.ids.isEmpty) {
+      _showSnack('该软件没有可识别的系统标识，无法删除数据');
+      return;
+    }
 
     final repo = ref.read(usageRepositoryProvider);
-    await repo.deleteByAppId(appId);
+    for (final id in app.ids) {
+      await repo.deleteByAppId(id.value);
+    }
     ref.invalidate(yearlyUsageByDateProvider);
-    _showSnack('已删除 $appId 的数据');
+    _showSnack('已删除 ${app.displayName} 的所有数据');
   }
 
   Future<void> _onDeleteDateRange() async {

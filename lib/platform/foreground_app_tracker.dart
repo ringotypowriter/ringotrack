@@ -128,7 +128,6 @@ class _WindowsForegroundAppTracker implements ForegroundAppTracker {
   Stream<ForegroundAppEvent> get events => _controller.stream;
 
   void _startPolling() {
-    // 简单使用固定轮询间隔，后续如有需要可以抽参数
     const interval = Duration(seconds: 1);
     _timer?.cancel();
     _timer = Timer.periodic(interval, (_) {

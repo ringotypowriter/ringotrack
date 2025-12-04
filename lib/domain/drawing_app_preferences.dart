@@ -136,58 +136,58 @@ const List<TrackedApp> defaultTrackedApps = [
     ],
   ),
   TrackedApp(
-    logicalId: 'krita',
-    displayName: 'Krita',
+    logicalId: 'udmpaint',
+    displayName: '优动漫',
     iconAsset: null,
     ids: [
       AppIdentifier(
         platform: AppPlatform.macos,
-        value: 'org.kde.krita',
+        value: 'xmunicorn.udongman.paint',
       ),
       AppIdentifier(
         platform: AppPlatform.windows,
-        value: 'krita.exe',
+        value: 'UDMPaintPRO.exe',
+      ),
+      AppIdentifier(
+        platform: AppPlatform.windows,
+        value: 'UDMPaintEX.exe',
       ),
     ],
   ),
   TrackedApp(
-    logicalId: 'sketchbook',
-    displayName: 'SketchBook',
+    logicalId: 'figma',
+    displayName: 'Figma',
     iconAsset: null,
     ids: [
       AppIdentifier(
         platform: AppPlatform.macos,
-        value: 'net.sketchbook',
+        value: 'com.figma.Desktop',
       ),
       AppIdentifier(
         platform: AppPlatform.windows,
-        value: 'SketchBook.exe',
+        value: 'Figma.exe',
       ),
     ],
   ),
   TrackedApp(
-    logicalId: 'procreate',
-    displayName: 'Procreate',
+    logicalId: 'sai',
+    displayName: 'SAI',
     iconAsset: null,
     ids: [
       AppIdentifier(
-        platform: AppPlatform.macos,
-        value: 'com.procreate.app',
+        platform: AppPlatform.windows,
+        value: 'sai.exe',
       ),
     ],
   ),
   TrackedApp(
-    logicalId: 'autodesk_sketchbook',
-    displayName: 'Autodesk SketchBook (Legacy)',
+    logicalId: 'sai2',
+    displayName: 'SAI2',
     iconAsset: null,
     ids: [
       AppIdentifier(
-        platform: AppPlatform.macos,
-        value: 'com.autodesk.sketchbook',
-      ),
-      AppIdentifier(
         platform: AppPlatform.windows,
-        value: 'SketchBookPro.exe',
+        value: 'sai2.exe',
       ),
     ],
   ),
