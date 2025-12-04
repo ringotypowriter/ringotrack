@@ -32,9 +32,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   /// 将增量 usage 合并到数据库里（按天 + appId 叠加时长）
-  Future<void> mergeUsage(
-    Map<DateTime, Map<String, Duration>> delta,
-  ) async {
+  Future<void> mergeUsage(Map<DateTime, Map<String, Duration>> delta) async {
     if (delta.isEmpty) return;
 
     await transaction(() async {
@@ -70,37 +68,34 @@ class AppDatabase extends _$AppDatabase {
     final startDay = _normalizeDay(start);
     final endDay = _normalizeDay(end);
 
-    final rows = await (select(dailyUsageEntries)
-          ..where(
-            (tbl) => tbl.date.isBetweenValues(startDay, endDay),
-          ))
-        .get();
+    final rows = await (select(
+      dailyUsageEntries,
+    )..where((tbl) => tbl.date.isBetweenValues(startDay, endDay))).get();
 
     final result = <DateTime, Map<String, Duration>>{};
     for (final row in rows) {
       final day = _normalizeDay(row.date);
       final perApp = result.putIfAbsent(day, () => {});
       perApp[row.appId] =
-          (perApp[row.appId] ?? Duration.zero) + Duration(seconds: row.durationSeconds);
+          (perApp[row.appId] ?? Duration.zero) +
+          Duration(seconds: row.durationSeconds);
     }
     return result;
   }
 
   Future<void> deleteByAppId(String appId) {
-    return (delete(dailyUsageEntries)
-          ..where((tbl) => tbl.appId.equals(appId)))
-        .go();
+    return (delete(
+      dailyUsageEntries,
+    )..where((tbl) => tbl.appId.equals(appId))).go();
   }
 
   Future<void> deleteByDateRange(DateTime start, DateTime end) {
     final startDay = _normalizeDay(start);
     final endDay = _normalizeDay(end);
 
-    return (delete(dailyUsageEntries)
-          ..where(
-            (tbl) => tbl.date.isBetweenValues(startDay, endDay),
-          ))
-        .go();
+    return (delete(
+      dailyUsageEntries,
+    )..where((tbl) => tbl.date.isBetweenValues(startDay, endDay))).go();
   }
 
   Future<void> clearAll() {
@@ -109,7 +104,5 @@ class AppDatabase extends _$AppDatabase {
 }
 
 QueryExecutor _openConnection() {
-  return driftDatabase(
-    name: 'ringotrack.sqlite',
-  );
+  return driftDatabase(name: 'ringotrack');
 }
