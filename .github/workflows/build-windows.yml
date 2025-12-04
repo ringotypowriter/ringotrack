@@ -26,6 +26,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Read version from pubspec.yaml
+        id: version
+        shell: pwsh
+        run: |
+          $match = Select-String -Path "pubspec.yaml" -Pattern '^version:\s*(.+)$'
+          if (-not $match) {
+            throw "Version not found in pubspec.yaml"
+          }
+          $version = $match.Matches[0].Groups[1].Value.Trim()
+          $artifactVersion = $version -replace '[^0-9A-Za-z\.\-_]', '-'
+          echo "app_version=$version" >> $env:GITHUB_OUTPUT
+          echo "artifact_version=$artifactVersion" >> $env:GITHUB_OUTPUT
+
       - name: Set short commit hash
         id: vars
         shell: pwsh
@@ -49,21 +62,21 @@ jobs:
 
       - name: Archive Windows build
         shell: pwsh
-        run: Compress-Archive -Path "build/windows/x64/runner/Release/*" -DestinationPath "ringotrack-windows-${{ steps.vars.outputs.sha_short }}.zip" -Force
+        run: Compress-Archive -Path "build/windows/x64/runner/Release/*" -DestinationPath "ringotrack-windows-${{ steps.version.outputs.artifact_version }}.zip" -Force
 
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ringotrack-windows-${{ steps.vars.outputs.sha_short }}
-          path: ringotrack-windows-${{ steps.vars.outputs.sha_short }}.zip
+          name: ringotrack-windows-${{ steps.version.outputs.artifact_version }}
+          path: ringotrack-windows-${{ steps.version.outputs.artifact_version }}.zip
 
       - name: Publish GitHub Release
         if: ${{ inputs.publish_release }}
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ inputs.release_tag != '' && inputs.release_tag || format('windows-build-{0}', github.run_number) }}
-          name: ${{ inputs.release_name != '' && inputs.release_name || format('Windows build {0}', steps.vars.outputs.sha_short) }}
-          files: ringotrack-windows-${{ steps.vars.outputs.sha_short }}.zip
+          tag_name: ${{ inputs.release_tag != '' && inputs.release_tag || format('windows-v{0}', steps.version.outputs.app_version) }}
+          name: ${{ inputs.release_name != '' && inputs.release_name || format('Windows build v{0}', steps.version.outputs.app_version) }}
+          files: ringotrack-windows-${{ steps.version.outputs.artifact_version }}.zip
           draft: false
           prerelease: false
           generate_release_notes: true

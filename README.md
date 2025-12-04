@@ -1,16 +1,164 @@
-# ringotrack
+# RingoTrack
 
-A new Flutter project.
+> 为画师准备的跨平台绘画时间追踪工具，用 GitHub 小绿砖风格的日历热力图记录你的创作习惯。
 
-## Getting Started
+RingoTrack 是一个基于 Flutter 的桌面应用程序，用来统计本机前台「绘画软件」的使用时长，并通过类似 GitHub contributions 的日历热力图展示你的绘画活跃度。
 
-This project is a starting point for a Flutter application.
+项目目前以 **Apache 2.0 协议开源**，支持 **Windows / macOS 双平台**（当前 GitHub Releases 里暂时只有 Windows 版可执行文件，macOS 请先通过源码构建）。
 
-A few resources to get you started if this is your first Flutter project:
+---
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+## 开发动机
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+和一位画师朋友聊天时，聊到 GitHub 的小绿砖热力图——每天有提交就会点亮一格，看起来既直观又有「打卡感」，非常有成就感。
+
+朋友说：「要是画画也有一堵这样的墙就好了，这样我就能一眼看到自己到底有没有坚持画、最近有没有摸鱼。」
+
+于是就有了 **RingoTrack**：  
+不是记录代码提交，而是记录你在 Photoshop / CSP 等绘画软件里的前台使用时长，让画画这件事也能拥有一堵专属的小绿砖墙。
+
+---
+
+## 功能特性
+
+- ⏱️ **自动统计绘画软件使用时长**
+  - 后台监听当前前台窗口，只对「绘画软件」计时。
+  - 非绘画软件（浏览器、视频播放器等）不会计入。
+- 🧱 **GitHub 风格日历热力图**
+  - 以自然日为单位展示每日绘画总时长。
+  - 颜色深浅映射时长多寡，一眼看出「高强度创作日」和「完全没画的日子」。
+- 🎨 **多视图支持**
+  - 总览视图：合并所有绘画软件，看整体绘画活跃度。
+  - 按软件视图：每个软件一行，方便对比「主力软件」与辅助工具。
+  - 分析视图：最近 30 天趋势、周总时长、应用占比、星期分布等。
+- 🌙 **跨天处理**
+  - 支持跨 00:00 的使用时长自动拆分到前后两天，保证统计准确。
+- ⚙️ **可配置的绘画软件列表**
+  - 支持从内置列表添加常见绘画软件。
+  - 支持手动录入 exe 名 / bundleId，覆盖冷门或自定义软件。
+- 🗂 **数据管理与主题**
+  - 支持按软件、按日期范围删除数据或一键清空。
+  - 内置多种主题色，界面整体为桌面端友好的卡片式布局。
+- 🔒 **隐私友好**
+  - 所有数据均保存在本地，不上传到服务器。
+
+---
+
+## 平台支持
+
+- **Windows**
+  - 通过 win32 API（Dart FFI）轮询前台窗口，识别当前前台进程 exe 名。
+  - Releases 中目前提供 Windows 版可执行文件。
+- **macOS**
+  - 通过 Swift + AppKit，使用 `NSWorkspace` 前台应用通知获取当前 App。
+  - 当前暂未提供打包好的安装包，可通过源码自行构建运行。
+
+应用基于 **Flutter 3.38.3 / Dart 3.10.1** 开发，主要面向 Windows 10+ 与 macOS 13+ 的桌面环境（其他版本未做系统性验证）。
+
+---
+
+## 快速体验
+
+### 1. 从 Releases 下载（推荐给 Windows 用户）
+
+1. 前往本仓库的 **Releases 页面**。
+2. 下载最新版本的 Windows 可执行文件或安装包。
+3. 启动 RingoTrack，并保持在后台运行即可开始记录。
+
+> macOS 版后续会随着项目完善逐步提供打包产物，目前请参考下方「从源码构建」。
+
+### 2. 从源码构建
+
+环境准备：
+
+- 已安装 Flutter（建议 3.38.3 及以上）和 Dart（建议 3.10.1 及以上）。
+- 已开启对应桌面平台支持：
+  - Windows：`flutter config --enable-windows-desktop`
+  - macOS：`flutter config --enable-macos-desktop`
+
+步骤：
+
+```bash
+git clone https://github.com/ringotypowriter/ringotrack.git
+cd ringotrack
+
+flutter pub get
+
+# Windows
+flutter run -d windows
+
+# macOS
+flutter run -d macos
+```
+
+---
+
+## 使用说明
+
+1. 启动 RingoTrack 后，保持应用在后台运行即可开始记录。
+2. 像平时一样打开你的绘画软件（例如 Photoshop、CLIP STUDIO PAINT 等），正常创作。
+3. RingoTrack 会自动统计前台绘画软件在每天的累计使用时长。
+4. 打开「仪表盘」页面可以看到：
+   - 今日 / 本周 / 本月绘画总时长。
+   - 连续绘画天数。
+   - 小绿砖日历热力图（总览视图 / 按软件视图）。
+   - 分析视图中的折线图、柱状图、饼图等基础分析。
+5. 在「偏好设置」里可以：
+   - 调整主题色。
+   - 管理需要计入统计的绘画软件列表（从内置列表选择或手动添加）。
+   - 删除某个软件的数据、按日期范围删除数据或一键清空所有记录。
+   - 查看本地日志（在遇到问题时便于排查或反馈）。
+
+RingoTrack 当前仍处在早期版本阶段，界面和功能会随着使用反馈不断调整和迭代。
+
+---
+
+## 技术栈与架构概览
+
+- **前端 UI**
+  - Flutter 桌面端应用
+  - 使用 Riverpod 做状态管理，使用 GoRouter 负责路由导航
+  - 自定义 GitHub 风格的小绿砖日历组件 `RingoHeatmap`
+- **平台集成**
+  - Windows：通过 win32 API（Dart FFI）轮询前台窗口并获取 exe 名
+  - macOS：通过 Swift + AppKit 监听 `NSWorkspace` 前台应用变化
+- **领域模型**
+  - `AppUsageEntry`：单次前台使用记录
+  - `DailyUsage`：按自然日聚合后的使用数据（含各 App 分布）
+  - `ForegroundAppEvent`：前台应用切换事件
+  - `UsageAggregator`：核心时间统计与跨天拆分逻辑
+- **数据表示**
+  - 统一抽象为 `Map<Date, Map<AppId, Duration>>`
+  - Windows 使用 exe 名作为 `AppId`，macOS 使用 bundle identifier
+- **测试与质量**
+  - 使用 Flutter 自带测试框架，配合 TDD 驱动实现：
+    - 采集与统计逻辑单元测试
+    - 热力图组件与仪表盘 UI 的 Widget 测试
+  - 使用 `flutter_lints` 规范代码风格
+
+---
+
+## 开发与贡献
+
+欢迎提交 Issue 或 Pull Request，一起把这堵「画画小绿砖墙」打磨得更好：
+
+```bash
+# 安装依赖
+flutter pub get
+
+# 运行测试
+flutter test
+
+# 代码静态检查
+flutter analyze
+```
+
+目前项目节奏是「边用边调」, 会慢慢更新并完善功能
+
+---
+
+## 许可证
+
+本项目使用 **Apache License 2.0** 协议开源，具体条款请参考仓库中的 `LICENSE` 文件。
+
+你可以自由地使用、修改和分发本项目，但在再分发时请保留原始协议声明，并遵守 Apache 2.0 的相关要求。
