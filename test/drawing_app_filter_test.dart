@@ -4,9 +4,21 @@ import 'package:ringotrack/domain/drawing_app_preferences.dart';
 void main() {
   group('DrawingApp filter closure', () {
     test('matches only tracked app ids', () {
-      final prefs = DrawingAppPreferences(trackedAppIds: {
-        'com.adobe.photoshop',
-      });
+      final prefs = DrawingAppPreferences(
+        trackedApps: [
+          const TrackedApp(
+            logicalId: 'photoshop',
+            displayName: 'Adobe Photoshop',
+            iconAsset: null,
+            ids: [
+              AppIdentifier(
+                platform: AppPlatform.macos,
+                value: 'com.adobe.photoshop',
+              ),
+            ],
+          ),
+        ],
+      );
 
       final filter = buildAppFilter(prefs);
 
@@ -15,10 +27,32 @@ void main() {
     });
 
     test('reflects updated preference set', () {
-      final prefs = DrawingAppPreferences(trackedAppIds: {
-        'com.adobe.photoshop',
-        'com.celsys.clipstudio',
-      });
+      final prefs = DrawingAppPreferences(
+        trackedApps: [
+          const TrackedApp(
+            logicalId: 'photoshop',
+            displayName: 'Adobe Photoshop',
+            iconAsset: null,
+            ids: [
+              AppIdentifier(
+                platform: AppPlatform.macos,
+                value: 'com.adobe.photoshop',
+              ),
+            ],
+          ),
+          const TrackedApp(
+            logicalId: 'clipstudio',
+            displayName: 'CLIP STUDIO PAINT',
+            iconAsset: null,
+            ids: [
+              AppIdentifier(
+                platform: AppPlatform.macos,
+                value: 'com.celsys.clipstudio',
+              ),
+            ],
+          ),
+        ],
+      );
 
       final filter = buildAppFilter(prefs);
 

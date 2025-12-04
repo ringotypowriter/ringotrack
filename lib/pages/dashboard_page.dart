@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
+import 'package:ringotrack/domain/drawing_app_preferences_controller.dart';
 import 'package:ringotrack/providers.dart';
 import 'package:ringotrack/widgets/ringo_heatmap.dart';
 
@@ -246,6 +247,22 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     final totalDays = normalizedEnd.difference(calendarStart).inDays + 1;
     final weekCount = (totalDays / 7).ceil();
 
+    // 构建 appId -> DisplayName 映射，方便在「按软件」视图展示人类可读名称。
+    final prefsAsync = ref.watch(drawingAppPrefsControllerProvider);
+    final appDisplayNames = prefsAsync.when(
+      data: (prefs) {
+        final map = <String, String>{};
+        for (final app in prefs.trackedApps) {
+          for (final id in app.ids) {
+            map[id.value.toLowerCase()] = app.displayName;
+          }
+        }
+        return map;
+      },
+      loading: () => const <String, String>{},
+      error: (_, __) => const <String, String>{},
+    );
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final horizontalPadding = 40.w;
@@ -334,10 +351,8 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
 
               usageByDate.forEach((day, appMap) {
                 appMap.forEach((appId, duration) {
-                  final byDate = perApp.putIfAbsent(
-                    appId,
-                    () => <DateTime, Duration>{},
-                  );
+                  final byDate =
+                      perApp.putIfAbsent(appId, () => <DateTime, Duration>{});
                   byDate[day] = (byDate[day] ?? Duration.zero) + duration;
                 });
               });
@@ -357,6 +372,8 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                   itemBuilder: (context, index) {
                     final appId = appIds[index];
                     final appDaily = perApp[appId]!;
+                    final displayName =
+                        appDisplayNames[appId.toLowerCase()] ?? appId;
 
                     return Padding(
                       padding: EdgeInsets.symmetric(vertical: 8.h),
@@ -365,7 +382,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                         children: [
                           Center(
                             child: Text(
-                              appId,
+                              displayName,
                               style: theme.textTheme.titleSmall?.copyWith(
                                 color: Colors.black87,
                                 fontWeight: FontWeight.w600,

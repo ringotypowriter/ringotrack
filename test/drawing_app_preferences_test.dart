@@ -8,27 +8,45 @@ void main() {
   });
 
   group('DrawingAppPreferencesRepository', () {
-    test('returns default tracked app ids when empty store', () async {
+    test('returns default tracked apps when empty store', () async {
       final repo = SharedPrefsDrawingAppPreferencesRepository();
 
       final prefs = await repo.load();
 
-      // 至少要包含常见绘画软件的 bundleId
+      // 至少要包含常见绘画软件
+      expect(prefs.trackedApps.length, greaterThanOrEqualTo(3));
       expect(
-        prefs.trackedAppIds,
-        containsAll(defaultTrackedAppIds),
+        prefs.trackedApps.map((e) => e.logicalId),
+        containsAll(defaultTrackedApps.map((e) => e.logicalId)),
       );
     });
 
-    test('persists custom tracked app ids', () async {
+    test('persists custom tracked apps as structured data', () async {
       final repo = SharedPrefsDrawingAppPreferencesRepository();
-      final custom = {'Com.Example.A', 'com.example.B'};
+      const customApp = TrackedApp(
+        logicalId: 'custom_example',
+        displayName: 'My Paint App',
+        iconAsset: null,
+        ids: [
+          AppIdentifier(
+            platform: AppPlatform.macos,
+            value: 'com.example.mypaint',
+          ),
+        ],
+      );
 
-      await repo.save(DrawingAppPreferences(trackedAppIds: custom));
+      await repo.save(
+        const DrawingAppPreferences(trackedApps: [customApp]),
+      );
 
       final reloaded = await repo.load();
 
-      expect(reloaded.trackedAppIds, equals({'com.example.a', 'com.example.b'}));
+      expect(reloaded.trackedApps.length, 1);
+      expect(reloaded.trackedApps.first.logicalId, 'custom_example');
+      expect(
+        reloaded.trackedApps.first.ids.first.value,
+        'com.example.mypaint',
+      );
     });
   });
 }

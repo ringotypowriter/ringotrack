@@ -448,7 +448,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 
   Widget _buildTrackedList(ThemeData theme, DrawingAppPreferences prefs) {
-    if (prefs.trackedAppIds.isEmpty) {
+    if (prefs.trackedApps.isEmpty) {
       return Text(
         '当前未配置软件，将使用内置默认列表。',
         style: theme.textTheme.bodySmall?.copyWith(
@@ -457,7 +457,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       );
     }
 
-    final sorted = prefs.trackedAppIds.toList()..sort();
+    final sorted = [...prefs.trackedApps]
+      ..sort((a, b) => a.displayName.compareTo(b.displayName));
 
     return ConstrainedBox(
       constraints: BoxConstraints(
@@ -468,7 +469,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           shrinkWrap: true,
           itemCount: sorted.length,
           itemBuilder: (context, index) {
-            final appId = sorted[index];
+            final app = sorted[index];
             return Container(
               padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
               decoration: BoxDecoration(
@@ -478,18 +479,67 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               ),
               child: Row(
                 children: [
-                  Expanded(
+                  Container(
+                    width: 28.r,
+                    height: 28.r,
+                    decoration: BoxDecoration(
+                      color: _accent.withOpacity(0.16),
+                      borderRadius: BorderRadius.circular(8.r),
+                    ),
+                    alignment: Alignment.center,
                     child: Text(
-                      appId,
+                      app.displayName.isNotEmpty
+                          ? app.displayName.characters.first
+                          : '?',
                       style: theme.textTheme.bodyMedium?.copyWith(
-                        color: const Color(0xFF1F2B24),
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w700,
+                        color: _deepAccent,
                       ),
-                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  SizedBox(width: 10.w),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          app.displayName,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: const Color(0xFF1F2B24),
+                            fontWeight: FontWeight.w600,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 2),
+                        Builder(
+                          builder: (context) {
+                            final ids = app.ids;
+                            if (ids.isEmpty) {
+                              return Text(
+                                '未配置平台标识',
+                                style:
+                                    theme.textTheme.bodySmall?.copyWith(
+                                  color: const Color(0xFF6A7A70),
+                                ),
+                              );
+                            }
+
+                            final idTexts =
+                                ids.map((id) => id.value).join(' · ');
+                            return Text(
+                              idTexts,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: const Color(0xFF6A7A70),
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            );
+                          },
+                        ),
+                      ],
                     ),
                   ),
                   IconButton(
-                    onPressed: () => _onRemoveTrackedApp(appId),
+                    onPressed: () => _onRemoveTrackedApp(app.logicalId),
                     icon: const Icon(
                       Icons.close_rounded,
                       size: 18,
@@ -527,9 +577,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   Future<void> _showBuiltInAppPicker() async {
     final currentPrefs =
         ref.read(drawingAppPrefsControllerProvider).value ??
-            const DrawingAppPreferences(trackedAppIds: {});
+            const DrawingAppPreferences(trackedApps: defaultTrackedApps);
     final initialTracked =
-        currentPrefs.trackedAppIds.map((e) => e.toLowerCase()).toSet();
+        currentPrefs.trackedApps.map((e) => e.logicalId).toSet();
 
     await showModalBottomSheet<void>(
       context: context,
@@ -549,7 +599,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           ),
           child: StatefulBuilder(
             builder: (context, setModalState) {
-              final allDefaults = defaultTrackedAppIds.toList()..sort();
+              final allDefaults = [...defaultTrackedApps]
+                ..sort((a, b) => a.displayName.compareTo(b.displayName));
 
               return Column(
                 mainAxisSize: MainAxisSize.min,
@@ -583,7 +634,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     child: SingleChildScrollView(
                       child: Column(
                         children: [
-                          for (final appId in allDefaults)
+                          for (final app in allDefaults)
                             Padding(
                               padding: EdgeInsets.only(bottom: 8.h),
                               child: Container(
@@ -600,7 +651,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                   children: [
                                     Expanded(
                                       child: Text(
-                                        appId,
+                                        app.displayName,
                                         style: theme.textTheme.bodyMedium
                                             ?.copyWith(
                                           color: const Color(0xFF1F2B24),
@@ -611,9 +662,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                     const SizedBox(width: 8),
                                     Builder(
                                       builder: (context) {
-                                        final isAdded = initialTracked.contains(
-                                          appId.toLowerCase(),
-                                        );
+                                        final isAdded = initialTracked
+                                            .contains(app.logicalId);
                                         return TextButton(
                                           onPressed: isAdded
                                               ? null
@@ -622,13 +672,19 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                                     drawingAppPrefsControllerProvider
                                                         .notifier,
                                                   );
-                                                  await notifier.addApp(appId);
+                                                  // 使用第一个 identifier 进行添加
+                                                  final firstId = app
+                                                      .ids.first.value;
+                                                  await notifier
+                                                      .addApp(firstId);
                                                   setModalState(() {
                                                     initialTracked.add(
-                                                      appId.toLowerCase(),
+                                                      app.logicalId,
                                                     );
                                                   });
-                                                  _showSnack('已添加：$appId');
+                                                  _showSnack(
+                                                    '已添加：${app.displayName}',
+                                                  );
                                                 },
                                           child: Text(isAdded ? '已添加' : '添加'),
                                         );

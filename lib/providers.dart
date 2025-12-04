@@ -25,7 +25,7 @@ final drawingAppFilterProvider = Provider<bool Function(String)>((ref) {
   final prefsAsync = ref.watch(drawingAppPrefsControllerProvider);
   final prefs =
       prefsAsync.value ??
-      const DrawingAppPreferences(trackedAppIds: defaultTrackedAppIds);
+      const DrawingAppPreferences(trackedApps: defaultTrackedApps);
 
   return buildAppFilter(prefs);
 });
