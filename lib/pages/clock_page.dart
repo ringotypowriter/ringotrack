@@ -51,6 +51,14 @@ class _ClockPageState extends ConsumerState<ClockPage> {
     });
   }
 
+  void _handleBack(BuildContext context) {
+    if (Navigator.canPop(context)) {
+      context.pop();
+    } else {
+      context.go('/');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final ref = this.ref;
@@ -78,7 +86,7 @@ class _ClockPageState extends ConsumerState<ClockPage> {
                 children: [
                   if (!_isPinned)
                     IconButton(
-                      onPressed: () => context.go('/'),
+                      onPressed: () => _handleBack(context),
                       icon: Icon(
                         Icons.arrow_back_rounded,
                         color: theme.colorScheme.onPrimary,

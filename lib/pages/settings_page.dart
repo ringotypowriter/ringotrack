@@ -22,6 +22,7 @@ class SettingsPage extends ConsumerStatefulWidget {
 class _SettingsPageState extends ConsumerState<SettingsPage> {
   final TextEditingController _addAppController = TextEditingController();
   final ScrollController _trackedAppsScrollController = ScrollController();
+  bool _isDataDangerExpanded = false;
 
   String? _selectedDeleteAppLogicalId;
 
@@ -211,91 +212,168 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       theme,
       title: '数据管理',
       icon: Icons.storage_rounded,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _dataTile(
-            theme,
-            title: '删除某个软件的数据',
-            helper: '选择软件后清除全部记录。',
-            child: prefsAsync.when(
-              data: (prefs) => _buildDeleteByAppSelector(theme, prefs),
-              loading: () => const Padding(
-                padding: EdgeInsets.symmetric(vertical: 12),
-                child: LinearProgressIndicator(minHeight: 4),
-              ),
-              error: (err, _) => _errorText(theme, '加载失败: $err'),
-            ),
-          ),
-          SizedBox(height: 14.h),
-          _dataTile(
-            theme,
-            title: '删除日期范围（全部软件）',
-            helper: '选起止日期后删除。',
-            child: Wrap(
-              spacing: 10.w,
-              runSpacing: 10.h,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                OutlinedButton.icon(
-                  onPressed: () => _pickDate(isStart: true),
-                  icon: const Icon(Icons.calendar_today, size: 16),
-                  label: Text(_formatDate(_rangeStart, label: '开始日期')),
-                ),
-                OutlinedButton.icon(
-                  onPressed: () => _pickDate(isStart: false),
-                  icon: const Icon(Icons.event, size: 16),
-                  label: Text(_formatDate(_rangeEnd, label: '结束日期')),
-                ),
-                FilledButton.icon(
-                  onPressed: _onDeleteDateRange,
-                  icon: const Icon(Icons.cleaning_services_outlined, size: 18),
-                  label: const Text('删除范围'),
-                ),
-              ],
-            ),
-          ),
-          SizedBox(height: 14.h),
-          _dataTile(
-            theme,
-            title: '清空全部数据',
-            helper: '危险操作，不可撤销。',
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton.icon(
-                onPressed: _onClearAll,
-                icon: const Icon(
-                  Icons.warning_amber_rounded,
-                  color: Colors.red,
-                ),
-                label: const Text('清空记录'),
-                style: TextButton.styleFrom(
-                  foregroundColor: Colors.red,
-                  padding: EdgeInsets.symmetric(
-                    horizontal: 12.w,
-                    vertical: 10.h,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          SizedBox(height: 14.h),
-          _dataTile(
-            theme,
-            title: '日志',
-            helper: '查看本地日志，排查问题。',
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton.icon(
-                onPressed: _showLogsViewSheet,
-                icon: const Icon(Icons.article_outlined),
-                label: const Text('查看本地日志'),
-              ),
-            ),
-          ),
-        ],
-      ),
+      child: _buildDataDangerArea(theme, prefsAsync),
     );
+  }
+
+  Widget _buildDataDangerArea(
+    ThemeData theme,
+    AsyncValue<DrawingAppPreferences> prefsAsync,
+  ) {
+    final dangerColor = theme.colorScheme.error;
+    final dangerBackground = dangerColor.withOpacity(0.08);
+    final titleStyle = theme.textTheme.bodyLarge?.copyWith(
+      fontWeight: FontWeight.w600,
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Material(
+          color: dangerBackground,
+          borderRadius: BorderRadius.circular(12.r),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(12.r),
+            onTap: () => setState(() {
+              _isDataDangerExpanded = !_isDataDangerExpanded;
+            }),
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Icon(Icons.warning_amber_rounded, color: dangerColor),
+                  SizedBox(width: 12.w),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '危险区域',
+                          style: titleStyle?.copyWith(color: dangerColor),
+                        ),
+                        SizedBox(height: 4.h),
+                        Text(
+                          '包含不可逆的数据操作，请谨慎',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: dangerColor,
+                            height: 1.3,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    _isDataDangerExpanded
+                        ? Icons.expand_less_rounded
+                        : Icons.expand_more_rounded,
+                    color: dangerColor,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        AnimatedCrossFade(
+          firstChild: const SizedBox.shrink(),
+          secondChild: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SizedBox(height: 14.h),
+              ..._buildDataManagementTiles(theme, prefsAsync),
+            ],
+          ),
+          crossFadeState: _isDataDangerExpanded
+              ? CrossFadeState.showSecond
+              : CrossFadeState.showFirst,
+          duration: const Duration(milliseconds: 200),
+          sizeCurve: Curves.easeInOut,
+          firstCurve: Curves.easeInOut,
+          secondCurve: Curves.easeInOut,
+        ),
+      ],
+    );
+  }
+
+  List<Widget> _buildDataManagementTiles(
+    ThemeData theme,
+    AsyncValue<DrawingAppPreferences> prefsAsync,
+  ) {
+    return [
+      _dataTile(
+        theme,
+        title: '删除某个软件的数据',
+        helper: '选择软件后清除全部记录。',
+        child: prefsAsync.when(
+          data: (prefs) => _buildDeleteByAppSelector(theme, prefs),
+          loading: () => const Padding(
+            padding: EdgeInsets.symmetric(vertical: 12),
+            child: LinearProgressIndicator(minHeight: 4),
+          ),
+          error: (err, _) => _errorText(theme, '加载失败: $err'),
+        ),
+      ),
+      SizedBox(height: 14.h),
+      _dataTile(
+        theme,
+        title: '删除日期范围（全部软件）',
+        helper: '选起止日期后删除。',
+        child: Wrap(
+          spacing: 10.w,
+          runSpacing: 10.h,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            OutlinedButton.icon(
+              onPressed: () => _pickDate(isStart: true),
+              icon: const Icon(Icons.calendar_today, size: 16),
+              label: Text(_formatDate(_rangeStart, label: '开始日期')),
+            ),
+            OutlinedButton.icon(
+              onPressed: () => _pickDate(isStart: false),
+              icon: const Icon(Icons.event, size: 16),
+              label: Text(_formatDate(_rangeEnd, label: '结束日期')),
+            ),
+            FilledButton.icon(
+              onPressed: _onDeleteDateRange,
+              icon: const Icon(Icons.cleaning_services_outlined, size: 18),
+              label: const Text('删除范围'),
+            ),
+          ],
+        ),
+      ),
+      SizedBox(height: 14.h),
+      _dataTile(
+        theme,
+        title: '清空全部数据',
+        helper: '危险操作，不可撤销。',
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: _onClearAll,
+            icon: const Icon(Icons.warning_amber_rounded, color: Colors.red),
+            label: const Text('清空记录'),
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.red,
+              padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+            ),
+          ),
+        ),
+      ),
+      SizedBox(height: 14.h),
+      _dataTile(
+        theme,
+        title: '日志',
+        helper: '查看本地日志，排查问题。',
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: _showLogsViewSheet,
+            icon: const Icon(Icons.article_outlined),
+            label: const Text('查看本地日志'),
+          ),
+        ),
+      ),
+    ];
   }
 
   Widget _sectionCard(

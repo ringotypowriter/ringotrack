@@ -186,7 +186,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                       const Spacer(),
                       if (i == 0)
                         IconButton(
-                          onPressed: () => context.go('/clock'),
+                          onPressed: () => context.push('/clock'),
                           icon: const Icon(Icons.fullscreen),
                           tooltip: '全屏',
                           splashRadius: 18.r,

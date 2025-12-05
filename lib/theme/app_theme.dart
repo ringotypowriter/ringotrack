@@ -124,11 +124,13 @@ const AppTheme exusiaiCoralTheme = AppTheme(
   scaffoldBackground: Color(0xFFFFF7F5),
 );
 
+const Color mintJadeBaseColor = Color(0xFF41BEAB);
+
 const AppTheme mintJadeTheme = AppTheme(
   id: AppThemeId.mintJade,
   name: '青薄荷',
-  seedColor: Color(0xFF41BEAB),
-  primary: Color(0xFF41BEAB),
+  seedColor: mintJadeBaseColor,
+  primary: mintJadeBaseColor,
   surface: Colors.white,
   scaffoldBackground: Color(0xFFF5FFFC),
 );
