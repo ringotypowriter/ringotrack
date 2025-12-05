@@ -8,6 +8,12 @@ class MainFlutterWindow: NSWindow {
   private var previousFrame: NSRect?
   private var previousLevel: NSWindow.Level?
   private var previousCollectionBehavior: NSWindow.CollectionBehavior?
+  private var previousStyleMask: NSWindow.StyleMask?
+  private var previousTitleVisibility: NSWindow.TitleVisibility?
+  private var previousTitlebarAppearsTransparent: Bool?
+  private var previousCloseButtonHidden: Bool?
+  private var previousMiniaturizeButtonHidden: Bool?
+  private var previousZoomButtonHidden: Bool?
 
   override func awakeFromNib() {
     NSLog("[RingoTrack] MainFlutterWindow awakeFromNib - setting up FlutterViewController")
@@ -90,6 +96,18 @@ class MainFlutterWindow: NSWindow {
     previousFrame = self.frame
     previousLevel = self.level
     previousCollectionBehavior = self.collectionBehavior
+    previousStyleMask = self.styleMask
+    previousTitleVisibility = self.titleVisibility
+    previousTitlebarAppearsTransparent = self.titlebarAppearsTransparent
+    if let closeButton = self.standardWindowButton(.closeButton) {
+      previousCloseButtonHidden = closeButton.isHidden
+    }
+    if let miniButton = self.standardWindowButton(.miniaturizeButton) {
+      previousMiniaturizeButtonHidden = miniButton.isHidden
+    }
+    if let zoomButton = self.standardWindowButton(.zoomButton) {
+      previousZoomButtonHidden = zoomButton.isHidden
+    }
 
     let workFrame = screen.visibleFrame
     let targetWidth: CGFloat = 360
@@ -101,6 +119,20 @@ class MainFlutterWindow: NSWindow {
     let targetFrame = NSRect(x: originX, y: originY, width: targetWidth, height: targetHeight)
 
     self.setFrame(targetFrame, display: true, animate: true)
+
+    // 在 pinned 小窗模式下，隐藏标题栏 / 工具栏，让内容填满整个窗口。
+    self.titleVisibility = .hidden
+    self.titlebarAppearsTransparent = true
+    self.styleMask.insert(.fullSizeContentView)
+    if let closeButton = self.standardWindowButton(.closeButton) {
+      closeButton.isHidden = true
+    }
+    if let miniButton = self.standardWindowButton(.miniaturizeButton) {
+      miniButton.isHidden = true
+    }
+    if let zoomButton = self.standardWindowButton(.zoomButton) {
+      zoomButton.isHidden = true
+    }
 
     var behavior = self.collectionBehavior
     behavior.insert(.canJoinAllSpaces)
@@ -128,10 +160,39 @@ class MainFlutterWindow: NSWindow {
     self.collectionBehavior = behaviorToRestore
     self.setFrame(frameToRestore, display: true, animate: true)
 
+    // 恢复标题栏 / 工具栏相关外观。
+    if let styleMask = previousStyleMask {
+      self.styleMask = styleMask
+    }
+    if let titleVisibility = previousTitleVisibility {
+      self.titleVisibility = titleVisibility
+    }
+    if let titlebarTransparent = previousTitlebarAppearsTransparent {
+      self.titlebarAppearsTransparent = titlebarTransparent
+    }
+    if let closeHidden = previousCloseButtonHidden,
+       let closeButton = self.standardWindowButton(.closeButton) {
+      closeButton.isHidden = closeHidden
+    }
+    if let miniHidden = previousMiniaturizeButtonHidden,
+       let miniButton = self.standardWindowButton(.miniaturizeButton) {
+      miniButton.isHidden = miniHidden
+    }
+    if let zoomHidden = previousZoomButtonHidden,
+       let zoomButton = self.standardWindowButton(.zoomButton) {
+      zoomButton.isHidden = zoomHidden
+    }
+
     isPinnedWindow = false
     previousFrame = nil
     previousLevel = nil
     previousCollectionBehavior = nil
+    previousStyleMask = nil
+    previousTitleVisibility = nil
+    previousTitlebarAppearsTransparent = nil
+    previousCloseButtonHidden = nil
+    previousMiniaturizeButtonHidden = nil
+    previousZoomButtonHidden = nil
 
     NSLog("[RingoTrack] MainFlutterWindow exitPinnedMode")
     return true

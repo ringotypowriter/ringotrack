@@ -258,8 +258,14 @@ __declspec(dllexport) std::int32_t rt_enter_pinned_mode() {
       target_height,
       SWP_SHOWWINDOW | SWP_NOACTIVATE);
 
-  // 清理最大化按钮，防止在小窗模式下被误触。
-  LONG new_style = g_prev_style & ~WS_MAXIMIZEBOX;
+  // 在 pinned 小窗模式下，隐藏标题栏和边框，避免多余的窗口控件干扰。
+  // - 去掉标题栏与粗边框（WS_CAPTION / WS_THICKFRAME）
+  // - 去掉最小化 / 最大化按钮（WS_MINIMIZEBOX / WS_MAXIMIZEBOX）
+  LONG new_style = g_prev_style;
+  new_style &= ~WS_CAPTION;
+  new_style &= ~WS_THICKFRAME;
+  new_style &= ~WS_MINIMIZEBOX;
+  new_style &= ~WS_MAXIMIZEBOX;
   ::SetWindowLongPtrW(hwnd, GWL_STYLE, new_style);
   ::SetWindowPos(hwnd,
                  nullptr,
