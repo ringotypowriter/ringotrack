@@ -7,6 +7,7 @@ import 'package:ringotrack/providers.dart';
 import 'package:ringotrack/widgets/ringo_heatmap.dart';
 import 'package:ringotrack/domain/usage_analysis.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:ringotrack/widgets/ringo_hourly_line_heatmap.dart';
 
 const double _heatmapTileSize = 13;
 const double _heatmapTileSpacing = 3;
@@ -14,6 +15,30 @@ const double _dashboardCardRadius = 12;
 const double _dashboardElementRadius = 4;
 
 enum DashboardTab { overview, perApp, analysis }
+
+class HourlySelectedDay extends Notifier<DateTime> {
+  @override
+  DateTime build() {
+    final now = DateTime.now();
+    return DateTime(now.year, now.month, now.day);
+  }
+
+  void setDay(DateTime day) {
+    state = day;
+  }
+}
+
+final hourlySelectedDayProvider = NotifierProvider<HourlySelectedDay, DateTime>(
+  HourlySelectedDay.new,
+);
+
+final hourlyUsageByDayProvider = FutureProvider.autoDispose
+    .family<Map<int, Map<String, Duration>>, DateTime>((ref, day) async {
+      final repo = ref.watch(usageRepositoryProvider);
+      final normalized = _normalizeDayDashboard(day);
+      final map = await repo.loadHourlyRange(normalized, normalized);
+      return map[normalized] ?? const <int, Map<String, Duration>>{};
+    });
 
 class DashboardPage extends ConsumerStatefulWidget {
   const DashboardPage({super.key});
@@ -355,28 +380,16 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
           );
         }
 
-        final heatmapChild = asyncUsage.when(
-          data: (usageByDate) {
-            if (usageByDate.isEmpty) {
-              return buildHeatmap(
-                const {},
-                placeholder: buildEmptyPlaceholder(),
-              );
-            }
-
-            if (selectedTab == DashboardTab.overview) {
-              final totals = <DateTime, Duration>{};
-              usageByDate.forEach((day, perApp) {
-                totals[day] = perApp.values.fold(
-                  Duration.zero,
-                  (a, b) => a + b,
+        if (selectedTab == DashboardTab.perApp) {
+          final perAppList = asyncUsage.when(
+            data: (usageByDate) {
+              if (usageByDate.isEmpty) {
+                return buildHeatmap(
+                  const {},
+                  placeholder: buildEmptyPlaceholder(),
                 );
-              });
+              }
 
-              return buildHeatmap(totals, placeholder: buildEmptyPlaceholder());
-            }
-
-            if (selectedTab == DashboardTab.perApp) {
               final perApp = <String, Map<DateTime, Duration>>{};
 
               usageByDate.forEach((day, appMap) {
@@ -432,16 +445,61 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                   );
                 },
               );
-            }
-
-            return Center(
+            },
+            loading: () =>
+                const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+            error: (error, stack) => Center(
               child: Text(
-                '分组视图开发中……',
+                '加载数据出错了',
                 style: theme.textTheme.bodyMedium?.copyWith(
-                  color: Colors.black54,
+                  color: Colors.redAccent,
                 ),
               ),
-            );
+            ),
+          );
+
+          return Container(
+            key: const ValueKey('dashboard-heatmap-shell'),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(_dashboardCardRadius),
+              border: Border.all(color: const Color(0xFFE3E3E3)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: perAppList),
+                SizedBox(height: 8.h),
+                Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    horizontalPadding,
+                    0,
+                    horizontalPadding,
+                    24.h,
+                  ),
+                  child: _buildLegend(theme),
+                ),
+              ],
+            ),
+          );
+        }
+
+        // Overview tab：月历热力图 + 日内线性热力图，共用一个 legend。
+        final calendarHeatmap = asyncUsage.when(
+          data: (usageByDate) {
+            if (usageByDate.isEmpty) {
+              return buildHeatmap(
+                const {},
+                placeholder: buildEmptyPlaceholder(),
+              );
+            }
+
+            final totals = <DateTime, Duration>{};
+            usageByDate.forEach((day, perApp) {
+              totals[day] = perApp.values.fold(Duration.zero, (a, b) => a + b);
+            });
+
+            return buildHeatmap(totals, placeholder: buildEmptyPlaceholder());
           },
           loading: () =>
               const Center(child: CircularProgressIndicator(strokeWidth: 2)),
@@ -455,6 +513,24 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
           ),
         );
 
+        final selectedDay = ref.watch(hourlySelectedDayProvider);
+        final hourlyAsync = ref.watch(hourlyUsageByDayProvider(selectedDay));
+        final normalizedSelected = _normalizeDayDashboard(selectedDay);
+        final today = _normalizeDayDashboard(DateTime.now());
+        final maxDay = normalizedEnd.isBefore(today) ? normalizedEnd : today;
+        final minDay = normalizedStart;
+
+        bool canGoPrev = normalizedSelected.isAfter(minDay);
+        bool canGoNext = normalizedSelected.isBefore(maxDay);
+
+        void shiftDay(int delta) {
+          final next = _normalizeDayDashboard(
+            normalizedSelected.add(Duration(days: delta)),
+          );
+          if (next.isBefore(minDay) || next.isAfter(maxDay)) return;
+          ref.read(hourlySelectedDayProvider.notifier).setDay(next);
+        }
+
         return Container(
           key: const ValueKey('dashboard-heatmap-shell'),
           decoration: BoxDecoration(
@@ -465,23 +541,105 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (selectedTab == DashboardTab.perApp)
-                Expanded(child: heatmapChild)
-              else
-                Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    horizontalPadding,
-                    32.h,
-                    horizontalPadding,
-                    16.h,
-                  ),
-                  child: heatmapChild,
+              Padding(
+                padding: EdgeInsets.fromLTRB(
+                  horizontalPadding,
+                  32.h,
+                  horizontalPadding,
+                  16.h,
                 ),
-              SizedBox(height: 8.h),
+                child: calendarHeatmap,
+              ),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+                child: const Divider(height: 32, thickness: 1),
+              ),
               Padding(
                 padding: EdgeInsets.fromLTRB(
                   horizontalPadding,
                   0,
+                  horizontalPadding,
+                  12.h,
+                ),
+                child: Row(
+                  children: [
+                    _HoverIconButton(
+                      icon: Icons.arrow_back_ios_new_rounded,
+                      enabled: canGoPrev,
+                      onTap: () => shiftDay(-1),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      _formatDayLabel(normalizedSelected, today),
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    _HoverIconButton(
+                      icon: Icons.arrow_forward_ios_rounded,
+                      enabled: canGoNext,
+                      onTap: () => shiftDay(1),
+                    ),
+                    const Spacer(),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: EdgeInsets.fromLTRB(
+                  horizontalPadding,
+                  0,
+                  horizontalPadding,
+                  8.h,
+                ),
+                child: hourlyAsync.when(
+                  data: (hourly) {
+                    final totals = <int, Duration>{};
+                    hourly.forEach((hour, perApp) {
+                      totals[hour] = perApp.values.fold(
+                        Duration.zero,
+                        (a, b) => a + b,
+                      );
+                    });
+
+                    if (totals.isEmpty) {
+                      return Center(
+                        child: Text(
+                          '这一天还没有记录到绘画时间',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: Colors.black54,
+                          ),
+                        ),
+                      );
+                    }
+
+                    return RingoHourlyLineHeatmap(
+                      hourlyTotals: totals,
+                      baseColor: theme.colorScheme.primary,
+                      emptyColor: const Color(0xFFE3E3E3),
+                    );
+                  },
+                  loading: () => const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 12),
+                    child: Center(
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  ),
+                  error: (error, stack) => Padding(
+                    padding: EdgeInsets.symmetric(vertical: 12.h),
+                    child: Text(
+                      '日内分布加载失败',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: Colors.redAccent,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: EdgeInsets.fromLTRB(
+                  horizontalPadding,
+                  4.h,
                   horizontalPadding,
                   24.h,
                 ),
@@ -1135,9 +1293,70 @@ class _TabButtonState extends State<_TabButton> {
   }
 }
 
+class _HoverIconButton extends StatefulWidget {
+  const _HoverIconButton({
+    required this.icon,
+    required this.onTap,
+    this.enabled = true,
+  });
+
+  final IconData icon;
+  final VoidCallback onTap;
+  final bool enabled;
+
+  @override
+  State<_HoverIconButton> createState() => _HoverIconButtonState();
+}
+
+class _HoverIconButtonState extends State<_HoverIconButton> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final color = widget.enabled ? theme.colorScheme.primary : Colors.black26;
+
+    return MouseRegion(
+      cursor: widget.enabled
+          ? SystemMouseCursors.click
+          : SystemMouseCursors.basic,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: widget.enabled ? widget.onTap : null,
+        behavior: HitTestBehavior.opaque,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 120),
+          curve: Curves.easeOut,
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: widget.enabled && _hovered
+                ? theme.colorScheme.surfaceContainerLow
+                : Colors.transparent,
+            shape: BoxShape.circle,
+          ),
+          child: Icon(widget.icon, size: 18, color: color),
+        ),
+      ),
+    );
+  }
+}
+
 DateTime _weekStartMonday(DateTime day) {
   final normalized = DateTime(day.year, day.month, day.day);
   return normalized.subtract(Duration(days: normalized.weekday - 1));
+}
+
+DateTime _normalizeDayDashboard(DateTime date) {
+  return DateTime(date.year, date.month, date.day);
+}
+
+String _formatDayLabel(DateTime day, DateTime today) {
+  final base =
+      '${day.year}-${day.month.toString().padLeft(2, '0')}-${day.day.toString().padLeft(2, '0')}';
+  if (day == today) return '$base · 今天';
+  if (day == today.subtract(const Duration(days: 1))) return '$base · 昨天';
+  return base;
 }
 
 class _AnalysisCard extends StatelessWidget {
