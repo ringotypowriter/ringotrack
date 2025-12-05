@@ -146,4 +146,112 @@ void main() {
       },
     );
   });
+
+  group('HourlyUsageAggregator', () {
+    test('counts single drawing app session within one hour', () {
+      final aggregator = HourlyUsageAggregator(
+        isDrawingApp: (id) => id == 'Photoshop.exe',
+      );
+
+      final day = DateTime(2025, 1, 1);
+      final start = day.add(const Duration(hours: 9));
+      final end = day.add(const Duration(hours: 9, minutes: 30));
+
+      aggregator.onForegroundAppChanged(
+        ForegroundAppEvent(appId: 'Photoshop.exe', timestamp: start),
+      );
+
+      aggregator.onForegroundAppChanged(
+        ForegroundAppEvent(appId: 'Browser', timestamp: end),
+      );
+
+      final usage = aggregator.usageByDateHour;
+      final key = DateTime(2025, 1, 1);
+
+      expect(usage.containsKey(key), isTrue);
+      final perHour = usage[key]!;
+      expect(perHour.containsKey(9), isTrue);
+
+      final duration = perHour[9]!['Photoshop.exe']!;
+      expect(duration.inMinutes, closeTo(30, 1));
+    });
+
+    test('splits usage across hours within same day', () {
+      final aggregator = HourlyUsageAggregator(
+        isDrawingApp: (id) => id == 'Photoshop.exe',
+      );
+
+      final day = DateTime(2025, 1, 1);
+      final start = day.add(const Duration(hours: 9, minutes: 50));
+      final end = day.add(const Duration(hours: 10, minutes: 10));
+
+      aggregator.onForegroundAppChanged(
+        ForegroundAppEvent(appId: 'Photoshop.exe', timestamp: start),
+      );
+      aggregator.onForegroundAppChanged(
+        ForegroundAppEvent(appId: 'Browser', timestamp: end),
+      );
+
+      final usage = aggregator.usageByDateHour;
+      final key = DateTime(2025, 1, 1);
+      final perHour = usage[key]!;
+
+      final h9 = perHour[9]!['Photoshop.exe']!;
+      final h10 = perHour[10]!['Photoshop.exe']!;
+
+      expect(h9.inMinutes, closeTo(10, 1));
+      expect(h10.inMinutes, closeTo(10, 1));
+    });
+
+    test('splits usage across days at midnight into hours', () {
+      final aggregator = HourlyUsageAggregator(
+        isDrawingApp: (id) => id == 'Krita.exe',
+      );
+
+      final day1 = DateTime(2025, 1, 1);
+      final start = day1.add(const Duration(hours: 23, minutes: 50));
+      final day2 = DateTime(2025, 1, 2);
+      final end = day2.add(const Duration(minutes: 10));
+
+      aggregator.onForegroundAppChanged(
+        ForegroundAppEvent(appId: 'Krita.exe', timestamp: start),
+      );
+      aggregator.onForegroundAppChanged(
+        ForegroundAppEvent(appId: 'Browser', timestamp: end),
+      );
+
+      final usage = aggregator.usageByDateHour;
+
+      final key1 = DateTime(2025, 1, 1);
+      final key2 = DateTime(2025, 1, 2);
+
+      final perHour1 = usage[key1]!;
+      final perHour2 = usage[key2]!;
+
+      final d1 = perHour1[23]!['Krita.exe']!;
+      final d2 = perHour2[0]!['Krita.exe']!;
+
+      expect(d1.inMinutes, closeTo(10, 1));
+      expect(d2.inMinutes, closeTo(10, 1));
+    });
+
+    test('ignores non-drawing apps completely (hourly)', () {
+      final aggregator = HourlyUsageAggregator(
+        isDrawingApp: (id) => id == 'Photoshop.exe',
+      );
+
+      final day = DateTime(2025, 1, 1);
+      final start = day.add(const Duration(hours: 10));
+      final end = day.add(const Duration(hours: 12));
+
+      aggregator.onForegroundAppChanged(
+        ForegroundAppEvent(appId: 'Browser', timestamp: start),
+      );
+      aggregator.onForegroundAppChanged(
+        ForegroundAppEvent(appId: 'Player', timestamp: end),
+      );
+
+      expect(aggregator.usageByDateHour.isEmpty, isTrue);
+    });
+  });
 }

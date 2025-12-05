@@ -22,6 +22,7 @@ class UsageService {
     }
 
     _aggregator = UsageAggregator(isDrawingApp: isDrawingApp);
+    _hourlyAggregator = HourlyUsageAggregator(isDrawingApp: isDrawingApp);
     _foregroundSubscription = tracker.events.listen(_onForegroundEvent);
     _strokeSubscription = strokeTracker.strokes.listen(_onStrokeEvent);
     _tickTimer = Timer.periodic(const Duration(seconds: 1), _onTick);
@@ -35,6 +36,7 @@ class UsageService {
   final Duration dbFlushInterval;
 
   late final UsageAggregator _aggregator;
+  late final HourlyUsageAggregator _hourlyAggregator;
   late final StreamSubscription<ForegroundAppEvent> _foregroundSubscription;
   StreamSubscription<StrokeEvent>? _strokeSubscription;
   Timer? _tickTimer;
@@ -53,6 +55,10 @@ class UsageService {
   // 聚合层是毫秒精度；为了让 UI / DB 都按整秒工作，同时不丢失「不足 1 秒」的片段，
   // 这里为每个 (day, appId) 维护一个 < 1 秒的余数，在后续 flush 中继续累加。
   final Map<DateTime, Map<String, Duration>> _fractionalRemainder = {};
+  final Map<DateTime, Map<int, Map<String, Duration>>> _pendingHourlyDbDelta =
+      {};
+  final Map<DateTime, Map<int, Map<String, Duration>>>
+      _fractionalHourlyRemainder = {};
   DateTime _lastDbFlushAt = DateTime.now();
   bool _isFlushingDb = false;
 
@@ -84,6 +90,7 @@ class UsageService {
     }
 
     _aggregator.onForegroundAppChanged(event);
+    _hourlyAggregator.onForegroundAppChanged(event);
     await _flushAggregatorDelta();
   }
 
@@ -163,6 +170,9 @@ class UsageService {
       _aggregator.onForegroundAppChanged(
         ForegroundAppEvent(appId: _currentForegroundAppId!, timestamp: now),
       );
+      _hourlyAggregator.onForegroundAppChanged(
+        ForegroundAppEvent(appId: _currentForegroundAppId!, timestamp: now),
+      );
       await _flushAggregatorDelta();
     }
   }
@@ -172,6 +182,9 @@ class UsageService {
     _isIdle = true;
     if (_currentForegroundAppId != null) {
       _aggregator.onForegroundAppChanged(
+        ForegroundAppEvent(appId: _idleAppId, timestamp: now),
+      );
+      _hourlyAggregator.onForegroundAppChanged(
         ForegroundAppEvent(appId: _idleAppId, timestamp: now),
       );
     }
@@ -184,33 +197,63 @@ class UsageService {
       _aggregator.onForegroundAppChanged(
         ForegroundAppEvent(appId: _currentForegroundAppId!, timestamp: now),
       );
+      _hourlyAggregator.onForegroundAppChanged(
+        ForegroundAppEvent(appId: _currentForegroundAppId!, timestamp: now),
+      );
     }
   }
 
   Future<void> _flushAggregatorDelta() async {
-    final rawDelta = _aggregator.drainUsage();
-    if (rawDelta.isEmpty) {
+    final rawDailyDelta = _aggregator.drainUsage();
+    final rawHourlyDelta = _hourlyAggregator.drainUsage();
+
+    if (rawDailyDelta.isEmpty && rawHourlyDelta.isEmpty) {
       return;
     }
 
-    final delta = quantizeUsageWithRemainder(rawDelta, _fractionalRemainder);
+    final dailyDelta =
+        quantizeUsageWithRemainder(rawDailyDelta, _fractionalRemainder);
+    final hourlyDelta = quantizeHourlyUsageWithRemainder(
+      rawHourlyDelta,
+      _fractionalHourlyRemainder,
+    );
 
-    if (delta.isEmpty) {
+    if (dailyDelta.isEmpty && hourlyDelta.isEmpty) {
       return;
     }
 
     if (kDebugMode) {
-      final buffer = StringBuffer('[UsageService] delta:');
-      delta.forEach((day, perApp) {
+      final buffer = StringBuffer('[UsageService] daily delta:');
+      dailyDelta.forEach((day, perApp) {
         perApp.forEach((appId, duration) {
           buffer.write('\n  $day $appId -> ${duration.inSeconds}s');
         });
       });
       debugPrint(buffer.toString());
+
+      if (hourlyDelta.isNotEmpty) {
+        final bufferHourly = StringBuffer('[UsageService] hourly delta:');
+        hourlyDelta.forEach((day, perHour) {
+          perHour.forEach((hour, perApp) {
+            perApp.forEach((appId, duration) {
+              bufferHourly.write(
+                '\n  $day H$hour $appId -> ${duration.inSeconds}s',
+              );
+            });
+          });
+        });
+        debugPrint(bufferHourly.toString());
+      }
     }
 
-    _deltaController.add(delta);
-    _mergePendingDbDelta(delta);
+    if (dailyDelta.isNotEmpty) {
+      _deltaController.add(dailyDelta);
+      _mergePendingDbDelta(dailyDelta);
+    }
+    if (hourlyDelta.isNotEmpty) {
+      _mergePendingHourlyDbDelta(hourlyDelta);
+    }
+
     await _flushDbDeltaIfNeeded();
   }
 
@@ -219,6 +262,7 @@ class UsageService {
     await _strokeSubscription?.cancel();
     _tickTimer?.cancel();
     _aggregator.closeAt(DateTime.now());
+    _hourlyAggregator.closeAt(DateTime.now());
     await _flushAggregatorDelta();
     await _flushDbDelta(force: true);
     await _deltaController.close();
@@ -239,6 +283,29 @@ class UsageService {
     });
   }
 
+  void _mergePendingHourlyDbDelta(
+    Map<DateTime, Map<int, Map<String, Duration>>> delta,
+  ) {
+    delta.forEach((day, perHour) {
+      final normalizedDay = DateTime(day.year, day.month, day.day);
+      final existingPerHour = _pendingHourlyDbDelta.putIfAbsent(
+        normalizedDay,
+        () => <int, Map<String, Duration>>{},
+      );
+
+      perHour.forEach((hourIndex, perApp) {
+        final existingPerApp = existingPerHour.putIfAbsent(
+          hourIndex,
+          () => <String, Duration>{},
+        );
+        perApp.forEach((appId, duration) {
+          existingPerApp[appId] =
+              (existingPerApp[appId] ?? Duration.zero) + duration;
+        });
+      });
+    });
+  }
+
   Future<void> _flushDbDeltaIfNeeded() async {
     final now = DateTime.now();
     if (now.difference(_lastDbFlushAt) < dbFlushInterval) {
@@ -251,20 +318,27 @@ class UsageService {
     if (_isFlushingDb) {
       return;
     }
-    if (!force && _pendingDbDelta.isEmpty) {
+    if (!force &&
+        _pendingDbDelta.isEmpty &&
+        _pendingHourlyDbDelta.isEmpty) {
       return;
     }
 
     _isFlushingDb = true;
-    final toPersist = Map<DateTime, Map<String, Duration>>.from(
+    final toPersistDaily = Map<DateTime, Map<String, Duration>>.from(
       _pendingDbDelta,
     );
+    final toPersistHourly =
+        Map<DateTime, Map<int, Map<String, Duration>>>.from(
+          _pendingHourlyDbDelta,
+        );
     _pendingDbDelta.clear();
+    _pendingHourlyDbDelta.clear();
     _lastDbFlushAt = DateTime.now();
     try {
-      if (toPersist.isNotEmpty) {
+      if (toPersistDaily.isNotEmpty) {
         // 记录日志方便排查
-        toPersist.forEach((day, perApp) {
+        toPersistDaily.forEach((day, perApp) {
           perApp.forEach((appId, duration) {
             AppLogService.instance.logInfo(
               'usage_service',
@@ -273,7 +347,22 @@ class UsageService {
             );
           });
         });
-        await repository.mergeUsage(toPersist);
+        await repository.mergeUsage(toPersistDaily);
+      }
+
+      if (toPersistHourly.isNotEmpty) {
+        toPersistHourly.forEach((day, perHour) {
+          perHour.forEach((hour, perApp) {
+            perApp.forEach((appId, duration) {
+              AppLogService.instance.logInfo(
+                'usage_service',
+                'persist hourly delta day=$day hour=$hour appId=$appId '
+                    'duration=${duration.inSeconds}s',
+              );
+            });
+          });
+        });
+        await repository.mergeHourlyUsage(toPersistHourly);
       }
     } finally {
       _isFlushingDb = false;
@@ -325,6 +414,69 @@ Map<DateTime, Map<String, Duration>> quantizeUsageWithRemainder(
 
     if (perAppSeconds.isNotEmpty) {
       result[normalizedDay] = perAppSeconds;
+    }
+  });
+
+  return result;
+}
+
+/// 将小时级增量 usage 与现有的「余数」一起量化为整秒输出。
+///
+/// 结构与 [quantizeUsageWithRemainder] 类似，但多了一层 hourIndex 维度。
+Map<DateTime, Map<int, Map<String, Duration>>> quantizeHourlyUsageWithRemainder(
+  Map<DateTime, Map<int, Map<String, Duration>>> rawDelta,
+  Map<DateTime, Map<int, Map<String, Duration>>> fractionalRemainder,
+) {
+  final result = <DateTime, Map<int, Map<String, Duration>>>{};
+
+  rawDelta.forEach((day, perHour) {
+    final normalizedDay = DateTime(day.year, day.month, day.day);
+    final perHourSeconds = <int, Map<String, Duration>>{};
+
+    perHour.forEach((hourIndex, perApp) {
+      final dayRemainder = fractionalRemainder.putIfAbsent(
+        normalizedDay,
+        () => <int, Map<String, Duration>>{},
+      );
+      final hourRemainder = dayRemainder.putIfAbsent(
+        hourIndex,
+        () => <String, Duration>{},
+      );
+
+      final perAppSeconds = <String, Duration>{};
+
+      perApp.forEach((appId, duration) {
+        final previousRemainder = hourRemainder[appId] ?? Duration.zero;
+
+        final total = previousRemainder + duration;
+        final wholeSeconds = total.inSeconds;
+        final remainder = total - Duration(seconds: wholeSeconds);
+
+        if (wholeSeconds > 0) {
+          perAppSeconds[appId] = Duration(seconds: wholeSeconds);
+        }
+
+        if (remainder == Duration.zero) {
+          hourRemainder.remove(appId);
+        } else {
+          hourRemainder[appId] = remainder;
+        }
+      });
+
+      if (hourRemainder.isEmpty) {
+        dayRemainder.remove(hourIndex);
+        if (dayRemainder.isEmpty) {
+          fractionalRemainder.remove(normalizedDay);
+        }
+      }
+
+      if (perAppSeconds.isNotEmpty) {
+        perHourSeconds[hourIndex] = perAppSeconds;
+      }
+    });
+
+    if (perHourSeconds.isNotEmpty) {
+      result[normalizedDay] = perHourSeconds;
     }
   });
 

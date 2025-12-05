@@ -150,6 +150,57 @@ class WeekdayAverage {
   final Duration average;
 }
 
+/// 小时级分析工具：基于「按日 + 小时 + app」的时长字典，
+/// 给出某一天 24 小时的用时分布。
+class HourlyUsageAnalysis {
+  HourlyUsageAnalysis(this._usageByDateHour);
+
+  final Map<DateTime, Map<int, Map<String, Duration>>> _usageByDateHour;
+
+  /// 返回指定日期在 24 个小时内的用时分布。
+  ///
+  /// - 如果某个小时没有任何记录，会补零；
+  /// - [perApp] 为该小时按 app 分组的时长；
+  /// - [total] 为该小时所有 app 的总用时。
+  List<HourlyBucket> hourlyBuckets(DateTime day) {
+    final normalizedDay = _normalizeDay(day);
+    final perHour = _usageByDateHour[normalizedDay] ?? const {};
+
+    return List<HourlyBucket>.generate(24, (index) {
+      final hourData = perHour[index] ?? const {};
+      final total =
+          hourData.values.fold(Duration.zero, (acc, d) => acc + d);
+      return HourlyBucket(
+        date: normalizedDay,
+        hourIndex: index,
+        total: total,
+        perApp: Map.of(hourData),
+      );
+    }, growable: false);
+  }
+}
+
+class HourlyBucket {
+  HourlyBucket({
+    required this.date,
+    required this.hourIndex,
+    required this.total,
+    required this.perApp,
+  });
+
+  /// 所属日期（归一化到当天 00:00）
+  final DateTime date;
+
+  /// 当天的第几个小时（0-23）
+  final int hourIndex;
+
+  /// 该小时总用时
+  final Duration total;
+
+  /// 该小时按 app 拆分的用时
+  final Map<String, Duration> perApp;
+}
+
 DateTime _normalizeDay(DateTime dt) => DateTime(dt.year, dt.month, dt.day);
 
 Iterable<DateTime> _daysInRange(DateTime start, DateTime end) sync* {

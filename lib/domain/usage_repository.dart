@@ -9,6 +9,21 @@ abstract class UsageRepository {
 
   Future<void> mergeUsage(Map<DateTime, Map<String, Duration>> delta);
 
+  /// 按「日 + 小时 + App」返回使用时长。
+  ///
+  /// - 外层 key：归一化到当天 00:00 的本地日期；
+  /// - 第二层 key：hourIndex（0-23）；
+  /// - 最内层 key：appId。
+  Future<Map<DateTime, Map<int, Map<String, Duration>>>> loadHourlyRange(
+    DateTime start,
+    DateTime end,
+  );
+
+  /// 合并小时级增量，按「日 + 小时 + appId」叠加时长。
+  Future<void> mergeHourlyUsage(
+    Map<DateTime, Map<int, Map<String, Duration>>> delta,
+  );
+
   Future<void> deleteByAppId(String appId);
 
   Future<void> deleteByDateRange(DateTime start, DateTime end);
@@ -32,6 +47,21 @@ class SqliteUsageRepository implements UsageRepository {
   @override
   Future<void> mergeUsage(Map<DateTime, Map<String, Duration>> delta) {
     return _db.mergeUsage(delta);
+  }
+
+  @override
+  Future<Map<DateTime, Map<int, Map<String, Duration>>>> loadHourlyRange(
+    DateTime start,
+    DateTime end,
+  ) {
+    return _db.loadHourlyRange(start, end);
+  }
+
+  @override
+  Future<void> mergeHourlyUsage(
+    Map<DateTime, Map<int, Map<String, Duration>>> delta,
+  ) {
+    return _db.mergeHourlyUsage(delta);
   }
 
   @override

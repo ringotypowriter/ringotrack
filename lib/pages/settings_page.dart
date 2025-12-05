@@ -221,7 +221,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     AsyncValue<DrawingAppPreferences> prefsAsync,
   ) {
     final dangerColor = theme.colorScheme.error;
-    final dangerBackground = dangerColor.withOpacity(0.08);
+    final dangerBackground = dangerColor.withValues(alpha: 0.08);
     final titleStyle = theme.textTheme.bodyLarge?.copyWith(
       fontWeight: FontWeight.w600,
     );
