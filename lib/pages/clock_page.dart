@@ -1,9 +1,8 @@
-import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ringotrack/providers.dart';
 import 'package:ringotrack/platform/window_pin_controller.dart';
@@ -19,30 +18,19 @@ class _ClockPageState extends ConsumerState<ClockPage> {
   bool _isPinned = false;
   bool _isTogglingPin = false;
 
-  bool get _isWindowsDesktop =>
-      !kIsWeb &&
-      Platform.isWindows &&
-      defaultTargetPlatform == TargetPlatform.windows;
-
   Future<void> _togglePin() async {
-    if (!_isWindowsDesktop) {
+    if (_isTogglingPin) {
       return;
     }
-    if (_isTogglingPin) {
+
+    final controller = WindowPinController.instance;
+    if (!controller.isSupported) {
       return;
     }
 
     setState(() {
       _isTogglingPin = true;
     });
-
-    final controller = WindowPinController.instance;
-    if (!controller.isSupported) {
-      setState(() {
-        _isTogglingPin = false;
-      });
-      return;
-    }
 
     final bool success;
     if (_isPinned) {
@@ -67,26 +55,22 @@ class _ClockPageState extends ConsumerState<ClockPage> {
   Widget build(BuildContext context) {
     final ref = this.ref;
     final theme = Theme.of(context);
+    final pinSupported = WindowPinController.instance.isSupported;
 
     final timeTextStyle = theme.textTheme.displayLarge?.copyWith(
-      fontSize: 120.sp,
-      fontWeight: FontWeight.w500,
-      letterSpacing: 6.w,
-      color: theme.colorScheme.primary,
-      fontFeatures: const [FontFeature.tabularFigures()],
-      fontFamilyFallback: const ['SF Mono', 'Menlo', 'Consolas', 'PingFang SC'],
-    );
-
-    final secondaryTextStyle = theme.textTheme.bodyLarge?.copyWith(
-      color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-      fontFeatures: const [FontFeature.tabularFigures()],
+      fontSize: 160.sp,
+      letterSpacing: 10.w,
+      color: theme.colorScheme.onPrimary,
+      fontFamily: 'JetBrainsMono',
     );
 
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
+      backgroundColor: HSLColor.fromColor(
+        theme.colorScheme.primary,
+      ).withSaturation(0.6).withLightness(0.6).toColor(),
       body: SafeArea(
         child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 40.w, vertical: 24.h),
+          padding: EdgeInsets.symmetric(horizontal: 32.w, vertical: 24.h),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
@@ -95,31 +79,34 @@ class _ClockPageState extends ConsumerState<ClockPage> {
                   if (!_isPinned)
                     IconButton(
                       onPressed: () => context.go('/'),
-                      icon: const Icon(Icons.arrow_back_rounded),
+                      icon: Icon(
+                        Icons.arrow_back_rounded,
+                        color: theme.colorScheme.onPrimary,
+                      ),
                       tooltip: '返回仪表盘',
                     ),
                   if (_isPinned) SizedBox(width: 48.w, height: 48.w),
                   const Spacer(),
-                  if (_isWindowsDesktop &&
-                      WindowPinController.instance.isSupported)
+                  if (pinSupported)
                     IconButton(
+                      iconSize: _isPinned ? 12 : 24,
+                      padding: EdgeInsets.all(8.w),
+                      constraints: BoxConstraints(
+                        minWidth: 44.w,
+                        minHeight: 44.w,
+                      ),
                       onPressed: _isTogglingPin ? null : _togglePin,
                       icon: Icon(
                         _isPinned ? Icons.push_pin : Icons.push_pin_outlined,
+                        color: theme.colorScheme.onPrimary,
                       ),
                       tooltip: _isPinned ? '取消锁定并恢复窗口' : '锁定时钟窗口置顶',
                     ),
                 ],
               ),
-              SizedBox(height: 24.h),
+              if (!_isPinned) SizedBox(height: 24.h),
               Expanded(
-                child: _buildTimeContent(
-                  context,
-                  ref,
-                  theme,
-                  timeTextStyle,
-                  secondaryTextStyle,
-                ),
+                child: _buildTimeContent(context, ref, theme, timeTextStyle),
               ),
             ],
           ),
@@ -133,7 +120,6 @@ class _ClockPageState extends ConsumerState<ClockPage> {
     WidgetRef ref,
     ThemeData theme,
     TextStyle? timeTextStyle,
-    TextStyle? secondaryTextStyle,
   ) {
     final metricsAsync = ref.watch(dashboardMetricsProvider);
 
@@ -145,22 +131,8 @@ class _ClockPageState extends ConsumerState<ClockPage> {
         return _buildTimeRow(theme, timeTextStyle, Duration.zero);
       },
       error: (err, _) {
-        return Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            _buildTimeRow(theme, timeTextStyle, Duration.zero),
-            SizedBox(height: 16.h),
-            if (secondaryTextStyle != null)
-              Text(
-                '数据加载失败：$err',
-                style: secondaryTextStyle.copyWith(
-                  color: theme.colorScheme.error.withValues(alpha: 0.8),
-                  fontSize: secondaryTextStyle.fontSize?.sp,
-                ),
-                textAlign: TextAlign.center,
-              ),
-          ],
-        );
+        debugPrint('ClockPage metrics error: $err');
+        return _buildTimeRow(theme, timeTextStyle, Duration.zero);
       },
     );
   }
@@ -175,27 +147,9 @@ class _ClockPageState extends ConsumerState<ClockPage> {
     final minutes = (totalSeconds % 3600) ~/ 60;
     final seconds = totalSeconds % 60;
 
-    final children = <Widget>[];
-
-    void addSegment(String text) {
-      if (children.isNotEmpty) {
-        children.add(SizedBox(width: 14.w));
-      }
-      children.add(_FlipBlock(value: text, textStyle: timeTextStyle));
-    }
-
-    if (hours > 0) {
-      addSegment('${hours}hr');
-    }
-    if (minutes > 0) {
-      addSegment('${minutes}m');
-    }
-    if (seconds > 0) {
-      addSegment('${seconds}s');
-    }
-    if (children.isEmpty) {
-      addSegment('0s');
-    }
+    final hoursText = hours.toString().padLeft(2, '0');
+    final minutesText = minutes.toString().padLeft(2, '0');
+    final secondsText = seconds.toString().padLeft(2, '0');
 
     return Center(
       child: FittedBox(
@@ -203,7 +157,13 @@ class _ClockPageState extends ConsumerState<ClockPage> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.center,
-          children: children,
+          children: [
+            _FlipBlock(value: hoursText, textStyle: timeTextStyle),
+            SizedBox(width: 18.w),
+            _FlipBlock(value: minutesText, textStyle: timeTextStyle),
+            SizedBox(width: 18.w),
+            _FlipBlock(value: secondsText, textStyle: timeTextStyle),
+          ],
         ),
       ),
     );
@@ -218,24 +178,47 @@ class _FlipBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final primary = theme.colorScheme.primary;
+    final baseHsl = HSLColor.fromColor(primary);
+    final cardHsl = baseHsl
+        .withSaturation((baseHsl.saturation * 1.2).clamp(0.0, 1.0))
+        .withLightness((baseHsl.lightness * 0.9).clamp(0.0, 1.0));
+    final cardColor = cardHsl.toColor();
+    final key = ValueKey<String>(value);
+
     return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 260),
+      duration: const Duration(milliseconds: 420),
       switchInCurve: Curves.easeInOutCubic,
       switchOutCurve: Curves.easeInOutCubic,
       transitionBuilder: (child, animation) {
-        final curved = CurvedAnimation(
-          parent: animation,
-          curve: Curves.easeInOutCubic,
-        );
-        return FadeTransition(
-          opacity: curved,
-          child: ScaleTransition(
-            scale: Tween<double>(begin: 0.9, end: 1.0).animate(curved),
-            child: child,
-          ),
+        return AnimatedBuilder(
+          animation: animation,
+          child: child,
+          builder: (context, child) {
+            final progress = animation.value;
+            final isUnder = child?.key != key;
+            final tiltRadians = (1 - progress) * (math.pi / 2);
+
+            return Transform(
+              transform: Matrix4.identity()
+                ..setEntry(3, 2, 0.001)
+                ..rotateX(isUnder ? tiltRadians : -tiltRadians),
+              alignment: Alignment.center,
+              child: Opacity(opacity: progress.clamp(0.0, 1.0), child: child),
+            );
+          },
         );
       },
-      child: Text(value, key: ValueKey(value), style: textStyle),
+      child: Container(
+        key: key,
+        padding: EdgeInsets.symmetric(vertical: 28.h, horizontal: 40.w),
+        decoration: BoxDecoration(
+          color: cardColor,
+          borderRadius: BorderRadius.circular(28.r),
+        ),
+        child: Text(value, style: textStyle),
+      ),
     );
   }
 }
