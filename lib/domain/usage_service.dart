@@ -154,7 +154,26 @@ class UsageService {
   }
 
   Future<void> _flushAggregatorDelta() async {
-    final delta = _aggregator.drainUsage();
+    final rawDelta = _aggregator.drainUsage();
+    if (rawDelta.isEmpty) {
+      return;
+    }
+
+    // 为了让实时 UI 与持久化后的结果严格按「整秒」对齐，这里将聚合结果
+    // 统一量化到整数秒：对每个 (day, appId) 只保留 duration.inSeconds。
+    final delta = <DateTime, Map<String, Duration>>{};
+    rawDelta.forEach((day, perApp) {
+      final perAppSeconds = <String, Duration>{};
+      perApp.forEach((appId, duration) {
+        final seconds = duration.inSeconds;
+        if (seconds <= 0) return;
+        perAppSeconds[appId] = Duration(seconds: seconds);
+      });
+      if (perAppSeconds.isNotEmpty) {
+        delta[day] = perAppSeconds;
+      }
+    });
+
     if (delta.isEmpty) {
       return;
     }
