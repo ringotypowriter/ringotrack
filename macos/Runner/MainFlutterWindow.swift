@@ -19,6 +19,7 @@ class MainFlutterWindow: NSWindow {
     NSLog("[RingoTrack] MainFlutterWindow awakeFromNib - setting up FlutterViewController")
 
     let flutterViewController = FlutterViewController()
+    flutterViewController.backgroundColor = NSColor.clear
     self.contentViewController = flutterViewController
 
     let windowFrame = self.frame
@@ -82,6 +83,20 @@ class MainFlutterWindow: NSWindow {
     NSLog("[RingoTrack] MainFlutterWindow set up foreground app + stroke event channels")
 
     super.awakeFromNib()
+
+    // 在 Flutter 内容视图内部添加一层毛玻璃背景，仅影响内容区域，不动系统标题栏。
+    if let contentView = self.contentView {
+      let blurView = NSVisualEffectView(frame: contentView.bounds)
+      blurView.autoresizingMask = [.width, .height]
+      blurView.material = .underWindowBackground
+      blurView.blendingMode = .behindWindow
+      blurView.state = .active
+
+      contentView.wantsLayer = true
+      contentView.layer?.backgroundColor = NSColor.clear.cgColor
+
+      contentView.addSubview(blurView, positioned: .below, relativeTo: nil)
+    }
   }
 
   private func enterPinnedMode() -> Bool {

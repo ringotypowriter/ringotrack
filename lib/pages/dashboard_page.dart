@@ -9,6 +9,7 @@ import 'package:ringotrack/domain/usage_analysis.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:ringotrack/widgets/ringo_hourly_line_heatmap.dart';
 import 'package:ringotrack/widgets/heatmap_color_scale.dart';
+import 'dart:io' show Platform;
 
 const double _heatmapTileSize = 13;
 const double _heatmapTileSpacing = 3;
@@ -100,7 +101,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     final metricsAsync = ref.watch(dashboardMetricsProvider);
 
     return Scaffold(
-      backgroundColor: Colors.grey[100],
+      backgroundColor: Platform.isMacOS ? Colors.transparent : Colors.grey[100],
       body: Center(
         child: ConstrainedBox(
           constraints: BoxConstraints(maxWidth: 1440.w, maxHeight: 900.h),
