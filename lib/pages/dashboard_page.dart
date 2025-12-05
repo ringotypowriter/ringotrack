@@ -10,6 +10,8 @@ import 'package:fl_chart/fl_chart.dart';
 
 const double _heatmapTileSize = 13;
 const double _heatmapTileSpacing = 3;
+const double _dashboardCardRadius = 12;
+const double _dashboardElementRadius = 4;
 
 enum DashboardTab { overview, perApp, analysis }
 
@@ -34,57 +36,53 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     final metricsAsync = ref.watch(dashboardMetricsProvider);
 
     return Scaffold(
-      backgroundColor: theme.colorScheme.surface,
+      backgroundColor: Colors.grey[100],
       body: Center(
         child: ConstrainedBox(
           constraints: BoxConstraints(maxWidth: 1440.w, maxHeight: 900.h),
-          child: Container(
-            color: Colors.white,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _buildTopBar(context, theme),
-                const Divider(height: 1),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 64,
-                      vertical: 40,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _buildSummaryRow(context, theme, metricsAsync),
-                              const SizedBox(height: 40),
-                              _buildTabs(theme),
-                              const SizedBox(height: 16),
-                              Expanded(
-                                child: _selectedTab ==
-                                        DashboardTab.analysis
-                                    ? _buildAnalysisList(theme, asyncUsage)
-                                    : _buildHeatmapShell(
-                                        theme,
-                                        start: start,
-                                        end: end,
-                                        asyncUsage: asyncUsage,
-                                        selectedTab: _selectedTab,
-                                      ),
-                              ),
-                            ],
-                          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildTopBar(context, theme),
+              const Divider(height: 1),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 64,
+                    vertical: 40,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildSummaryRow(context, theme, metricsAsync),
+                            const SizedBox(height: 40),
+                            _buildTabs(theme),
+                            const SizedBox(height: 16),
+                            Expanded(
+                              child: _selectedTab == DashboardTab.analysis
+                                  ? _buildAnalysisList(theme, asyncUsage)
+                                  : _buildHeatmapShell(
+                                      theme,
+                                      start: start,
+                                      end: end,
+                                      asyncUsage: asyncUsage,
+                                      selectedTab: _selectedTab,
+                                    ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 16),
-                        _buildFooter(theme, metricsAsync),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(height: 16),
+                      _buildFooter(theme, metricsAsync),
+                    ],
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -92,7 +90,8 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
   }
 
   Widget _buildTopBar(BuildContext context, ThemeData theme) {
-    return Padding(
+    return Container(
+      color: Colors.white,
       padding: EdgeInsets.symmetric(horizontal: 64.w, vertical: 18.h),
       child: Row(
         children: [
@@ -130,6 +129,12 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     AsyncValue<DashboardMetrics> metricsAsync,
   ) {
     final titles = ['今日时长', '本周时长', '本月时长', '连续天数'];
+    final icons = [
+      Icons.today_outlined,
+      Icons.view_week_outlined,
+      Icons.calendar_month_outlined,
+      Icons.local_fire_department_outlined,
+    ];
 
     String valueFor(int index) {
       return metricsAsync.when(
@@ -155,54 +160,54 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
       children: [
         for (var i = 0; i < titles.length; i++) ...[
           Expanded(
-            child: Container(
+            child: _HoverCard(
               height: 120.h,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(2),
-                border: Border.all(color: const Color(0xFFE3E3E3)),
-              ),
               padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 20.h),
-              child: Stack(
+              subtleShadow: false,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
+                      Icon(
+                        icons[i],
+                        size: 18.r,
+                        color: theme.colorScheme.primary,
+                      ),
+                      SizedBox(width: 8.w),
                       Text(
                         titles[i],
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: Colors.black87,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Text(
-                            valueFor(i),
-                            style: theme.textTheme.headlineSmall?.copyWith(
-                              fontWeight: FontWeight.w500,
-                              letterSpacing: -0.2,
-                            ),
-                          ),
-                        ],
+                      const Spacer(),
+                      if (i == 0)
+                        IconButton(
+                          onPressed: () => context.go('/clock'),
+                          icon: const Icon(Icons.fullscreen),
+                          tooltip: '全屏',
+                          splashRadius: 18.r,
+                          iconSize: 18.r,
+                          padding: EdgeInsets.zero,
+                          visualDensity: VisualDensity.compact,
+                        ),
+                    ],
+                  ),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        valueFor(i),
+                        style: theme.textTheme.headlineMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: -0.2,
+                        ),
                       ),
                     ],
                   ),
-                  if (i == 0)
-                    Positioned(
-                      top: 0,
-                      right: 0,
-                      child: IconButton(
-                        onPressed: () => context.go('/clock'),
-                        icon: const Icon(Icons.fullscreen),
-                        tooltip: '全屏时钟',
-                        splashRadius: 18.r,
-                        iconSize: 18.r,
-                        padding: EdgeInsets.zero,
-                        visualDensity: VisualDensity.compact,
-                      ),
-                    ),
                 ],
               ),
             ),
@@ -392,6 +397,12 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                   return totalFor(b).compareTo(totalFor(a));
                 });
               return ListView.builder(
+                padding: EdgeInsets.fromLTRB(
+                  horizontalPadding,
+                  32.h,
+                  horizontalPadding,
+                  24.h,
+                ),
                 itemCount: appIds.length,
                 itemBuilder: (context, index) {
                   final appId = appIds[index];
@@ -448,14 +459,8 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
           key: const ValueKey('dashboard-heatmap-shell'),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(2),
+            borderRadius: BorderRadius.circular(_dashboardCardRadius),
             border: Border.all(color: const Color(0xFFE3E3E3)),
-          ),
-          padding: EdgeInsets.fromLTRB(
-            horizontalPadding,
-            32.h,
-            horizontalPadding,
-            24.h,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -463,9 +468,25 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
               if (selectedTab == DashboardTab.perApp)
                 Expanded(child: heatmapChild)
               else
-                heatmapChild,
-              SizedBox(height: 24.h),
-              _buildLegend(theme),
+                Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    horizontalPadding,
+                    32.h,
+                    horizontalPadding,
+                    16.h,
+                  ),
+                  child: heatmapChild,
+                ),
+              SizedBox(height: 8.h),
+              Padding(
+                padding: EdgeInsets.fromLTRB(
+                  horizontalPadding,
+                  0,
+                  horizontalPadding,
+                  24.h,
+                ),
+                child: _buildLegend(theme),
+              ),
             ],
           ),
         );
@@ -500,7 +521,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                 height: 10.r,
                 decoration: BoxDecoration(
                   color: baseColor.withValues(alpha: opacity),
-                  borderRadius: BorderRadius.circular(2),
+                  borderRadius: BorderRadius.circular(_dashboardElementRadius),
                 ),
               ),
             );
@@ -541,10 +562,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(2),
+        borderRadius: BorderRadius.circular(_dashboardCardRadius),
         border: Border.all(color: const Color(0xFFE3E3E3)),
       ),
-      padding: EdgeInsets.fromLTRB(24.w, 24.h, 24.w, 16.h),
       child: asyncUsage.when(
         loading: () =>
             const Center(child: CircularProgressIndicator(strokeWidth: 2)),
@@ -588,7 +608,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
           );
 
           return ListView(
-            padding: EdgeInsets.zero,
+            padding: EdgeInsets.fromLTRB(24.w, 24.h, 24.w, 16.h),
             children: [
               _AnalysisCard(
                 title: '最近 30 天趋势',
@@ -765,7 +785,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
               toY: _hours(weekly[i].total),
               color: color,
               width: 16,
-              borderRadius: BorderRadius.circular(2),
+              borderRadius: BorderRadius.circular(_dashboardElementRadius),
             ),
           ],
         ),
@@ -914,7 +934,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
             toY: value,
             color: color,
             width: 18,
-            borderRadius: BorderRadius.circular(2),
+            borderRadius: BorderRadius.circular(_dashboardElementRadius),
           ),
         ],
       );
@@ -1050,7 +1070,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
   }
 }
 
-class _TabButton extends StatelessWidget {
+class _TabButton extends StatefulWidget {
   const _TabButton({
     required this.label,
     required this.isSelected,
@@ -1062,22 +1082,53 @@ class _TabButton extends StatelessWidget {
   final Color selectedColor;
 
   @override
+  State<_TabButton> createState() => _TabButtonState();
+}
+
+class _TabButtonState extends State<_TabButton> {
+  bool _hovered = false;
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final bool isSelected = widget.isSelected;
 
-    return Container(
-      height: 36.h,
-      padding: EdgeInsets.symmetric(horizontal: 24.w),
-      decoration: BoxDecoration(
-        color: isSelected ? selectedColor : Colors.white,
-        borderRadius: BorderRadius.circular(2),
-        border: Border.all(color: const Color(0xFFE3E3E3)),
-      ),
-      alignment: Alignment.center,
-      child: Text(
-        label,
-        style: theme.textTheme.bodyMedium?.copyWith(
-          color: isSelected ? Colors.white : Colors.black87,
+    final Color backgroundColor;
+    final Color borderColor;
+    final Color textColor;
+
+    if (isSelected) {
+      backgroundColor = widget.selectedColor;
+      borderColor = widget.selectedColor;
+      textColor = Colors.white;
+    } else {
+      backgroundColor = _hovered
+          ? theme.colorScheme.surfaceContainerLow
+          : Colors.white;
+      borderColor = _hovered
+          ? theme.colorScheme.outline.withValues(alpha: 0.6)
+          : const Color(0xFFE3E3E3);
+      textColor = Colors.black87;
+    }
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeOut,
+        height: 36.h,
+        padding: EdgeInsets.symmetric(horizontal: 24.w),
+        decoration: BoxDecoration(
+          color: backgroundColor,
+          borderRadius: BorderRadius.circular(_dashboardCardRadius),
+          border: Border.all(color: borderColor),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          widget.label,
+          style: theme.textTheme.bodyMedium?.copyWith(color: textColor),
         ),
       ),
     );
@@ -1103,21 +1154,10 @@ class _AnalysisCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Container(
+    return _HoverCard(
       margin: EdgeInsets.only(bottom: 4.h),
       padding: EdgeInsets.all(16.w),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: const Color(0xFFE3E3E3)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
+      subtleShadow: true,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1143,6 +1183,66 @@ class _AnalysisCard extends StatelessWidget {
           SizedBox(height: 12.h),
           child,
         ],
+      ),
+    );
+  }
+}
+
+class _HoverCard extends StatefulWidget {
+  const _HoverCard({
+    required this.child,
+    this.height,
+    this.padding,
+    this.margin,
+    this.subtleShadow = false,
+  });
+
+  final Widget child;
+  final double? height;
+  final EdgeInsetsGeometry? padding;
+  final EdgeInsetsGeometry? margin;
+  final bool subtleShadow;
+
+  @override
+  State<_HoverCard> createState() => _HoverCardState();
+}
+
+class _HoverCardState extends State<_HoverCard> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final baseAlpha = widget.subtleShadow ? 0.02 : 0.0;
+    final hoverAlpha = widget.subtleShadow ? 0.06 : 0.07;
+
+    final double currentAlpha = _hovered ? hoverAlpha : baseAlpha;
+    final List<BoxShadow> shadows = [];
+    if (currentAlpha > 0) {
+      shadows.add(
+        BoxShadow(
+          color: Colors.black.withValues(alpha: currentAlpha),
+          blurRadius: _hovered ? 18 : 10,
+          offset: Offset(0, _hovered ? 8 : 4),
+        ),
+      );
+    }
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 140),
+        curve: Curves.easeOut,
+        height: widget.height,
+        margin: widget.margin,
+        padding: widget.padding,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(_dashboardCardRadius),
+          border: Border.all(color: const Color(0xFFE3E3E3)),
+          boxShadow: shadows,
+        ),
+        child: widget.child,
       ),
     );
   }

@@ -27,6 +27,7 @@ class AppTheme {
       brightness: Brightness.light,
       surface: surface,
     );
+    final baseTextTheme = ThemeData.light().textTheme;
 
     return ThemeData(
       useMaterial3: true,
@@ -35,8 +36,10 @@ class AppTheme {
         onPrimary: Colors.white,
       ),
       scaffoldBackgroundColor: scaffoldBackground,
-      textTheme: ThemeData.light().textTheme.apply(
+      textTheme: baseTextTheme.apply(
         fontFamilyFallback: const ['SF Pro Text', 'PingFang SC'],
+        bodyColor: baseScheme.onSurface.withValues(alpha: 0.86),
+        displayColor: baseScheme.onSurface.withValues(alpha: 0.9),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
