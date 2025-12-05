@@ -552,7 +552,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
               ),
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-                child: const Divider(height: 32, thickness: 1),
+                child: Divider(height: 32.h, thickness: 1),
               ),
               Padding(
                 padding: EdgeInsets.fromLTRB(
@@ -563,19 +563,22 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                 ),
                 child: Row(
                   children: [
+                    SizedBox(width: 16.w),
                     _HoverIconButton(
                       icon: Icons.arrow_back_ios_new_rounded,
                       enabled: canGoPrev,
                       onTap: () => shiftDay(-1),
                     ),
-                    const SizedBox(width: 8),
+                    SizedBox(width: 8.w),
                     Text(
                       _formatDayLabel(normalizedSelected, today),
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: Colors.black87,
+                        fontSize:
+                            theme.textTheme.bodyMedium?.fontSize?.sp,
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    SizedBox(width: 8.w),
                     _HoverIconButton(
                       icon: Icons.arrow_forward_ios_rounded,
                       enabled: canGoNext,
@@ -1328,14 +1331,14 @@ class _HoverIconButtonState extends State<_HoverIconButton> {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 120),
           curve: Curves.easeOut,
-          padding: const EdgeInsets.all(6),
+          padding: EdgeInsets.all(6.r),
           decoration: BoxDecoration(
             color: widget.enabled && _hovered
                 ? theme.colorScheme.surfaceContainerLow
                 : Colors.transparent,
             shape: BoxShape.circle,
           ),
-          child: Icon(widget.icon, size: 18, color: color),
+          child: Icon(widget.icon, size: 18.r, color: color),
         ),
       ),
     );

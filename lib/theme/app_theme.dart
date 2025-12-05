@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// 可选主题的唯一标识
 enum AppThemeId { ringoGreen, exusiaiCoral, mintJade, pumpkinGold }
@@ -27,7 +28,12 @@ class AppTheme {
       brightness: Brightness.light,
       surface: surface,
     );
-    final baseTextTheme = ThemeData.light().textTheme;
+
+    final baseTextTheme = ThemeData.light().textTheme.apply(
+          fontFamilyFallback: const ['SF Pro Text', 'PingFang SC'],
+          bodyColor: baseScheme.onSurface.withValues(alpha: 0.86),
+          displayColor: baseScheme.onSurface.withValues(alpha: 0.9),
+        );
 
     return ThemeData(
       useMaterial3: true,
@@ -36,11 +42,7 @@ class AppTheme {
         onPrimary: Colors.white,
       ),
       scaffoldBackgroundColor: scaffoldBackground,
-      textTheme: baseTextTheme.apply(
-        fontFamilyFallback: const ['SF Pro Text', 'PingFang SC'],
-        bodyColor: baseScheme.onSurface.withValues(alpha: 0.86),
-        displayColor: baseScheme.onSurface.withValues(alpha: 0.9),
-      ),
+      textTheme: baseTextTheme,
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: Colors.white,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// 单日 24 小时线性热力图。
 ///
@@ -26,12 +27,12 @@ class RingoHourlyLineHeatmap extends StatefulWidget {
   final double cornerRadius;
   final bool showTicks;
   final TextStyle? tickStyle;
+
   /// 相对可用宽度的占比，避免铺满让视觉更内敛。
   final double widthFactor;
 
   @override
-  State<RingoHourlyLineHeatmap> createState() =>
-      _RingoHourlyLineHeatmapState();
+  State<RingoHourlyLineHeatmap> createState() => _RingoHourlyLineHeatmapState();
 }
 
 class _RingoHourlyLineHeatmapState extends State<RingoHourlyLineHeatmap> {
@@ -74,19 +75,18 @@ class _RingoHourlyLineHeatmapState extends State<RingoHourlyLineHeatmap> {
 
   @override
   Widget build(BuildContext context) {
-    final tickStyle =
-        widget.tickStyle ?? Theme.of(context).textTheme.bodySmall;
+    final tickStyle = widget.tickStyle ?? Theme.of(context).textTheme.bodySmall;
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final factor =
-            widget.widthFactor.clamp(0.6, 1.0); // 保留一定左右留白
+        final factor = widget.widthFactor.clamp(0.6, 1.0); // 保留一定左右留白
         final totalWidth = constraints.maxWidth * factor;
         final segmentCount = 24;
-        final totalSpacing =
-            widget.segmentSpacing * (segmentCount - 1);
-        final segmentWidth =
-            (totalWidth - totalSpacing) / segmentCount;
+        final spacing = widget.segmentSpacing.w;
+        final totalSpacing = spacing * (segmentCount - 1);
+        final segmentWidth = (totalWidth - totalSpacing) / segmentCount;
+        final barHeight = widget.barHeight.h;
+        final radius = widget.cornerRadius.r;
 
         final segments = <Widget>[];
         for (var hour = 0; hour < segmentCount; hour++) {
@@ -116,12 +116,12 @@ class _RingoHourlyLineHeatmapState extends State<RingoHourlyLineHeatmap> {
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 120),
               width: segmentWidth,
-              height: widget.barHeight,
+              height: barHeight,
               decoration: BoxDecoration(
                 color: color,
                 borderRadius: BorderRadius.horizontal(
-                  left: isFirst ? Radius.circular(widget.cornerRadius) : Radius.zero,
-                  right: isLast ? Radius.circular(widget.cornerRadius) : Radius.zero,
+                  left: isFirst ? Radius.circular(radius) : Radius.zero,
+                  right: isLast ? Radius.circular(radius) : Radius.zero,
                 ),
               ),
             ),
@@ -129,12 +129,12 @@ class _RingoHourlyLineHeatmapState extends State<RingoHourlyLineHeatmap> {
 
           segments.add(segment);
           if (hour != segmentCount - 1) {
-            segments.add(SizedBox(width: widget.segmentSpacing));
+            segments.add(SizedBox(width: spacing));
           }
         }
 
         return SizedBox(
-          height: widget.barHeight + (widget.showTicks ? 22 : 0) + 12,
+          height: barHeight + (widget.showTicks ? 22.h : 0) + 12.h,
           child: Align(
             alignment: Alignment.center,
             child: SizedBox(
@@ -150,7 +150,7 @@ class _RingoHourlyLineHeatmapState extends State<RingoHourlyLineHeatmap> {
                         children: segments,
                       ),
                       if (widget.showTicks) ...[
-                        const SizedBox(height: 10),
+                        SizedBox(height: 10.h),
                         _buildTicks(tickStyle),
                       ],
                     ],
@@ -173,15 +173,18 @@ class _RingoHourlyLineHeatmapState extends State<RingoHourlyLineHeatmap> {
   Widget _buildTicks(TextStyle? style) {
     const ticks = [0, 6, 12, 18, 24];
     return SizedBox(
-      height: 12,
+      height: 12.h,
       child: Stack(
         children: [
           for (final t in ticks)
             Align(
-              alignment: Alignment(-1 + t / 12, 0),
+              alignment: Alignment(
+                t == 24 ? (1 - 1 / 48) : (-1 + (t + 0.5) / 12).clamp(-1.0, 1.0),
+                0,
+              ),
               child: Text(
                 t.toString().padLeft(2, '0'),
-                style: style?.copyWith(color: Colors.black54, fontSize: 11),
+                style: style?.copyWith(color: Colors.black54, fontSize: 11.sp),
               ),
             ),
         ],
@@ -194,28 +197,25 @@ class _RingoHourlyLineHeatmapState extends State<RingoHourlyLineHeatmap> {
     required Duration duration,
     required double segmentWidth,
   }) {
-    final left =
-        hour * (segmentWidth + widget.segmentSpacing) +
-        segmentWidth / 2;
+    final spacing = widget.segmentSpacing.w;
+    final left = hour * (segmentWidth + spacing) + segmentWidth / 2;
 
     final label = _formatTooltip(hour, duration);
 
     final textStyle =
-        Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Colors.white,
-            ) ??
+        Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.white) ??
         const TextStyle(color: Colors.white, fontSize: 12);
 
     return Positioned(
       left: left,
-      top: -32,
+      top: -32.r,
       child: Transform.translate(
-        offset: const Offset(-32, 0),
+        offset: Offset(-32.w, 0),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
           decoration: BoxDecoration(
             color: Colors.black87,
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: BorderRadius.circular(6.r),
           ),
           child: Text(label, style: textStyle),
         ),
@@ -304,8 +304,9 @@ class _RingoHourlyLineHeatmapState extends State<RingoHourlyLineHeatmap> {
       absoluteScore = absoluteScore * 0.7 + normalized * 0.3;
     }
 
-    var intensity =
-        relativeScore > absoluteScore ? relativeScore : absoluteScore;
+    var intensity = relativeScore > absoluteScore
+        ? relativeScore
+        : absoluteScore;
 
     if (intensity < 0.20) {
       intensity = 0.20;
