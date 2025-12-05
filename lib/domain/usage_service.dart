@@ -1,5 +1,5 @@
 import 'dart:async';
-
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:ringotrack/domain/usage_models.dart';
 import 'package:ringotrack/domain/usage_repository.dart';
@@ -99,23 +99,54 @@ class UsageService {
   Future<void> _onTick(Timer timer) async {
     final now = DateTime.now();
     if (_pointerDown) {
-      // 长按/落笔持续视为活跃，避免超过阈值被误判 idle。
       _lastStrokeTime = now;
-      if (_isIdle) {
-        _leaveIdle(now);
-      }
     }
 
     final idleDuration = now.difference(_lastStrokeTime);
     final nowIdle = idleDuration >= idleThreshold;
 
     if (!_isIdle && nowIdle) {
+      // 进入 Idle：记录详细日志，方便在 Windows/macOS 下核对阈值是否为 60s。
+      if (kDebugMode) {
+        debugPrint(
+          '[UsageService][AFK] enter idle '
+          'platform=${Platform.operatingSystem} '
+          'idleDurationMs=${idleDuration.inMilliseconds} '
+          'lastStroke=$_lastStrokeTime now=$now '
+          'pointerDown=$_pointerDown',
+        );
+      }
+      AppLogService.instance.logInfo(
+        'usage_afk',
+        'enter_idle platform=${Platform.operatingSystem} '
+        'idleDurationMs=${idleDuration.inMilliseconds} '
+        'lastStroke=$_lastStrokeTime now=$now '
+        'pointerDown=$_pointerDown',
+      );
+
       _enterIdle(now);
       await _flushAggregatorDelta();
       return;
     }
 
     if (_isIdle && !nowIdle) {
+      if (kDebugMode) {
+        debugPrint(
+          '[UsageService][AFK] leave idle '
+          'platform=${Platform.operatingSystem} '
+          'idleDurationMs=${idleDuration.inMilliseconds} '
+          'lastStroke=$_lastStrokeTime now=$now '
+          'pointerDown=$_pointerDown',
+        );
+      }
+      AppLogService.instance.logInfo(
+        'usage_afk',
+        'leave_idle platform=${Platform.operatingSystem} '
+        'idleDurationMs=${idleDuration.inMilliseconds} '
+        'lastStroke=$_lastStrokeTime now=$now '
+        'pointerDown=$_pointerDown',
+      );
+
       _leaveIdle(now);
       await _flushAggregatorDelta();
       return;
