@@ -1,5 +1,7 @@
 name: Build All Platforms
 
+# 手动触发：提供完全的构建和发布控制权
+# 测试步骤必须在构建前通过
 on:
   workflow_dispatch:
     inputs:
@@ -58,6 +60,10 @@ jobs:
 
       - name: Install dependencies
         run: flutter pub get
+
+      - name: Run Flutter tests
+        run: flutter test
+        continue-on-error: false
 
       - name: Build Windows app (release)
         run: flutter build windows --release
@@ -126,6 +132,9 @@ jobs:
 
       - name: Install dependencies
         run: flutter pub get
+
+      - name: Run Flutter tests
+        run: flutter test
 
       - name: Build macOS app (release)
         run: flutter build macos --release
