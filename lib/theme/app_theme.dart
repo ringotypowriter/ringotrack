@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 /// 可选主题的唯一标识
-enum AppThemeId { ringoGreen, exusiaiCoral }
+enum AppThemeId { ringoGreen, exusiaiCoral, mintJade, pumpkinGold }
 
 /// 主题描述结构，集中管理颜色与 ThemeData 构建。
 class AppTheme {
@@ -124,7 +124,30 @@ const AppTheme exusiaiCoralTheme = AppTheme(
   scaffoldBackground: Color(0xFFFFF7F5),
 );
 
-const List<AppTheme> availableThemes = [ringoGreenTheme, exusiaiCoralTheme];
+const AppTheme mintJadeTheme = AppTheme(
+  id: AppThemeId.mintJade,
+  name: '青薄荷',
+  seedColor: Color(0xFF41BEAB),
+  primary: Color(0xFF41BEAB),
+  surface: Colors.white,
+  scaffoldBackground: Color(0xFFF5FFFC),
+);
+
+const AppTheme pumpkinGoldTheme = AppTheme(
+  id: AppThemeId.pumpkinGold,
+  name: '南瓜黄',
+  seedColor: Color(0xFFFF6D1F),
+  primary: Color(0xFFFF6D1F),
+  surface: Colors.white,
+  scaffoldBackground: Color(0xFFFFF4ED),
+);
+
+const List<AppTheme> availableThemes = [
+  ringoGreenTheme,
+  exusiaiCoralTheme,
+  mintJadeTheme,
+  pumpkinGoldTheme,
+];
 
 AppTheme themeFromId(AppThemeId id) {
   return availableThemes.firstWhere(
