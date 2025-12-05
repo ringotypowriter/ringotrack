@@ -574,8 +574,6 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                       _formatDayLabel(normalizedSelected, today),
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: Colors.black87,
-                        fontSize:
-                            theme.textTheme.bodyMedium?.fontSize?.sp,
                       ),
                     ),
                     SizedBox(width: 8.w),

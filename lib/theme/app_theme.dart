@@ -29,11 +29,15 @@ class AppTheme {
       surface: surface,
     );
 
-    final baseTextTheme = ThemeData.light().textTheme.apply(
-          fontFamilyFallback: const ['SF Pro Text', 'PingFang SC'],
-          bodyColor: baseScheme.onSurface.withValues(alpha: 0.86),
-          displayColor: baseScheme.onSurface.withValues(alpha: 0.9),
-        );
+    // 使用带默认字号的 Material2021 字体表，并仅对存在字号的样式按屏幕比例缩放，
+    // 避免在 fontSize 为空的 TextStyle 上叠加 fontSizeFactor 触发断言。
+    final materialTextTheme = Typography.material2021().black;
+    final scaledTextTheme = _scaleTextTheme(materialTextTheme);
+    final baseTextTheme = scaledTextTheme.apply(
+      fontFamilyFallback: const ['SF Pro Text', 'PingFang SC'],
+      bodyColor: baseScheme.onSurface.withValues(alpha: 0.86),
+      displayColor: baseScheme.onSurface.withValues(alpha: 0.9),
+    );
 
     return ThemeData(
       useMaterial3: true,
@@ -152,6 +156,33 @@ const List<AppTheme> availableThemes = [
   mintJadeTheme,
   pumpkinGoldTheme,
 ];
+
+TextTheme _scaleTextTheme(TextTheme base) {
+  final factor = ScreenUtil().textScaleFactor;
+
+  TextStyle? scale(TextStyle? style) {
+    if (style?.fontSize == null) return style;
+    return style!.copyWith(fontSize: style.fontSize! * factor);
+  }
+
+  return base.copyWith(
+    displayLarge: scale(base.displayLarge),
+    displayMedium: scale(base.displayMedium),
+    displaySmall: scale(base.displaySmall),
+    headlineLarge: scale(base.headlineLarge),
+    headlineMedium: scale(base.headlineMedium),
+    headlineSmall: scale(base.headlineSmall),
+    titleLarge: scale(base.titleLarge),
+    titleMedium: scale(base.titleMedium),
+    titleSmall: scale(base.titleSmall),
+    bodyLarge: scale(base.bodyLarge),
+    bodyMedium: scale(base.bodyMedium),
+    bodySmall: scale(base.bodySmall),
+    labelLarge: scale(base.labelLarge),
+    labelMedium: scale(base.labelMedium),
+    labelSmall: scale(base.labelSmall),
+  );
+}
 
 AppTheme themeFromId(AppThemeId id) {
   return availableThemes.firstWhere(
