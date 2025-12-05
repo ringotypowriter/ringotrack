@@ -210,20 +210,35 @@ int _calculateCurrentStreak(
   Map<DateTime, Map<String, Duration>> usageByDate,
   DateTime today,
 ) {
-  var streak = 0;
-  var cursor = today;
-
-  while (true) {
-    final dayKey = _normalizeDay(cursor);
+  bool hasUsageOn(DateTime day) {
+    final dayKey = _normalizeDay(day);
     final perApp = usageByDate[dayKey];
-    final hasUsage =
-        perApp != null &&
+    return perApp != null &&
         perApp.values.any((duration) => duration > Duration.zero);
+  }
 
-    if (!hasUsage) {
-      break;
+  final normalizedToday = _normalizeDay(today);
+
+  // 允许「昨天有画、今天还没画」这种情况继续显示连续天数：
+  // - 如果今天有使用记录，从今天往前算；
+  // - 否则如果昨天有使用记录，从昨天往前算；
+  // - 否则认为当前没有进行中的连续天数（返回 0）。
+  DateTime? anchor;
+  if (hasUsageOn(normalizedToday)) {
+    anchor = normalizedToday;
+  } else {
+    final yesterday = normalizedToday.subtract(const Duration(days: 1));
+    if (hasUsageOn(yesterday)) {
+      anchor = yesterday;
+    } else {
+      return 0;
     }
+  }
 
+  var streak = 0;
+  var cursor = anchor;
+
+  while (hasUsageOn(cursor)) {
     streak++;
     cursor = cursor.subtract(const Duration(days: 1));
   }
