@@ -4,6 +4,8 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ringotrack/domain/drawing_app_preferences.dart';
 import 'package:ringotrack/domain/drawing_app_preferences_controller.dart';
+import 'package:ringotrack/domain/dashboard_preferences.dart';
+import 'package:ringotrack/domain/dashboard_preferences_controller.dart';
 import 'package:ringotrack/providers.dart';
 import 'package:ringotrack/theme/app_theme.dart';
 import 'package:ringotrack/widgets/logs_view_sheet.dart';
@@ -112,6 +114,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               icon: Icons.palette_outlined,
               child: _buildThemePicker(theme),
             ),
+            SizedBox(height: 16.h),
+            _rangeModeSection(theme),
             SizedBox(height: 16.h),
             _trackingSection(theme, prefsAsync),
             SizedBox(height: 16.h),
@@ -841,6 +845,64 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   String _formatDate(DateTime? date, {String label = ''}) {
     if (date == null) return label.isEmpty ? '未选择' : label;
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+  }
+
+  Widget _rangeModeSection(ThemeData theme) {
+    final prefsAsync = ref.watch(dashboardPreferencesControllerProvider);
+    final onSurfaceVariant = theme.colorScheme.onSurfaceVariant;
+
+    return _sectionCard(
+      theme,
+      title: '统计口径',
+      subtitle: '选择热力图的时间统计口径，影响数据加载和月份排布。',
+      icon: Icons.date_range_outlined,
+      child: prefsAsync.when(
+        data: (prefs) {
+          final current = prefs.heatmapRangeMode;
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              DropdownButtonFormField<HeatmapRangeMode>(
+                value: current,
+                decoration: const InputDecoration(
+                  prefixIcon: Icon(Icons.timeline_outlined),
+                ),
+                items: const [
+                  DropdownMenuItem(
+                    value: HeatmapRangeMode.calendarYear,
+                    child: Text('自然年（当年 1-12 月）'),
+                  ),
+                  DropdownMenuItem(
+                    value: HeatmapRangeMode.rolling12Months,
+                    child: Text('最近 12 个月（右侧为当前月）'),
+                  ),
+                ],
+                onChanged: (value) {
+                  if (value == null) return;
+                  ref
+                      .read(dashboardPreferencesControllerProvider.notifier)
+                      .setHeatmapRangeMode(value);
+                },
+              ),
+              SizedBox(height: 8.h),
+              Text(
+                '仅影响热力图视图与加载的数据范围，其他指标（今日/本周/本月）保持自然时间计算。',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: onSurfaceVariant,
+                  height: 1.3,
+                ),
+              ),
+            ],
+          );
+        },
+        loading: () => const Padding(
+          padding: EdgeInsets.symmetric(vertical: 12),
+          child: LinearProgressIndicator(minHeight: 4),
+        ),
+        error: (err, _) => _errorText(theme, '加载热力图偏好失败: $err'),
+      ),
+    );
   }
 
   Widget _buildThemePicker(ThemeData theme) {

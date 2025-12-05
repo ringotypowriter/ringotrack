@@ -35,18 +35,13 @@ void main() {
         ],
       );
 
-      await repo.save(
-        const DrawingAppPreferences(trackedApps: [customApp]),
-      );
+      await repo.save(const DrawingAppPreferences(trackedApps: [customApp]));
 
       final reloaded = await repo.load();
 
       expect(reloaded.trackedApps.length, 1);
       expect(reloaded.trackedApps.first.logicalId, 'custom_example');
-      expect(
-        reloaded.trackedApps.first.ids.first.value,
-        'com.example.mypaint',
-      );
+      expect(reloaded.trackedApps.first.ids.first.value, 'com.example.mypaint');
     });
   });
 }

@@ -12,7 +12,7 @@ class AppLogEntry {
 
   final DateTime timestamp;
   final String level; // DEBUG / INFO / WARN / ERROR
-  final String tag;   // 模块名，比如 foreground_tracker_windows
+  final String tag; // 模块名，比如 foreground_tracker_windows
   final String message;
 }
 
@@ -120,14 +120,18 @@ class AppLogService {
 
     if (Platform.isWindows) {
       final appData = Platform.environment['APPDATA'];
-      final base = appData?.isNotEmpty == true ? appData! : Directory.current.path;
+      final base = appData?.isNotEmpty == true
+          ? appData!
+          : Directory.current.path;
       return Directory('$base${separator}RingoTrack${separator}logs');
     }
 
     if (Platform.isMacOS) {
       final home = Platform.environment['HOME'];
       final base = home?.isNotEmpty == true ? home! : Directory.current.path;
-      return Directory('$base${separator}Library${separator}Application Support${separator}RingoTrack${separator}logs');
+      return Directory(
+        '$base${separator}Library${separator}Application Support${separator}RingoTrack${separator}logs',
+      );
     }
 
     // 其他平台简单放到当前目录

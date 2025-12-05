@@ -2,6 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ringotrack/domain/app_database.dart';
 import 'package:ringotrack/domain/drawing_app_preferences.dart';
 import 'package:ringotrack/domain/drawing_app_preferences_controller.dart';
+import 'package:ringotrack/domain/dashboard_preferences.dart';
+import 'package:ringotrack/domain/dashboard_preferences_controller.dart';
 import 'package:ringotrack/domain/theme_controller.dart';
 import 'package:ringotrack/domain/usage_repository.dart';
 import 'package:ringotrack/domain/usage_service.dart';
@@ -52,16 +54,46 @@ final usageServiceProvider = Provider<UsageService>((ref) {
 // 主题
 final appThemeProvider = appThemeControllerProvider;
 
+// Dashboard 偏好（热力图时间范围）
+final dashboardPrefsProvider = dashboardPreferencesControllerProvider;
+
+/// 根据偏好计算当前热力图的时间窗口。
+/// - calendarYear: 当年 1/1 ~ 12/31
+/// - rolling12Months: 最近 12 个月，右侧对齐当前月
+final heatmapRangeProvider = Provider<({DateTime start, DateTime end})>((ref) {
+  final prefsAsync = ref.watch(dashboardPreferencesControllerProvider);
+  final mode =
+      prefsAsync.value?.heatmapRangeMode ??
+      const DashboardPreferences().heatmapRangeMode;
+
+  final today = DateTime.now();
+  final normalizedToday = _normalizeDay(today);
+
+  DateTime start;
+  DateTime end;
+
+  if (mode == HeatmapRangeMode.rolling12Months) {
+    end = DateTime(normalizedToday.year, normalizedToday.month + 1, 0);
+    start = DateTime(end.year, end.month - 11, 1);
+  } else {
+    start = DateTime(normalizedToday.year, 1, 1);
+    end = DateTime(normalizedToday.year, 12, 31);
+  }
+
+  start = _normalizeDay(start);
+  end = _normalizeDay(end);
+  return (start: start, end: end);
+});
+
 /// 最近一年的使用数据（按日期 -> AppId -> Duration），带实时增量刷新
 final yearlyUsageByDateProvider =
     StreamProvider<Map<DateTime, Map<String, Duration>>>((ref) async* {
       // 确保 UsageService 已启动
       final service = ref.watch(usageServiceProvider);
       final repo = ref.watch(usageRepositoryProvider);
-
-      final today = DateTime.now();
-      final start = DateTime(today.year, 1, 1);
-      final end = DateTime(today.year, 12, 31);
+      final range = ref.watch(heatmapRangeProvider);
+      final start = range.start;
+      final end = range.end;
 
       // 初始全量
       final usageByDate = await repo.loadRange(start, end);
@@ -72,8 +104,13 @@ final yearlyUsageByDateProvider =
         if (delta.isEmpty) continue;
 
         delta.forEach((day, perApp) {
+          final normalizedDay = _normalizeDay(day);
+          if (normalizedDay.isBefore(start) || normalizedDay.isAfter(end)) {
+            return;
+          }
+
           final existingPerApp = usageByDate.putIfAbsent(
-            day,
+            normalizedDay,
             () => <String, Duration>{},
           );
 

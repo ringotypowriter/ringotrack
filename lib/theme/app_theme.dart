@@ -121,10 +121,7 @@ const AppTheme exusiaiCoralTheme = AppTheme(
   scaffoldBackground: Color(0xFFFFF7F5),
 );
 
-const List<AppTheme> availableThemes = [
-  ringoGreenTheme,
-  exusiaiCoralTheme,
-];
+const List<AppTheme> availableThemes = [ringoGreenTheme, exusiaiCoralTheme];
 
 AppTheme themeFromId(AppThemeId id) {
   return availableThemes.firstWhere(

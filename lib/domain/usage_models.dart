@@ -1,18 +1,12 @@
 class AppUsageEntry {
-  AppUsageEntry({
-    required this.appId,
-    required this.duration,
-  });
+  AppUsageEntry({required this.appId, required this.duration});
 
   final String appId;
   final Duration duration;
 }
 
 class DailyUsage {
-  DailyUsage({
-    required this.date,
-    required this.perApp,
-  });
+  DailyUsage({required this.date, required this.perApp});
 
   final DateTime date;
   final Map<String, Duration> perApp;
@@ -23,19 +17,14 @@ class DailyUsage {
 }
 
 class ForegroundAppEvent {
-  ForegroundAppEvent({
-    required this.appId,
-    required this.timestamp,
-  });
+  ForegroundAppEvent({required this.appId, required this.timestamp});
 
   final String appId;
   final DateTime timestamp;
 }
 
 class UsageAggregator {
-  UsageAggregator({
-    required this.isDrawingApp,
-  });
+  UsageAggregator({required this.isDrawingApp});
 
   final bool Function(String appId) isDrawingApp;
 
@@ -83,8 +72,11 @@ class UsageAggregator {
 
     var cursor = start;
     while (cursor.isBefore(end)) {
-      final dayEnd = DateTime(cursor.year, cursor.month, cursor.day)
-          .add(const Duration(days: 1));
+      final dayEnd = DateTime(
+        cursor.year,
+        cursor.month,
+        cursor.day,
+      ).add(const Duration(days: 1));
       final segmentEnd = end.isBefore(dayEnd) ? end : dayEnd;
       final segmentDuration = segmentEnd.difference(cursor);
 

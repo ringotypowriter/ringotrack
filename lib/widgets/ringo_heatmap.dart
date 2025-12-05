@@ -59,20 +59,17 @@ class RingoHeatmap extends StatelessWidget {
     final gridHeight = 7 * tileSize + 6 * spacing;
     final totalWidth =
         (showWeekdayLabels ? weekdayLabelWidth + weekdayLabelGap : 0) +
-            gridWidth;
+        gridWidth;
 
-    final resolvedMonthLabelStyle = monthLabelStyle ??
-        Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Colors.black87,
-            );
+    final resolvedMonthLabelStyle =
+        monthLabelStyle ??
+        Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.black87);
 
-    final resolvedWeekdayLabelStyle = weekdayLabelStyle ??
-        Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Colors.black54,
-            );
+    final resolvedWeekdayLabelStyle =
+        weekdayLabelStyle ??
+        Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.black54);
 
-    final monthLabelHeight =
-        (resolvedMonthLabelStyle?.fontSize ?? 14) * 1.4;
+    final monthLabelHeight = (resolvedMonthLabelStyle?.fontSize ?? 14) * 1.4;
 
     final children = <Widget>[];
 
@@ -151,27 +148,26 @@ class RingoHeatmap extends StatelessWidget {
     required DateTime normalizedEnd,
   }) {
     final labels = <_MonthPosition>[];
-    final year = normalizedStart.year;
+    var cursor = DateTime(normalizedStart.year, normalizedStart.month, 1);
 
-    for (var month = 1; month <= 12; month++) {
-      final firstDayOfMonth = DateTime(year, month, 1);
-      if (firstDayOfMonth.isBefore(normalizedStart) ||
-          firstDayOfMonth.isAfter(normalizedEnd)) {
-        continue;
+    while (!cursor.isAfter(normalizedEnd)) {
+      if (!cursor.isBefore(normalizedStart)) {
+        final diffDays = cursor.difference(calendarStart).inDays;
+        final columnIndex = diffDays ~/ 7;
+
+        labels.add(
+          _MonthPosition(month: cursor.month, columnIndex: columnIndex),
+        );
       }
 
-      final diffDays = firstDayOfMonth.difference(calendarStart).inDays;
-      final columnIndex = diffDays ~/ 7;
-
-      labels.add(_MonthPosition(month: month, columnIndex: columnIndex));
+      cursor = DateTime(cursor.year, cursor.month + 1, 1);
     }
 
     return labels
         .map(
           (label) => Positioned(
-            left: (showWeekdayLabels
-                    ? weekdayLabelWidth + weekdayLabelGap
-                    : 0) +
+            left:
+                (showWeekdayLabels ? weekdayLabelWidth + weekdayLabelGap : 0) +
                 label.columnIndex * (tileSize + spacing),
             child: Text('${label.month}月', style: style),
           ),
@@ -290,11 +286,9 @@ class _HeatmapGridState extends State<_HeatmapGrid> {
         .map((d) => d.inSeconds / 60.0)
         .toList();
 
-    final totalMinutes =
-        minutesList.fold<double>(0, (sum, m) => sum + m);
+    final totalMinutes = minutesList.fold<double>(0, (sum, m) => sum + m);
     _avgMinutes = totalMinutes / minutesList.length;
-    _maxMinutes =
-        minutesList.reduce((a, b) => a > b ? a : b);
+    _maxMinutes = minutesList.reduce((a, b) => a > b ? a : b);
   }
 
   @override
@@ -305,12 +299,11 @@ class _HeatmapGridState extends State<_HeatmapGrid> {
       final tiles = <Widget>[];
 
       for (var i = 0; i < 7; i++) {
-        final date = widget.calendarStart.add(
-          Duration(days: week * 7 + i),
-        );
+        final date = widget.calendarStart.add(Duration(days: week * 7 + i));
         final normalized = DateTime(date.year, date.month, date.day);
 
-        final isInRange = !normalized.isBefore(widget.normalizedStart) &&
+        final isInRange =
+            !normalized.isBefore(widget.normalizedStart) &&
             !normalized.isAfter(widget.normalizedEnd);
 
         final duration = isInRange
@@ -376,47 +369,32 @@ class _HeatmapGridState extends State<_HeatmapGrid> {
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: columns,
-        ),
-        if (_hoveredDay != null)
-          _buildHoverBubble(context),
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: columns),
+        if (_hoveredDay != null) _buildHoverBubble(context),
       ],
     );
   }
 
   Widget _buildHoverBubble(BuildContext context) {
     final hovered = _hoveredDay!;
-    final diffDays =
-        hovered.difference(widget.calendarStart).inDays;
+    final diffDays = hovered.difference(widget.calendarStart).inDays;
     final weekIndex = diffDays ~/ 7;
     final weekdayIndex = diffDays % 7;
 
-    final left =
-        weekIndex * (widget.tileSize + widget.spacing);
-    final top =
-        weekdayIndex * (widget.tileSize + widget.spacing) - 32;
+    final left = weekIndex * (widget.tileSize + widget.spacing);
+    final top = weekdayIndex * (widget.tileSize + widget.spacing) - 32;
 
     final label = _tooltipLabel(hovered, _hoveredDuration);
 
-    final textStyle = Theme.of(context)
-            .textTheme
-            .bodySmall
-            ?.copyWith(color: Colors.white) ??
-        const TextStyle(
-          color: Colors.white,
-          fontSize: 12,
-        );
+    final textStyle =
+        Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.white) ??
+        const TextStyle(color: Colors.white, fontSize: 12);
 
     return Positioned(
       left: left,
       top: top,
       child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 8,
-          vertical: 4,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
           color: Colors.black87,
           borderRadius: BorderRadius.circular(6),

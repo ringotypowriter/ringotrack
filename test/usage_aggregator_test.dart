@@ -8,8 +8,11 @@ void main() {
         isDrawingApp: (id) => id == 'Photoshop.exe',
       );
 
-      final day =
-          DateTime(2025, 1, 1); // treat as local midnight base for the day
+      final day = DateTime(
+        2025,
+        1,
+        1,
+      ); // treat as local midnight base for the day
       final start = day.add(const Duration(hours: 9, minutes: 10));
       final end = day.add(const Duration(hours: 9, minutes: 40));
 
@@ -27,10 +30,7 @@ void main() {
       expect(usage.containsKey(key), isTrue);
       final photoshopDuration = usage[key]!['Photoshop.exe']!;
 
-      expect(
-        photoshopDuration.inMinutes,
-        closeTo(30, 1),
-      );
+      expect(photoshopDuration.inMinutes, closeTo(30, 1));
     });
 
     test('sums multiple sessions of same app (TC-F-02)', () {
@@ -46,10 +46,7 @@ void main() {
       final secondEnd = day.add(const Duration(hours: 11, minutes: 10));
 
       aggregator.onForegroundAppChanged(
-        ForegroundAppEvent(
-          appId: 'CLIPStudioPaint.exe',
-          timestamp: firstStart,
-        ),
+        ForegroundAppEvent(appId: 'CLIPStudioPaint.exe', timestamp: firstStart),
       );
       aggregator.onForegroundAppChanged(
         ForegroundAppEvent(appId: 'Browser', timestamp: firstEnd),
@@ -120,32 +117,33 @@ void main() {
     });
 
     test(
-        'adding drawing app later only counts time after tracking starts (TC-F-05 simplified)',
-        () {
-      var drawingApps = <String>{};
+      'adding drawing app later only counts time after tracking starts (TC-F-05 simplified)',
+      () {
+        var drawingApps = <String>{};
 
-      final aggregator = UsageAggregator(
-        isDrawingApp: (id) => drawingApps.contains(id),
-      );
+        final aggregator = UsageAggregator(
+          isDrawingApp: (id) => drawingApps.contains(id),
+        );
 
-      final day = DateTime(2025, 1, 1);
-      final startTracking = day.add(const Duration(hours: 10, minutes: 30));
-      final end = day.add(const Duration(hours: 11));
+        final day = DateTime(2025, 1, 1);
+        final startTracking = day.add(const Duration(hours: 10, minutes: 30));
+        final end = day.add(const Duration(hours: 11));
 
-      drawingApps.add('PureRef');
+        drawingApps.add('PureRef');
 
-      aggregator.onForegroundAppChanged(
-        ForegroundAppEvent(appId: 'PureRef', timestamp: startTracking),
-      );
-      aggregator.onForegroundAppChanged(
-        ForegroundAppEvent(appId: 'Browser', timestamp: end),
-      );
+        aggregator.onForegroundAppChanged(
+          ForegroundAppEvent(appId: 'PureRef', timestamp: startTracking),
+        );
+        aggregator.onForegroundAppChanged(
+          ForegroundAppEvent(appId: 'Browser', timestamp: end),
+        );
 
-      final usage = aggregator.usageByDate;
-      final key = DateTime(2025, 1, 1);
+        final usage = aggregator.usageByDate;
+        final key = DateTime(2025, 1, 1);
 
-      final duration = usage[key]!['PureRef']!;
-      expect(duration.inMinutes, closeTo(30, 1));
-    });
+        final duration = usage[key]!['PureRef']!;
+        expect(duration.inMinutes, closeTo(30, 1));
+      },
+    );
   });
 }

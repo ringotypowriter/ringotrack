@@ -28,8 +28,10 @@ void main() {
         day: {'Photoshop.exe': const Duration(minutes: 20)},
       });
 
-      final range =
-          await repo.loadRange(DateTime(2025, 1, 1), DateTime(2025, 1, 1));
+      final range = await repo.loadRange(
+        DateTime(2025, 1, 1),
+        DateTime(2025, 1, 1),
+      );
 
       expect(range.containsKey(day), isTrue);
       final duration = range[day]!['Photoshop.exe']!;
@@ -47,8 +49,10 @@ void main() {
         day3: {'Photoshop.exe': const Duration(minutes: 30)},
       });
 
-      final range =
-          await repo.loadRange(DateTime(2025, 1, 2), DateTime(2025, 1, 3));
+      final range = await repo.loadRange(
+        DateTime(2025, 1, 2),
+        DateTime(2025, 1, 3),
+      );
 
       expect(range.containsKey(day1), isFalse);
       expect(range.containsKey(day2), isTrue);
@@ -67,8 +71,10 @@ void main() {
 
       await repo.deleteByAppId('Photoshop.exe');
 
-      final range =
-          await repo.loadRange(DateTime(2025, 1, 1), DateTime(2025, 1, 1));
+      final range = await repo.loadRange(
+        DateTime(2025, 1, 1),
+        DateTime(2025, 1, 1),
+      );
 
       expect(range[day]!.containsKey('Photoshop.exe'), isFalse);
       expect(range[day]!['ClipStudio']!.inMinutes, 20);
@@ -103,8 +109,10 @@ void main() {
 
       await repo.clearAll();
 
-      final range =
-          await repo.loadRange(DateTime(2025, 1, 1), DateTime(2025, 1, 1));
+      final range = await repo.loadRange(
+        DateTime(2025, 1, 1),
+        DateTime(2025, 1, 1),
+      );
 
       expect(range.isEmpty, isTrue);
     });

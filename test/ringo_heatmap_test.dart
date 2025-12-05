@@ -50,8 +50,9 @@ void main() {
       expect(nonZeroDayColor, isNot(equals(empty)));
     });
 
-    testWidgets(
-        'day with sub-minute usage still gets non-empty color', (tester) async {
+    testWidgets('day with sub-minute usage still gets non-empty color', (
+      tester,
+    ) async {
       final start = DateTime(2025, 1, 1);
       final end = DateTime(2025, 1, 1);
 
@@ -82,80 +83,83 @@ void main() {
     });
 
     testWidgets(
-        'day with >5h always has at least half opacity even when average is high',
-        (tester) async {
-      final start = DateTime(2025, 1, 1);
-      final end = DateTime(2025, 1, 5);
+      'day with >5h always has at least half opacity even when average is high',
+      (tester) async {
+        final start = DateTime(2025, 1, 1);
+        final end = DateTime(2025, 1, 5);
 
-      // 四天 10 小时 + 一天 5 小时，确保平均值本身很高，
-      // 仍然要求 5h 那天至少达到 0.5 的深度。
-      final dailyTotals = <DateTime, Duration>{
-        DateTime(2025, 1, 1): const Duration(hours: 10),
-        DateTime(2025, 1, 2): const Duration(hours: 10),
-        DateTime(2025, 1, 3): const Duration(hours: 10),
-        DateTime(2025, 1, 4): const Duration(hours: 10),
-        DateTime(2025, 1, 5): const Duration(hours: 5),
-      };
+        // 四天 10 小时 + 一天 5 小时，确保平均值本身很高，
+        // 仍然要求 5h 那天至少达到 0.5 的深度。
+        final dailyTotals = <DateTime, Duration>{
+          DateTime(2025, 1, 1): const Duration(hours: 10),
+          DateTime(2025, 1, 2): const Duration(hours: 10),
+          DateTime(2025, 1, 3): const Duration(hours: 10),
+          DateTime(2025, 1, 4): const Duration(hours: 10),
+          DateTime(2025, 1, 5): const Duration(hours: 5),
+        };
 
-      const base = Colors.green;
+        const base = Colors.green;
 
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: RingoHeatmap(
-              start: start,
-              end: end,
-              dailyTotals: dailyTotals,
-              baseColor: base,
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: RingoHeatmap(
+                start: start,
+                end: end,
+                dailyTotals: dailyTotals,
+                baseColor: base,
+              ),
             ),
           ),
-        ),
-      );
+        );
 
-      final fiveHourColor = _colorForDay(tester, DateTime(2025, 1, 5));
-      expect(fiveHourColor.opacity, greaterThanOrEqualTo(0.5));
-    });
+        final fiveHourColor = _colorForDay(tester, DateTime(2025, 1, 5));
+        expect(fiveHourColor.opacity, greaterThanOrEqualTo(0.5));
+      },
+    );
 
     testWidgets(
-        'day with about 2x the average usage is noticeably deeper than near-average day',
-        (tester) async {
-      final start = DateTime(2025, 1, 1);
-      final end = DateTime(2025, 1, 4);
+      'day with about 2x the average usage is noticeably deeper than near-average day',
+      (tester) async {
+        final start = DateTime(2025, 1, 1);
+        final end = DateTime(2025, 1, 4);
 
-      // 三天各 1 小时 + 一天 3 小时，
-      // 非零平均为 1.5 小时，最后一天约为 2x 平均。
-      final dailyTotals = <DateTime, Duration>{
-        DateTime(2025, 1, 1): const Duration(hours: 1),
-        DateTime(2025, 1, 2): const Duration(hours: 1),
-        DateTime(2025, 1, 3): const Duration(hours: 1),
-        DateTime(2025, 1, 4): const Duration(hours: 3),
-      };
+        // 三天各 1 小时 + 一天 3 小时，
+        // 非零平均为 1.5 小时，最后一天约为 2x 平均。
+        final dailyTotals = <DateTime, Duration>{
+          DateTime(2025, 1, 1): const Duration(hours: 1),
+          DateTime(2025, 1, 2): const Duration(hours: 1),
+          DateTime(2025, 1, 3): const Duration(hours: 1),
+          DateTime(2025, 1, 4): const Duration(hours: 3),
+        };
 
-      const base = Colors.green;
+        const base = Colors.green;
 
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: RingoHeatmap(
-              start: start,
-              end: end,
-              dailyTotals: dailyTotals,
-              baseColor: base,
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: RingoHeatmap(
+                start: start,
+                end: end,
+                dailyTotals: dailyTotals,
+                baseColor: base,
+              ),
             ),
           ),
-        ),
-      );
+        );
 
-      final nearAverageColor = _colorForDay(tester, DateTime(2025, 1, 1));
-      final highRatioColor = _colorForDay(tester, DateTime(2025, 1, 4));
+        final nearAverageColor = _colorForDay(tester, DateTime(2025, 1, 1));
+        final highRatioColor = _colorForDay(tester, DateTime(2025, 1, 4));
 
-      expect(highRatioColor.opacity, greaterThan(nearAverageColor.opacity));
-    });
+        expect(highRatioColor.opacity, greaterThan(nearAverageColor.opacity));
+      },
+    );
   });
 
   group('RingoHeatmap tooltip', () {
-    testWidgets('shows tooltip with date and duration on hover',
-        (tester) async {
+    testWidgets('shows tooltip with date and duration on hover', (
+      tester,
+    ) async {
       final start = DateTime(2025, 1, 1);
       final end = DateTime(2025, 1, 3);
 
@@ -183,9 +187,7 @@ void main() {
       final target = find.byKey(key);
       expect(target, findsOneWidget);
 
-      final gesture = await tester.createGesture(
-        kind: PointerDeviceKind.mouse,
-      );
+      final gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
       addTearDown(gesture.removePointer);
 
       await gesture.addPointer();

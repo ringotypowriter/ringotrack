@@ -48,7 +48,7 @@ class UsageService {
     AppLogService.instance.logDebug(
       'usage_service',
       'onForegroundAppChanged appId=${event.appId} '
-      'timestamp=${event.timestamp.toIso8601String()}',
+          'timestamp=${event.timestamp.toIso8601String()}',
     );
 
     _aggregator.onForegroundAppChanged(event);
@@ -58,9 +58,7 @@ class UsageService {
         final buffer = StringBuffer('[UsageService] persist delta:');
         delta.forEach((day, perApp) {
           perApp.forEach((appId, duration) {
-            buffer.write(
-              '\n  $day $appId -> ${duration.inSeconds}s',
-            );
+            buffer.write('\n  $day $appId -> ${duration.inSeconds}s');
           });
         });
         debugPrint(buffer.toString());
@@ -72,7 +70,7 @@ class UsageService {
           AppLogService.instance.logInfo(
             'usage_service',
             'persist delta day=$day appId=$appId '
-            'duration=${duration.inSeconds}s',
+                'duration=${duration.inSeconds}s',
           );
         });
       });

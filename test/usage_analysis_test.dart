@@ -33,7 +33,7 @@ void main() {
       final analysis = UsageAnalysis(usage);
       final result = analysis.weeklyTotals(
         DateTime(2024, 12, 30), // Monday
-        DateTime(2025, 1, 12),  // Sunday
+        DateTime(2025, 1, 12), // Sunday
       );
 
       expect(result.length, 2);
@@ -61,10 +61,8 @@ void main() {
       );
 
       // Expect A total 70, B total 20
-      final totalA =
-          result.firstWhere((e) => e.appId == 'A').total.inMinutes;
-      final totalB =
-          result.firstWhere((e) => e.appId == 'B').total.inMinutes;
+      final totalA = result.firstWhere((e) => e.appId == 'A').total.inMinutes;
+      final totalB = result.firstWhere((e) => e.appId == 'B').total.inMinutes;
 
       expect(totalA, 70);
       expect(totalB, 20);
@@ -82,12 +80,9 @@ void main() {
         DateTime(2025, 1, 12), // Sunday
       );
 
-      final monday =
-          result.firstWhere((e) => e.weekday == DateTime.monday);
-      final sunday =
-          result.firstWhere((e) => e.weekday == DateTime.sunday);
-      final tuesday =
-          result.firstWhere((e) => e.weekday == DateTime.tuesday);
+      final monday = result.firstWhere((e) => e.weekday == DateTime.monday);
+      final sunday = result.firstWhere((e) => e.weekday == DateTime.sunday);
+      final tuesday = result.firstWhere((e) => e.weekday == DateTime.tuesday);
 
       expect(monday.average.inHours, 2);
       expect(sunday.average.inHours, 1);

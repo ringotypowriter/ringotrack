@@ -3,9 +3,5 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ringotrack/app.dart';
 
 void main() {
-  runApp(
-    const ProviderScope(
-      child: RingoTrackApp(),
-    ),
-  );
+  runApp(const ProviderScope(child: RingoTrackApp()));
 }

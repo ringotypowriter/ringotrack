@@ -2,25 +2,15 @@ import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
-enum AppPlatform {
-  macos,
-  windows,
-  other,
-}
+enum AppPlatform { macos, windows, other }
 
 class AppIdentifier {
-  const AppIdentifier({
-    required this.platform,
-    required this.value,
-  });
+  const AppIdentifier({required this.platform, required this.value});
 
   final AppPlatform platform;
   final String value;
 
-  Map<String, Object?> toJson() => {
-        'platform': platform.name,
-        'value': value,
-      };
+  Map<String, Object?> toJson() => {'platform': platform.name, 'value': value};
 
   factory AppIdentifier.fromJson(Map<String, Object?> json) {
     final platformName = json['platform'] as String? ?? 'other';
@@ -49,11 +39,11 @@ class TrackedApp {
   final List<AppIdentifier> ids;
 
   Map<String, Object?> toJson() => {
-        'logicalId': logicalId,
-        'displayName': displayName,
-        'iconAsset': iconAsset,
-        'ids': ids.map((e) => e.toJson()).toList(),
-      };
+    'logicalId': logicalId,
+    'displayName': displayName,
+    'iconAsset': iconAsset,
+    'ids': ids.map((e) => e.toJson()).toList(),
+  };
 
   factory TrackedApp.fromJson(Map<String, Object?> json) {
     final idsJson = json['ids'] as List<dynamic>? ?? <dynamic>[];
@@ -95,14 +85,8 @@ const List<TrackedApp> defaultTrackedApps = [
     displayName: 'Adobe Photoshop',
     iconAsset: 'assets/tracked_apps/photoshop.png',
     ids: [
-      AppIdentifier(
-        platform: AppPlatform.macos,
-        value: 'com.adobe.photoshop',
-      ),
-      AppIdentifier(
-        platform: AppPlatform.windows,
-        value: 'photoshop.exe',
-      ),
+      AppIdentifier(platform: AppPlatform.macos, value: 'com.adobe.photoshop'),
+      AppIdentifier(platform: AppPlatform.windows, value: 'photoshop.exe'),
     ],
   ),
   TrackedApp(
@@ -114,10 +98,7 @@ const List<TrackedApp> defaultTrackedApps = [
         platform: AppPlatform.macos,
         value: 'com.adobe.illustrator',
       ),
-      AppIdentifier(
-        platform: AppPlatform.windows,
-        value: 'illustrator.exe',
-      ),
+      AppIdentifier(platform: AppPlatform.windows, value: 'illustrator.exe'),
     ],
   ),
   TrackedApp(
@@ -144,14 +125,8 @@ const List<TrackedApp> defaultTrackedApps = [
         platform: AppPlatform.macos,
         value: 'xmunicorn.udongman.paint',
       ),
-      AppIdentifier(
-        platform: AppPlatform.windows,
-        value: 'UDMPaintPRO.exe',
-      ),
-      AppIdentifier(
-        platform: AppPlatform.windows,
-        value: 'UDMPaintEX.exe',
-      ),
+      AppIdentifier(platform: AppPlatform.windows, value: 'UDMPaintPRO.exe'),
+      AppIdentifier(platform: AppPlatform.windows, value: 'UDMPaintEX.exe'),
     ],
   ),
   TrackedApp(
@@ -163,10 +138,7 @@ const List<TrackedApp> defaultTrackedApps = [
         platform: AppPlatform.macos,
         value: 'org.blenderfoundation.blender',
       ),
-      AppIdentifier(
-        platform: AppPlatform.windows,
-        value: 'blender.exe',
-      ),
+      AppIdentifier(platform: AppPlatform.windows, value: 'blender.exe'),
     ],
   ),
   TrackedApp(
@@ -174,37 +146,21 @@ const List<TrackedApp> defaultTrackedApps = [
     displayName: 'Figma',
     iconAsset: 'assets/tracked_apps/figma.png',
     ids: [
-      AppIdentifier(
-        platform: AppPlatform.macos,
-        value: 'com.figma.Desktop',
-      ),
-      AppIdentifier(
-        platform: AppPlatform.windows,
-        value: 'Figma.exe',
-      ),
+      AppIdentifier(platform: AppPlatform.macos, value: 'com.figma.Desktop'),
+      AppIdentifier(platform: AppPlatform.windows, value: 'Figma.exe'),
     ],
   ),
   TrackedApp(
     logicalId: 'sai',
     displayName: 'SAI',
     iconAsset: 'assets/tracked_apps/sai.png',
-    ids: [
-      AppIdentifier(
-        platform: AppPlatform.windows,
-        value: 'sai.exe',
-      ),
-    ],
+    ids: [AppIdentifier(platform: AppPlatform.windows, value: 'sai.exe')],
   ),
   TrackedApp(
     logicalId: 'sai2',
     displayName: 'SAI2',
     iconAsset: 'assets/tracked_apps/sai2.png',
-    ids: [
-      AppIdentifier(
-        platform: AppPlatform.windows,
-        value: 'sai2.exe',
-      ),
-    ],
+    ids: [AppIdentifier(platform: AppPlatform.windows, value: 'sai2.exe')],
   ),
 ];
 

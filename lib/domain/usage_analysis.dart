@@ -19,8 +19,7 @@ class UsageAnalysis {
     return days
         .map((day) {
           final perApp = _usageByDate[_normalizeDay(day)] ?? const {};
-          final total =
-              perApp.values.fold(Duration.zero, (acc, d) => acc + d);
+          final total = perApp.values.fold(Duration.zero, (acc, d) => acc + d);
           return DailyTotal(date: day, total: total, perApp: Map.of(perApp));
         })
         .toList(growable: false);
@@ -55,8 +54,7 @@ class UsageAnalysis {
     return sortedWeekStarts
         .map((weekStart) {
           final perApp = buckets[weekStart] ?? const {};
-          final total =
-              perApp.values.fold(Duration.zero, (acc, d) => acc + d);
+          final total = perApp.values.fold(Duration.zero, (acc, d) => acc + d);
           return WeeklyTotal(
             weekStart: weekStart,
             total: total,
@@ -103,15 +101,13 @@ class UsageAnalysis {
       counts[weekdayIndex] += 1;
       final perApp = _usageByDate[_normalizeDay(day)];
       if (perApp == null) continue;
-      final total =
-          perApp.values.fold(Duration.zero, (acc, d) => acc + d);
+      final total = perApp.values.fold(Duration.zero, (acc, d) => acc + d);
       sums[weekdayIndex] += total;
     }
 
     return List.generate(7, (i) {
       final count = counts[i];
-      final average =
-          count == 0 ? Duration.zero : sums[i] ~/ count;
+      final average = count == 0 ? Duration.zero : sums[i] ~/ count;
       final weekday = i + 1; // DateTime weekday 1-7
       return WeekdayAverage(weekday: weekday, average: average);
     });
@@ -119,11 +115,7 @@ class UsageAnalysis {
 }
 
 class DailyTotal {
-  DailyTotal({
-    required this.date,
-    required this.total,
-    required this.perApp,
-  });
+  DailyTotal({required this.date, required this.total, required this.perApp});
 
   final DateTime date;
   final Duration total;
@@ -144,20 +136,14 @@ class WeeklyTotal {
 }
 
 class AppTotal {
-  AppTotal({
-    required this.appId,
-    required this.total,
-  });
+  AppTotal({required this.appId, required this.total});
 
   final String appId;
   final Duration total;
 }
 
 class WeekdayAverage {
-  WeekdayAverage({
-    required this.weekday,
-    required this.average,
-  });
+  WeekdayAverage({required this.weekday, required this.average});
 
   /// DateTime 周数字：周一=1，周日=7
   final int weekday;

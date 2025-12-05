@@ -114,8 +114,7 @@ class _WindowsForegroundAppTracker implements ForegroundAppTracker {
   String? _lastAppId;
   int? _lastPid;
 
-  _WindowsForegroundAppTracker()
-      : _rtGetForegroundApp = _loadNativeFunction() {
+  _WindowsForegroundAppTracker() : _rtGetForegroundApp = _loadNativeFunction() {
     if (kDebugMode) {
       debugPrint('[ForegroundAppTracker] using Windows implementation');
     }
@@ -134,8 +133,10 @@ class _WindowsForegroundAppTracker implements ForegroundAppTracker {
   static _RtGetForegroundAppDart? _loadNativeFunction() {
     try {
       final lib = ffi.DynamicLibrary.process();
-      return lib.lookupFunction<_RtGetForegroundAppNative,
-          _RtGetForegroundAppDart>('rt_get_foreground_app');
+      return lib
+          .lookupFunction<_RtGetForegroundAppNative, _RtGetForegroundAppDart>(
+            'rt_get_foreground_app',
+          );
     } catch (e, st) {
       AppLogService.instance.logError(
         _logTag,

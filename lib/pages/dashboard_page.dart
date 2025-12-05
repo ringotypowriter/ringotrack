@@ -26,10 +26,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-
-    final today = DateTime.now();
-    final end = DateTime(today.year, 12, 31);
-    final start = DateTime(today.year, 1, 1);
+    final range = ref.watch(heatmapRangeProvider);
+    final start = range.start;
+    final end = range.end;
 
     final asyncUsage = ref.watch(yearlyUsageByDateProvider);
     final metricsAsync = ref.watch(dashboardMetricsProvider);
@@ -61,23 +60,20 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                             children: [
                               _buildSummaryRow(theme, metricsAsync),
                               const SizedBox(height: 40),
-        _buildTabs(theme),
-        const SizedBox(height: 16),
-        if (_selectedTab == DashboardTab.analysis)
-          Expanded(
-            child: _buildAnalysisList(
-              theme,
-              asyncUsage,
-            ),
-          )
-        else
-          _buildHeatmapShell(
-            theme,
-            start: start,
-            end: end,
-            asyncUsage: asyncUsage,
-            selectedTab: _selectedTab,
-          ),
+                              _buildTabs(theme),
+                              const SizedBox(height: 16),
+                              if (_selectedTab == DashboardTab.analysis)
+                                Expanded(
+                                  child: _buildAnalysisList(theme, asyncUsage),
+                                )
+                              else
+                                _buildHeatmapShell(
+                                  theme,
+                                  start: start,
+                                  end: end,
+                                  asyncUsage: asyncUsage,
+                                  selectedTab: _selectedTab,
+                                ),
                             ],
                           ),
                         ),
@@ -362,8 +358,10 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
 
               usageByDate.forEach((day, appMap) {
                 appMap.forEach((appId, duration) {
-                  final byDate =
-                      perApp.putIfAbsent(appId, () => <DateTime, Duration>{});
+                  final byDate = perApp.putIfAbsent(
+                    appId,
+                    () => <DateTime, Duration>{},
+                  );
                   byDate[day] = (byDate[day] ?? Duration.zero) + duration;
                 });
               });
@@ -555,20 +553,22 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
 
           final today = DateTime.now();
           final normalizedToday = DateTime(today.year, today.month, today.day);
-          final last30Start =
-              normalizedToday.subtract(const Duration(days: 29));
+          final last30Start = normalizedToday.subtract(
+            const Duration(days: 29),
+          );
           final weekStart = _weekStartMonday(normalizedToday);
-          final weekRangeStart =
-              weekStart.subtract(const Duration(days: 7 * 7)); // 向前含 8 周
+          final weekRangeStart = weekStart.subtract(
+            const Duration(days: 7 * 7),
+          ); // 向前含 8 周
 
           final analysis = UsageAnalysis(usageByDate);
           final daily = analysis.dailyTotals(last30Start, normalizedToday);
-          final weekly =
-              analysis.weeklyTotals(weekRangeStart, normalizedToday);
-          final perApp =
-              analysis.appTotals(last30Start, normalizedToday);
-          final weekdayAvg =
-              analysis.weekdayAverages(last30Start, normalizedToday);
+          final weekly = analysis.weeklyTotals(weekRangeStart, normalizedToday);
+          final perApp = analysis.appTotals(last30Start, normalizedToday);
+          final weekdayAvg = analysis.weekdayAverages(
+            last30Start,
+            normalizedToday,
+          );
 
           return ListView(
             padding: EdgeInsets.zero,
@@ -578,9 +578,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                 subtitle: '日总时长折线',
                 child: SizedBox(
                   height: 220.h,
-                  child: LineChart(
-                    _buildDailyLineChartData(theme, daily),
-                  ),
+                  child: LineChart(_buildDailyLineChartData(theme, daily)),
                 ),
               ),
               SizedBox(height: 16.h),
@@ -589,9 +587,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                 subtitle: '按周汇总，周一为起点',
                 child: SizedBox(
                   height: 220.h,
-                  child: BarChart(
-                    _buildWeeklyBarData(theme, weekly),
-                  ),
+                  child: BarChart(_buildWeeklyBarData(theme, weekly)),
                 ),
               ),
               SizedBox(height: 16.h),
@@ -603,9 +599,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                   child: Row(
                     children: [
                       Expanded(
-                        child: PieChart(
-                          _buildAppPieData(theme, perApp),
-                        ),
+                        child: PieChart(_buildAppPieData(theme, perApp)),
                       ),
                       SizedBox(width: 12.w),
                       Column(
@@ -633,9 +627,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                 subtitle: '最近 30 天平均到星期几的用时',
                 child: SizedBox(
                   height: 220.h,
-                  child: BarChart(
-                    _buildWeekdayBarData(theme, weekdayAvg),
-                  ),
+                  child: BarChart(_buildWeekdayBarData(theme, weekdayAvg)),
                 ),
               ),
             ],
@@ -659,10 +651,8 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
       gridData: FlGridData(
         drawVerticalLine: false,
         horizontalInterval: 1,
-        getDrawingHorizontalLine: (value) => FlLine(
-          color: Colors.grey.withOpacity(0.15),
-          strokeWidth: 1,
-        ),
+        getDrawingHorizontalLine: (value) =>
+            FlLine(color: Colors.grey.withOpacity(0.15), strokeWidth: 1),
       ),
       titlesData: FlTitlesData(
         leftTitles: AxisTitles(
@@ -700,9 +690,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
         rightTitles: const AxisTitles(
           sideTitles: SideTitles(showTitles: false),
         ),
-        topTitles: const AxisTitles(
-          sideTitles: SideTitles(showTitles: false),
-        ),
+        topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
       ),
       borderData: FlBorderData(show: false),
       minY: 0,
@@ -712,20 +700,14 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
           isCurved: true,
           color: color,
           dotData: const FlDotData(show: false),
-          belowBarData: BarAreaData(
-            show: true,
-            color: color.withOpacity(0.12),
-          ),
+          belowBarData: BarAreaData(show: true, color: color.withOpacity(0.12)),
           barWidth: 2.6,
         ),
       ],
     );
   }
 
-  BarChartData _buildWeeklyBarData(
-    ThemeData theme,
-    List<WeeklyTotal> weekly,
-  ) {
+  BarChartData _buildWeeklyBarData(ThemeData theme, List<WeeklyTotal> weekly) {
     final color = theme.colorScheme.primary;
     final groups = <BarChartGroupData>[];
 
@@ -750,10 +732,8 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
       gridData: FlGridData(
         drawVerticalLine: false,
         horizontalInterval: 2,
-        getDrawingHorizontalLine: (value) => FlLine(
-          color: Colors.grey.withOpacity(0.15),
-          strokeWidth: 1,
-        ),
+        getDrawingHorizontalLine: (value) =>
+            FlLine(color: Colors.grey.withOpacity(0.15), strokeWidth: 1),
       ),
       titlesData: FlTitlesData(
         leftTitles: AxisTitles(
@@ -792,9 +772,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
         rightTitles: const AxisTitles(
           sideTitles: SideTitles(showTitles: false),
         ),
-        topTitles: const AxisTitles(
-          sideTitles: SideTitles(showTitles: false),
-        ),
+        topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
       ),
       borderData: FlBorderData(show: false),
       barGroups: groups,
@@ -802,10 +780,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     );
   }
 
-  PieChartData _buildAppPieData(
-    ThemeData theme,
-    List<AppTotal> totals,
-  ) {
+  PieChartData _buildAppPieData(ThemeData theme, List<AppTotal> totals) {
     final colors = [
       theme.colorScheme.primary,
       const Color(0xFF51B8A3),
@@ -832,8 +807,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     final sections = <PieChartSectionData>[];
     for (var i = 0; i < top.length; i++) {
       final entry = top[i];
-      final percent =
-          sum == 0 ? 0.0 : entry.total.inSeconds.toDouble() / sum;
+      final percent = sum == 0 ? 0.0 : entry.total.inSeconds.toDouble() / sum;
       sections.add(
         PieChartSectionData(
           color: colors[i % colors.length],
@@ -872,7 +846,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
             color: color,
             width: 18,
             borderRadius: BorderRadius.circular(2),
-          )
+          ),
         ],
       );
     }).toList();
@@ -881,10 +855,8 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
       gridData: FlGridData(
         drawVerticalLine: false,
         horizontalInterval: 1,
-        getDrawingHorizontalLine: (value) => FlLine(
-          color: Colors.grey.withOpacity(0.15),
-          strokeWidth: 1,
-        ),
+        getDrawingHorizontalLine: (value) =>
+            FlLine(color: Colors.grey.withOpacity(0.15), strokeWidth: 1),
       ),
       titlesData: FlTitlesData(
         leftTitles: AxisTitles(
@@ -919,9 +891,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
         rightTitles: const AxisTitles(
           sideTitles: SideTitles(showTitles: false),
         ),
-        topTitles: const AxisTitles(
-          sideTitles: SideTitles(showTitles: false),
-        ),
+        topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
       ),
       borderData: FlBorderData(show: false),
       barGroups: bars,
@@ -1077,7 +1047,7 @@ class _AnalysisCard extends StatelessWidget {
                     color: Colors.black54,
                   ),
                 ),
-              ]
+              ],
             ],
           ),
           SizedBox(height: 12.h),
