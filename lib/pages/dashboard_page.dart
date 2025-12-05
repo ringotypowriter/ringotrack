@@ -8,6 +8,7 @@ import 'package:ringotrack/widgets/ringo_heatmap.dart';
 import 'package:ringotrack/domain/usage_analysis.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:ringotrack/widgets/ringo_hourly_line_heatmap.dart';
+import 'package:ringotrack/widgets/heatmap_color_scale.dart';
 
 const double _heatmapTileSize = 13;
 const double _heatmapTileSpacing = 3;
@@ -661,6 +662,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
 
   Widget _buildLegend(ThemeData theme) {
     final baseColor = theme.colorScheme.primary;
+    final legendColors = HeatmapColorScale.legendColors(baseColor);
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.end,
@@ -671,20 +673,22 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
         ),
         SizedBox(width: 8.w),
         Row(
-          children: List.generate(5, (index) {
-            final opacity = 0.15 + index * 0.18;
-            return Padding(
-              padding: EdgeInsets.symmetric(horizontal: 3.w),
-              child: Container(
-                width: 10.r,
-                height: 10.r,
-                decoration: BoxDecoration(
-                  color: baseColor.withValues(alpha: opacity),
-                  borderRadius: BorderRadius.circular(_dashboardElementRadius),
+          children: legendColors
+              .map(
+                (color) => Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 3.w),
+                  child: Container(
+                    width: 10.r,
+                    height: 10.r,
+                    decoration: BoxDecoration(
+                      color: color,
+                      borderRadius:
+                          BorderRadius.circular(_dashboardElementRadius),
+                    ),
+                  ),
                 ),
-              ),
-            );
-          }),
+              )
+              .toList(growable: false),
         ),
         SizedBox(width: 8.w),
         Text(

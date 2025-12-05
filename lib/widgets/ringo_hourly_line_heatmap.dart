@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:ringotrack/widgets/heatmap_color_scale.dart';
 
 /// 单日 24 小时线性热力图。
 ///
@@ -91,7 +92,7 @@ class _RingoHourlyLineHeatmapState extends State<RingoHourlyLineHeatmap> {
         final segments = <Widget>[];
         for (var hour = 0; hour < segmentCount; hour++) {
           final duration = widget.hourlyTotals[hour] ?? Duration.zero;
-          final color = _colorForDuration(
+          final color = HeatmapColorScale.colorForDuration(
             duration,
             avgMinutes: _avgMinutes,
             maxMinutes: _maxMinutes,
@@ -245,81 +246,5 @@ class _RingoHourlyLineHeatmapState extends State<RingoHourlyLineHeatmap> {
       return '${minutes}m ${seconds.toString().padLeft(2, '0')}s';
     }
     return '${seconds}s';
-  }
-
-  Color _colorForDuration(
-    Duration duration, {
-    required double avgMinutes,
-    required double maxMinutes,
-    required Color baseColor,
-    required Color emptyColor,
-  }) {
-    if (duration.inSeconds <= 0) {
-      return emptyColor;
-    }
-
-    final minutes = duration.inSeconds / 60.0;
-
-    double relativeScore = 0;
-    if (avgMinutes > 0) {
-      final ratio = minutes / avgMinutes;
-      if (ratio < 0.5) {
-        relativeScore = 0.10;
-      } else if (ratio < 1.0) {
-        relativeScore = 0.22;
-      } else if (ratio < 1.5) {
-        relativeScore = 0.34;
-      } else if (ratio < 1.75) {
-        relativeScore = 0.52;
-      } else if (ratio < 2.0) {
-        relativeScore = 0.64;
-      } else if (ratio < 2.25) {
-        relativeScore = 0.76;
-      } else if (ratio < 2.5) {
-        relativeScore = 0.88;
-      } else {
-        relativeScore = 1.0;
-      }
-    }
-
-    double absoluteScore;
-    if (minutes < 30) {
-      absoluteScore = 0.12;
-    } else if (minutes < 120) {
-      absoluteScore = 0.26;
-    } else if (minutes < 240) {
-      absoluteScore = 0.40;
-    } else if (minutes < 300) {
-      absoluteScore = 0.48;
-    } else {
-      final overBase = minutes / 300.0;
-      absoluteScore = 0.52 + (overBase - 1.0) * 0.20;
-      if (absoluteScore > 1.0) {
-        absoluteScore = 1.0;
-      }
-    }
-
-    if (maxMinutes > 0) {
-      final normalized = minutes / maxMinutes;
-      absoluteScore = absoluteScore * 0.7 + normalized * 0.3;
-    }
-
-    var intensity = relativeScore > absoluteScore
-        ? relativeScore
-        : absoluteScore;
-
-    if (intensity < 0.20) {
-      intensity = 0.20;
-    } else if (intensity < 0.40) {
-      intensity = 0.40;
-    } else if (intensity < 0.60) {
-      intensity = 0.60;
-    } else if (intensity < 0.80) {
-      intensity = 0.80;
-    } else {
-      intensity = 1.0;
-    }
-
-    return baseColor.withValues(alpha: intensity);
   }
 }
