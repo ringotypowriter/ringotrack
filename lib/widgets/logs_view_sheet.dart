@@ -11,12 +11,19 @@ class LogsViewSheet extends StatefulWidget {
 
 class _LogsViewSheetState extends State<LogsViewSheet> {
   final AppLogService _logService = AppLogService.instance;
+  final ScrollController _logScrollController = ScrollController();
   late List<AppLogEntry> _entries;
 
   @override
   void initState() {
     super.initState();
     _entries = _logService.entries;
+  }
+
+  @override
+  void dispose() {
+    _logScrollController.dispose();
+    super.dispose();
   }
 
   Future<void> _refresh() async {
@@ -116,7 +123,9 @@ class _LogsViewSheetState extends State<LogsViewSheet> {
     }
 
     return Scrollbar(
+      controller: _logScrollController,
       child: ListView.builder(
+        controller: _logScrollController,
         itemCount: entries.length,
         itemBuilder: (context, index) {
           final entry = entries[index];

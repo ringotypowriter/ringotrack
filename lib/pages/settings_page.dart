@@ -21,6 +21,7 @@ class SettingsPage extends ConsumerStatefulWidget {
 
 class _SettingsPageState extends ConsumerState<SettingsPage> {
   final TextEditingController _addAppController = TextEditingController();
+  final ScrollController _trackedAppsScrollController = ScrollController();
 
   String? _selectedDeleteAppLogicalId;
 
@@ -30,6 +31,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   @override
   void dispose() {
     _addAppController.dispose();
+    _trackedAppsScrollController.dispose();
     super.dispose();
   }
 
@@ -412,7 +414,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     return ConstrainedBox(
       constraints: BoxConstraints(maxHeight: 260.h),
       child: Scrollbar(
+        controller: _trackedAppsScrollController,
         child: ListView.separated(
+          controller: _trackedAppsScrollController,
           shrinkWrap: true,
           itemCount: sorted.length,
           itemBuilder: (context, index) {
