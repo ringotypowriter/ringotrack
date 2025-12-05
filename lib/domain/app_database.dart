@@ -21,7 +21,6 @@ class DailyUsageEntries extends Table {
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
-  /// 提供给单元测试等场景自定义连接（例如内存数据库）
   AppDatabase.forTesting(super.executor);
 
   @override
