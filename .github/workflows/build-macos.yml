@@ -1,0 +1,148 @@
+name: Build macOS Flutter Desktop
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish_release:
+        description: 'Publish GitHub Release after the build'
+        type: boolean
+        default: false
+      release_tag:
+        description: 'Tag name to use when publishing (optional)'
+        type: string
+        required: false
+        default: ''
+      release_name:
+        description: 'Release title (optional)'
+        type: string
+        required: false
+        default: ''
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Read version from pubspec.yaml
+        id: version
+        run: |
+          VERSION=$(grep '^version:' pubspec.yaml | sed 's/version:[[:space:]]*//')
+          ARTIFACT_VERSION=$(echo "$VERSION" | sed 's/[^0-9A-Za-z\.\-_]/-/g')
+          echo "app_version=$VERSION" >> $GITHUB_OUTPUT
+          echo "artifact_version=$ARTIFACT_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Set short commit hash
+        id: vars
+        run: echo "sha_short=$(echo $GITHUB_SHA | cut -c1-7)" >> $GITHUB_OUTPUT
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.38.3'
+          channel: 'stable'
+          cache: true
+
+      - name: Enable macOS desktop
+        run: flutter config --enable-macos-desktop
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build macOS app (release)
+        run: flutter build macos --release
+
+      - name: Check build output structure
+        run: |
+          echo "Build output structure:"
+          find build/macos/Build/Products/Release -type f -name "*.app" | head -5
+          
+          # Check if there are any existing dmg or zip files in the build output
+          if find build/macos/Build/Products/Release -name "*.dmg" -o -name "*.zip" | grep -q .; then
+            echo "Found existing archive files in build output:"
+            find build/macos/Build/Products/Release -name "*.dmg" -o -name "*.zip"
+          else
+            echo "No existing archive files found in build output"
+          fi
+
+      - name: Create macOS app archive
+        run: |
+          BUILD_PATH="build/macos/Build/Products/Release"
+          OUTPUT_NAME="ringotrack-macos-${{ steps.version.outputs.artifact_version }}"
+          
+          # Find the .app bundle
+          APP_BUNDLE=$(find "$BUILD_PATH" -name "*.app" -type d | head -1)
+          
+          if [ -n "$APP_BUNDLE" ] && [ -d "$APP_BUNDLE" ]; then
+            echo "Found app bundle: $APP_BUNDLE"
+            
+            # Create a clean directory for archiving
+            mkdir -p "${OUTPUT_NAME}-archive"
+            
+            # Copy the app bundle to the archive directory
+            cp -R "$APP_BUNDLE" "${OUTPUT_NAME}-archive/"
+            
+            # Create zip archive
+            ditto -c -k --sequesterRsrc --keepParent "${OUTPUT_NAME}-archive" "${OUTPUT_NAME}.zip"
+            
+            # Verify archive was created
+            if [ -f "${OUTPUT_NAME}.zip" ]; then
+              ARCHIVE_SIZE=$(stat -f%z "${OUTPUT_NAME}.zip")
+              echo "Archive created successfully, size: $ARCHIVE_SIZE bytes"
+              
+              # List contents to verify it's not double-zipped
+              unzip -l "${OUTPUT_NAME}.zip" | head -10
+            else
+              echo "Archive creation failed"
+              exit 1
+            fi
+            
+            # Clean up temporary directory
+            rm -rf "${OUTPUT_NAME}-archive"
+          else
+            echo "App bundle not found in build directory"
+            exit 1
+          fi
+
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ringotrack-macos-${{ steps.version.outputs.artifact_version }}
+          path: ringotrack-macos-${{ steps.version.outputs.artifact_version }}.zip
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Verify artifact before release
+        if: ${{ inputs.publish_release }}
+        run: |
+          ZIP_FILE="ringotrack-macos-${{ steps.version.outputs.artifact_version }}.zip"
+          if [ -f "$ZIP_FILE" ]; then
+            SIZE=$(stat -f%z "$ZIP_FILE")
+            echo "Artifact verified: $ZIP_FILE ($SIZE bytes)"
+            
+            # Check for double-zipping by examining archive contents
+            if unzip -l "$ZIP_FILE" | grep -q "\.zip$"; then
+              echo "WARNING: Found existing zip files in the archive, possible double-zipping detected"
+            else
+              echo "Archive contents verified - no double-zipping detected"
+            fi
+          else
+            echo "Artifact not found: $ZIP_FILE"
+            exit 1
+          fi
+
+      - name: Publish GitHub Release
+        if: ${{ inputs.publish_release }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.release_tag != '' && inputs.release_tag || format('macos-v{0}', steps.version.outputs.app_version) }}
+          name: ${{ inputs.release_name != '' && inputs.release_name || format('macOS build v{0}', steps.version.outputs.app_version) }}
+          files: ringotrack-macos-${{ steps.version.outputs.artifact_version }}.zip
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          fail_on_unmatched_files: true

@@ -1,0 +1,204 @@
+name: Build All Platforms
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish_release:
+        description: 'Publish GitHub Release after the build'
+        type: boolean
+        default: false
+      release_tag:
+        description: 'Tag name to use when publishing (optional)'
+        type: string
+        required: false
+        default: ''
+      release_name:
+        description: 'Release title (optional)'
+        type: string
+        required: false
+        default: ''
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Read version from pubspec.yaml
+        id: version
+        shell: pwsh
+        run: |
+          $match = Select-String -Path "pubspec.yaml" -Pattern '^version:\s*(.+)$'
+          if (-not $match) {
+            throw "Version not found in pubspec.yaml"
+          }
+          $version = $match.Matches[0].Groups[1].Value.Trim()
+          $artifactVersion = $version -replace '[^0-9A-Za-z\.\-_]', '-'
+          echo "app_version=$version" >> $env:GITHUB_OUTPUT
+          echo "artifact_version=$artifactVersion" >> $env:GITHUB_OUTPUT
+
+      - name: Set short commit hash
+        id: vars
+        shell: pwsh
+        run: echo "sha_short=$($env:GITHUB_SHA.Substring(0,7))" >> $env:GITHUB_OUTPUT
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.38.3'
+          channel: 'stable'
+          cache: true
+
+      - name: Enable Windows desktop
+        run: flutter config --enable-windows-desktop
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build Windows app (release)
+        run: flutter build windows --release
+
+      - name: Archive Windows build
+        shell: pwsh
+        run: |
+          $buildPath = "build/windows/x64/runner/Release"
+          $outputName = "ringotrack-windows-${{ steps.version.outputs.artifact_version }}"
+          
+          # Verify build directory exists and has content
+          if (Test-Path $buildPath) {
+            $fileCount = (Get-ChildItem $buildPath -Recurse -File).Count
+            Write-Host "Found $fileCount files in Windows build directory"
+            
+            if ($fileCount -gt 0) {
+              Compress-Archive -Path "$buildPath/*" -DestinationPath "$outputName.zip" -Force
+              Write-Host "Created Windows archive: $outputName.zip"
+              
+              # Verify archive
+              if (Test-Path "$outputName.zip") {
+                $archiveSize = (Get-Item "$outputName.zip").Length
+                Write-Host "Windows archive created successfully, size: $archiveSize bytes"
+              }
+            }
+          }
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ringotrack-windows-${{ steps.version.outputs.artifact_version }}
+          path: ringotrack-windows-${{ steps.version.outputs.artifact_version }}.zip
+          retention-days: 30
+          if-no-files-found: error
+
+  build-macos:
+    runs-on: macos-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Read version from pubspec.yaml
+        id: version
+        run: |
+          VERSION=$(grep '^version:' pubspec.yaml | sed 's/version:[[:space:]]*//')
+          ARTIFACT_VERSION=$(echo "$VERSION" | sed 's/[^0-9A-Za-z\.\-_]/-/g')
+          echo "app_version=$VERSION" >> $GITHUB_OUTPUT
+          echo "artifact_version=$ARTIFACT_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Set short commit hash
+        id: vars
+        run: echo "sha_short=$(echo $GITHUB_SHA | cut -c1-7)" >> $GITHUB_OUTPUT
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.38.3'
+          channel: 'stable'
+          cache: true
+
+      - name: Enable macOS desktop
+        run: flutter config --enable-macos-desktop
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build macOS app (release)
+        run: flutter build macos --release
+
+      - name: Create macOS app archive
+        run: |
+          BUILD_PATH="build/macos/Build/Products/Release"
+          OUTPUT_NAME="ringotrack-macos-${{ steps.version.outputs.artifact_version }}"
+          
+          # Find the .app bundle
+          APP_BUNDLE=$(find "$BUILD_PATH" -name "*.app" -type d | head -1)
+          
+          if [ -n "$APP_BUNDLE" ] && [ -d "$APP_BUNDLE" ]; then
+            echo "Found macOS app bundle: $APP_BUNDLE"
+            
+            # Create a clean directory for archiving
+            mkdir -p "${OUTPUT_NAME}-archive"
+            cp -R "$APP_BUNDLE" "${OUTPUT_NAME}-archive/"
+            
+            # Create zip archive using ditto for proper macOS app bundling
+            ditto -c -k --sequesterRsrc --keepParent "${OUTPUT_NAME}-archive" "${OUTPUT_NAME}.zip"
+            
+            if [ -f "${OUTPUT_NAME}.zip" ]; then
+              ARCHIVE_SIZE=$(stat -f%z "${OUTPUT_NAME}.zip")
+              echo "macOS archive created successfully, size: $ARCHIVE_SIZE bytes"
+            fi
+            
+            rm -rf "${OUTPUT_NAME}-archive"
+          fi
+
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ringotrack-macos-${{ steps.version.outputs.artifact_version }}
+          path: ringotrack-macos-${{ steps.version.outputs.artifact_version }}.zip
+          retention-days: 30
+          if-no-files-found: error
+
+  create-release:
+    needs: [build-windows, build-macos]
+    runs-on: ubuntu-latest
+    if: ${{ inputs.publish_release }}
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ringotrack-windows-${{ needs.build-windows.outputs.artifact_version }}
+          path: ./artifacts/
+
+      - name: Download macOS artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ringotrack-macos-${{ needs.build-macos.outputs.artifact_version }}
+          path: ./artifacts/
+
+      - name: List downloaded artifacts
+        run: |
+          echo "Downloaded artifacts:"
+          ls -la ./artifacts/
+
+      - name: Create Multi-Platform Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.release_tag != '' && inputs.release_tag || format('v{0}', needs.build-windows.outputs.app_version) }}
+          name: ${{ inputs.release_name != '' && inputs.release_name || format('RingoTrack v{0} - Windows & macOS', needs.build-windows.outputs.app_version) }}
+          files: ./artifacts/*.zip
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          fail_on_unmatched_files: true

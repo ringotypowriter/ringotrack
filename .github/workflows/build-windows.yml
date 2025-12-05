@@ -64,13 +64,74 @@ jobs:
 
       - name: Archive Windows build
         shell: pwsh
-        run: Compress-Archive -Path "build/windows/x64/runner/Release/*" -DestinationPath "ringotrack-windows-${{ steps.version.outputs.artifact_version }}.zip" -Force
+        run: |
+          $buildPath = "build/windows/x64/runner/Release"
+          $outputName = "ringotrack-windows-${{ steps.version.outputs.artifact_version }}"
+          
+          # Check if the build directory exists and has content
+          if (Test-Path $buildPath) {
+            $fileCount = (Get-ChildItem $buildPath -Recurse -File).Count
+            Write-Host "Found $fileCount files in build directory"
+            
+            if ($fileCount -gt 0) {
+              # Create archive only if there are files to archive
+              Compress-Archive -Path "$buildPath/*" -DestinationPath "$outputName.zip" -Force
+              Write-Host "Created archive: $outputName.zip"
+              
+              # Verify archive was created and list contents to prevent double-zipping
+              if (Test-Path "$outputName.zip") {
+                $archiveSize = (Get-Item "$outputName.zip").Length
+                Write-Host "Archive created successfully, size: $archiveSize bytes"
+                
+                # Check if archive contains any existing zip files (double-zipping check)
+                $archiveContents = & powershell -Command "Add-Type -AssemblyName System.IO.Compression.FileSystem; [System.IO.Compression.ZipFile]::OpenRead('$outputName.zip').Entries.Name"
+                $zipFilesInArchive = $archiveContents | Where-Object { $_ -like "*.zip" }
+                if ($zipFilesInArchive) {
+                  Write-Warning "Found existing zip files in archive: $($zipFilesInArchive -join ', ')"
+                  Write-Warning "This may indicate double-zipping issue"
+                }
+              } else {
+                throw "Archive creation failed"
+              }
+            } else {
+              throw "No files found in build directory"
+            }
+          } else {
+            throw "Build directory not found: $buildPath"
+          }
 
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
         with:
           name: ringotrack-windows-${{ steps.version.outputs.artifact_version }}
           path: ringotrack-windows-${{ steps.version.outputs.artifact_version }}.zip
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Verify artifact before release
+        if: ${{ inputs.publish_release }}
+        shell: pwsh
+        run: |
+          $zipFile = "ringotrack-windows-${{ steps.version.outputs.artifact_version }}.zip"
+          if (Test-Path $zipFile) {
+            $size = (Get-Item $zipFile).Length
+            Write-Host "Artifact verified: $zipFile ($size bytes)"
+            
+            # Basic check for double-zipping by examining archive contents
+            try {
+              $archiveContents = & powershell -Command "Add-Type -AssemblyName System.IO.Compression.FileSystem; [System.IO.Compression.ZipFile]::OpenRead('$zipFile').Entries.Name"
+              $zipFilesInArchive = $archiveContents | Where-Object { $_ -like "*.zip" }
+              if ($zipFilesInArchive) {
+                Write-Warning "Found existing zip files in the archive, possible double-zipping: $($zipFilesInArchive -join ', ')"
+              } else {
+                Write-Host "Archive contents verified - no double-zipping detected"
+              }
+            } catch {
+              Write-Warning "Could not verify archive contents: $($_.Exception.Message)"
+            }
+          } else {
+            throw "Artifact not found: $zipFile"
+          }
 
       - name: Publish GitHub Release
         if: ${{ inputs.publish_release }}
@@ -82,3 +143,4 @@ jobs:
           draft: false
           prerelease: false
           generate_release_notes: true
+          fail_on_unmatched_files: true
