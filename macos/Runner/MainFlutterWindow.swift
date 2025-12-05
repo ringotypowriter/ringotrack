@@ -88,9 +88,16 @@ class MainFlutterWindow: NSWindow {
     if let contentView = self.contentView {
       let blurView = NSVisualEffectView(frame: contentView.bounds)
       blurView.autoresizingMask = [.width, .height]
-      blurView.material = .underWindowBackground
+      blurView.material = .sidebar
       blurView.blendingMode = .behindWindow
       blurView.state = .active
+
+      // 叠加更明显的白色 tint，让背景更接近纯白磨砂。
+      let tintView = NSView(frame: blurView.bounds)
+      tintView.autoresizingMask = [.width, .height]
+      tintView.wantsLayer = true
+      tintView.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.38).cgColor
+      blurView.addSubview(tintView)
 
       contentView.wantsLayer = true
       contentView.layer?.backgroundColor = NSColor.clear.cgColor
