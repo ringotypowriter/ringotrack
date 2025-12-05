@@ -110,7 +110,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             _sectionCard(
               theme,
               title: '主题色',
-              subtitle: '选择喜欢的主题主色，立即应用到全局界面。',
               icon: Icons.palette_outlined,
               child: _buildThemePicker(theme),
             ),
@@ -133,7 +132,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     return _sectionCard(
       theme,
       title: '追踪的软件',
-      subtitle: '配置需要计入时长的绘画/美术软件列表。',
       icon: Icons.brush_outlined,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -141,7 +139,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           _dataTile(
             theme,
             title: '已追踪的软件',
-            helper: '仅以下软件会被计入时长，留空则使用内置默认列表。',
+            helper: '仅下列软件计时，留空用默认列表。',
             child: prefsAsync.when(
               data: (prefs) => _buildTrackedList(theme, prefs),
               loading: () => const Padding(
@@ -156,7 +154,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             theme,
             title: '添加新软件',
             helper:
-                '推荐优先使用下方“从内置列表选择”。如果你的绘画软件不在列表中，可以在这里输入该软件在系统里的识别名（例如 Photoshop.exe 或 com.adobe.photoshop），不区分大小写。',
+                '优先用“内置列表”。未包含时输入系统识别名（如 Photoshop.exe / com.adobe.photoshop）。',
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -166,7 +164,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                       child: TextField(
                         controller: _addAppController,
                         decoration: const InputDecoration(
-                          labelText: '软件名称(Windows)或系统识别名(MacOS)',
+                          labelText: '软件名称或系统识别名',
                           prefixIcon: Icon(Icons.add_circle_outline),
                         ),
                         onSubmitted: (_) => _onAddTrackedApp(),
@@ -210,7 +208,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     return _sectionCard(
       theme,
       title: '数据管理',
-      subtitle: '按软件清理、按日期删除或一次性清空，操作不可撤销。',
       icon: Icons.storage_rounded,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -218,7 +215,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           _dataTile(
             theme,
             title: '删除某个软件的数据',
-            helper: '从下拉框中选择一款软件，将清除它在所有日期的使用记录。',
+            helper: '选择软件后清除全部记录。',
             child: prefsAsync.when(
               data: (prefs) => _buildDeleteByAppSelector(theme, prefs),
               loading: () => const Padding(
@@ -232,7 +229,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           _dataTile(
             theme,
             title: '删除日期范围（全部软件）',
-            helper: '选择起止日期后执行。',
+            helper: '选起止日期后删除。',
             child: Wrap(
               spacing: 10.w,
               runSpacing: 10.h,
@@ -260,7 +257,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           _dataTile(
             theme,
             title: '清空全部数据',
-            helper: '危险操作，请确认后执行。',
+            helper: '危险操作，不可撤销。',
             child: Align(
               alignment: Alignment.centerLeft,
               child: TextButton.icon(
@@ -284,7 +281,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           _dataTile(
             theme,
             title: '日志',
-            helper: '在查看软件运行的详细日志。(如软件出现问题可以提交给开发者)',
+            helper: '查看本地日志，排查问题。',
             child: Align(
               alignment: Alignment.centerLeft,
               child: TextButton.icon(
@@ -302,13 +299,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   Widget _sectionCard(
     ThemeData theme, {
     required String title,
-    required String subtitle,
     required Widget child,
     required IconData icon,
+    String? subtitle,
   }) {
     final primary = theme.colorScheme.primary;
-    final onSurface = theme.colorScheme.onSurface;
-    final onSurfaceVariant = theme.colorScheme.onSurfaceVariant;
 
     return Container(
       decoration: BoxDecoration(
@@ -339,25 +334,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               ),
               SizedBox(width: 12.w),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: onSurface,
-                      ),
-                    ),
-                    SizedBox(height: 4.h),
-                    Text(
-                      subtitle,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: onSurfaceVariant,
-                        height: 1.35,
-                      ),
-                    ),
-                  ],
+                child: _titleWithHelper(
+                  theme,
+                  title: title,
+                  helper: subtitle,
+                  titleStyle: theme.textTheme.titleMedium,
+                  helperHeight: 1.35,
                 ),
               ),
             ],
@@ -376,8 +358,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     required Widget child,
   }) {
     final surfaceTint = theme.colorScheme.primary.withOpacity(0.03);
-    final onSurface = theme.colorScheme.onSurface;
-    final onSurfaceVariant = theme.colorScheme.onSurfaceVariant;
 
     return Container(
       width: double.infinity,
@@ -390,18 +370,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w700,
-              color: onSurface,
-            ),
-          ),
-          SizedBox(height: 4.h),
-          Text(
-            helper,
-            style: theme.textTheme.bodySmall?.copyWith(color: onSurfaceVariant),
-          ),
+          _titleWithHelper(theme, title: title, helper: helper),
           SizedBox(height: 10.h),
           child,
         ],
@@ -434,10 +403,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final onSurfaceVariant = theme.colorScheme.onSurfaceVariant;
 
     if (prefs.trackedApps.isEmpty) {
-      return Text(
-        '当前未配置软件，将使用内置默认列表。',
-        style: theme.textTheme.bodySmall?.copyWith(color: onSurfaceVariant),
-      );
+      return _helperText(theme, '当前未配置软件，将使用内置默认列表。');
     }
 
     final sorted = [...prefs.trackedApps]
@@ -506,12 +472,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                           builder: (context) {
                             final ids = app.ids;
                             if (ids.isEmpty) {
-                              return Text(
-                                '未配置平台标识',
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: onSurfaceVariant,
-                                ),
-                              );
+                              return _helperText(theme, '未配置平台标识');
                             }
 
                             final idTexts = ids
@@ -573,6 +534,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
+      backgroundColor: Colors.white,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(18.r)),
       ),
@@ -612,12 +574,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     ],
                   ),
                   SizedBox(height: 6.h),
-                  Text(
-                    '这些是常见的绘画/美术软件，点“添加”即可加入追踪列表。',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
+                  _helperText(theme, '常见绘画软件，点“添加”即可。'),
                   SizedBox(height: 14.h),
                   Flexible(
                     child: SingleChildScrollView(
@@ -707,10 +664,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final onSurfaceVariant = theme.colorScheme.onSurfaceVariant;
 
     if (prefs.trackedApps.isEmpty) {
-      return Text(
-        '当前没有配置追踪的软件，无法按软件删除数据。',
-        style: theme.textTheme.bodySmall?.copyWith(color: onSurfaceVariant),
-      );
+      return _helperText(theme, '当前没有配置追踪的软件，无法按软件删除数据。');
     }
 
     final apps = [...prefs.trackedApps]
@@ -854,7 +808,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     return _sectionCard(
       theme,
       title: '统计口径',
-      subtitle: '选择热力图的时间统计口径，影响数据加载和月份排布。',
       icon: Icons.date_range_outlined,
       child: prefsAsync.when(
         data: (prefs) {
@@ -887,7 +840,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               ),
               SizedBox(height: 8.h),
               Text(
-                '仅影响热力图视图与加载的数据范围，其他指标（今日/本周/本月）保持自然时间计算。',
+                '仅影响热力图范围，今日/本周/本月仍按自然时间。',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: onSurfaceVariant,
                   height: 1.3,
@@ -925,11 +878,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               ),
           ],
         ),
-        SizedBox(height: 10.h),
-        Text(
-          '会立即保存到偏好设置中，并在下次启动时自动应用。',
-          style: theme.textTheme.bodySmall?.copyWith(color: onSurfaceVariant),
-        ),
       ],
     );
   }
@@ -938,10 +886,56 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
+      backgroundColor: Colors.white,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(18.r)),
       ),
       builder: (context) => const LogsViewSheet(),
+    );
+  }
+
+  // 统一的标题/说明文本，避免重复样式定义
+  Widget _titleText(ThemeData theme, String text, {TextStyle? style}) {
+    return Text(
+      text,
+      style: (style ?? theme.textTheme.bodyMedium)?.copyWith(
+        fontWeight: FontWeight.w700,
+        color: theme.colorScheme.onSurface,
+      ),
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
+    );
+  }
+
+  Widget _helperText(ThemeData theme, String text, {double height = 1.25}) {
+    return Text(
+      text,
+      style: theme.textTheme.bodySmall?.copyWith(
+        color: theme.colorScheme.onSurfaceVariant,
+        height: height,
+      ),
+    );
+  }
+
+  Widget _titleWithHelper(
+    ThemeData theme, {
+    required String title,
+    String? helper,
+    TextStyle? titleStyle,
+    double helperHeight = 1.25,
+  }) {
+    final hasHelper = helper != null && helper.isNotEmpty;
+    if (!hasHelper) {
+      return _titleText(theme, title, style: titleStyle);
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _titleText(theme, title, style: titleStyle),
+        SizedBox(height: 8.h),
+        _helperText(theme, helper!, height: helperHeight),
+      ],
     );
   }
 
