@@ -412,19 +412,27 @@ class _HeatmapGridState extends State<_HeatmapGrid> {
   }
 
   String _formatDuration(Duration duration) {
-    final minutes = duration.inMinutes;
-    if (minutes <= 0) {
-      return '0 分钟';
+    final totalSeconds = duration.inSeconds;
+    if (totalSeconds <= 0) {
+      return '0s';
     }
-    final hours = duration.inHours;
-    final remainMinutes = minutes % 60;
-    if (hours > 0 && remainMinutes > 0) {
-      return '${hours} 小时 ${remainMinutes} 分钟';
-    }
+
+    final hours = totalSeconds ~/ 3600;
+    final minutes = (totalSeconds % 3600) ~/ 60;
+    final seconds = totalSeconds % 60;
+
     if (hours > 0) {
-      return '${hours} 小时';
+      return '${hours}h '
+          '${minutes.toString().padLeft(2, '0')}m '
+          '${seconds.toString().padLeft(2, '0')}s';
     }
-    return '$minutes 分钟';
+
+    if (minutes > 0) {
+      return '${minutes}m '
+          '${seconds.toString().padLeft(2, '0')}s';
+    }
+
+    return '${seconds}s';
   }
 
   Color _colorForDuration(
