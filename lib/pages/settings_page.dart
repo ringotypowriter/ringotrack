@@ -661,8 +661,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     ThemeData theme,
     DrawingAppPreferences prefs,
   ) {
-    final onSurfaceVariant = theme.colorScheme.onSurfaceVariant;
-
     if (prefs.trackedApps.isEmpty) {
       return _helperText(theme, '当前没有配置追踪的软件，无法按软件删除数据。');
     }
@@ -861,7 +859,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   Widget _buildThemePicker(ThemeData theme) {
     final themeAsync = ref.watch(appThemeProvider);
     final currentId = themeAsync.asData?.value.id ?? AppThemeId.ringoGreen;
-    final onSurfaceVariant = theme.colorScheme.onSurfaceVariant;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -934,7 +931,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       children: [
         _titleText(theme, title, style: titleStyle),
         SizedBox(height: 8.h),
-        _helperText(theme, helper!, height: helperHeight),
+        _helperText(theme, helper, height: helperHeight),
       ],
     );
   }
