@@ -62,18 +62,18 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                               const SizedBox(height: 40),
                               _buildTabs(theme),
                               const SizedBox(height: 16),
-                              if (_selectedTab == DashboardTab.analysis)
-                                Expanded(
-                                  child: _buildAnalysisList(theme, asyncUsage),
-                                )
-                              else
-                                _buildHeatmapShell(
-                                  theme,
-                                  start: start,
-                                  end: end,
-                                  asyncUsage: asyncUsage,
-                                  selectedTab: _selectedTab,
-                                ),
+                              Expanded(
+                                child: _selectedTab ==
+                                        DashboardTab.analysis
+                                    ? _buildAnalysisList(theme, asyncUsage)
+                                    : _buildHeatmapShell(
+                                        theme,
+                                        start: start,
+                                        end: end,
+                                        asyncUsage: asyncUsage,
+                                        selectedTab: _selectedTab,
+                                      ),
+                              ),
                             ],
                           ),
                         ),
@@ -391,39 +391,35 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
 
                   return totalFor(b).compareTo(totalFor(a));
                 });
+              return ListView.builder(
+                itemCount: appIds.length,
+                itemBuilder: (context, index) {
+                  final appId = appIds[index];
+                  final appDaily = perApp[appId]!;
+                  final displayName =
+                      appDisplayNames[appId.toLowerCase()] ?? appId;
 
-              return SizedBox(
-                height: 350.h,
-                child: ListView.builder(
-                  itemCount: appIds.length,
-                  itemBuilder: (context, index) {
-                    final appId = appIds[index];
-                    final appDaily = perApp[appId]!;
-                    final displayName =
-                        appDisplayNames[appId.toLowerCase()] ?? appId;
-
-                    return Padding(
-                      padding: EdgeInsets.symmetric(vertical: 8.h),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Center(
-                            child: Text(
-                              displayName,
-                              style: theme.textTheme.titleSmall?.copyWith(
-                                color: Colors.black87,
-                                fontWeight: FontWeight.w600,
-                              ),
-                              textAlign: TextAlign.center,
+                  return Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8.h),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Center(
+                          child: Text(
+                            displayName,
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              color: Colors.black87,
+                              fontWeight: FontWeight.w600,
                             ),
+                            textAlign: TextAlign.center,
                           ),
-                          SizedBox(height: 8.h),
-                          buildHeatmap(appDaily, showMonthLabels: true),
-                        ],
-                      ),
-                    );
-                  },
-                ),
+                        ),
+                        SizedBox(height: 8.h),
+                        buildHeatmap(appDaily, showMonthLabels: true),
+                      ],
+                    ),
+                  );
+                },
               );
             }
 
@@ -464,7 +460,10 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              heatmapChild,
+              if (selectedTab == DashboardTab.perApp)
+                Expanded(child: heatmapChild)
+              else
+                heatmapChild,
               SizedBox(height: 24.h),
               _buildLegend(theme),
             ],
