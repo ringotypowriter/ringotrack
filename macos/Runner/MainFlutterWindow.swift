@@ -3,6 +3,7 @@ import FlutterMacOS
 
 class MainFlutterWindow: NSWindow {
   private var foregroundAppStreamHandler: ForegroundAppStreamHandler?
+  private var strokeEventStreamHandler: StrokeEventStreamHandler?
 
   override func awakeFromNib() {
     NSLog("[RingoTrack] MainFlutterWindow awakeFromNib - setting up FlutterViewController")
@@ -32,7 +33,16 @@ class MainFlutterWindow: NSWindow {
     eventChannel.setStreamHandler(handler)
     foregroundAppStreamHandler = handler
 
-    NSLog("[RingoTrack] MainFlutterWindow set up foreground app event channel")
+    // 设置全局左键/落笔事件的 EventChannel
+    let strokeChannel = FlutterEventChannel(
+      name: "ringotrack/stroke_events",
+      binaryMessenger: flutterViewController.engine.binaryMessenger
+    )
+    let strokeHandler = StrokeEventStreamHandler()
+    strokeChannel.setStreamHandler(strokeHandler)
+    strokeEventStreamHandler = strokeHandler
+
+    NSLog("[RingoTrack] MainFlutterWindow set up foreground app + stroke event channels")
 
     super.awakeFromNib()
   }

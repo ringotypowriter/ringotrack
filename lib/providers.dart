@@ -8,6 +8,7 @@ import 'package:ringotrack/domain/theme_controller.dart';
 import 'package:ringotrack/domain/usage_repository.dart';
 import 'package:ringotrack/domain/usage_service.dart';
 import 'package:ringotrack/platform/foreground_app_tracker.dart';
+import 'package:ringotrack/platform/stroke_activity_tracker.dart';
 
 final appDatabaseProvider = Provider<AppDatabase>((ref) {
   final db = AppDatabase();
@@ -24,6 +25,12 @@ final foregroundAppTrackerProvider = Provider<ForegroundAppTracker>((ref) {
   return createForegroundAppTracker();
 });
 
+final strokeActivityTrackerProvider = Provider<StrokeActivityTracker>((ref) {
+  final tracker = createStrokeActivityTracker();
+  ref.onDispose(tracker.dispose);
+  return tracker;
+});
+
 final drawingAppFilterProvider = Provider<bool Function(String)>((ref) {
   final prefsAsync = ref.watch(drawingAppPrefsControllerProvider);
   final prefs =
@@ -36,12 +43,14 @@ final drawingAppFilterProvider = Provider<bool Function(String)>((ref) {
 final usageServiceProvider = Provider<UsageService>((ref) {
   final repo = ref.watch(usageRepositoryProvider);
   final tracker = ref.watch(foregroundAppTrackerProvider);
+  final strokeTracker = ref.watch(strokeActivityTrackerProvider);
   final filter = ref.watch(drawingAppFilterProvider);
 
   final service = UsageService(
     isDrawingApp: filter,
     repository: repo,
     tracker: tracker,
+    strokeTracker: strokeTracker,
   );
 
   ref.onDispose(() {

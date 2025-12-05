@@ -1,4 +1,5 @@
 #include <windows.h>
+#include <atomic>
 #include <cstdint>
 
 // 简单的前台窗口信息结构，用于 Dart FFI 映射。
@@ -38,6 +39,49 @@ std::uint64_t GetCurrentUnixMillis() {
   const std::uint64_t ticks_since_unix_epoch = uli.QuadPart - EPOCH_DIFFERENCE;
   const std::uint64_t millis = ticks_since_unix_epoch / 10000ULL;
   return millis;
+}
+
+}  // namespace
+
+// ------------------- 全局左键/落笔（AFK）检测 -------------------
+
+namespace {
+
+std::atomic<std::uint64_t> g_last_left_click_millis{0};
+HHOOK g_mouse_hook = nullptr;
+std::atomic<bool> g_left_button_down{false};
+
+LRESULT CALLBACK LowLevelMouseProc(int nCode, WPARAM wParam, LPARAM lParam) {
+  if (nCode == HC_ACTION) {
+    if (wParam == WM_LBUTTONDOWN) {
+      g_last_left_click_millis.store(GetCurrentUnixMillis(), std::memory_order_relaxed);
+      g_left_button_down.store(true, std::memory_order_relaxed);
+    } else if (wParam == WM_LBUTTONUP) {
+      g_last_left_click_millis.store(GetCurrentUnixMillis(), std::memory_order_relaxed);
+      g_left_button_down.store(false, std::memory_order_relaxed);
+    }
+  }
+  return ::CallNextHookEx(g_mouse_hook, nCode, wParam, lParam);
+}
+
+void InstallMouseHookIfNeeded() {
+  if (g_mouse_hook != nullptr) {
+    return;
+  }
+
+  const HINSTANCE module_handle = ::GetModuleHandleW(nullptr);
+  g_mouse_hook = ::SetWindowsHookExW(WH_MOUSE_LL, LowLevelMouseProc, module_handle, 0);
+
+  // 初始化一次，避免 Dart 侧立即判定为 Idle
+  g_last_left_click_millis.store(GetCurrentUnixMillis(), std::memory_order_relaxed);
+  g_left_button_down.store(false, std::memory_order_relaxed);
+}
+
+void UninstallMouseHook() {
+  if (g_mouse_hook != nullptr) {
+    ::UnhookWindowsHookEx(g_mouse_hook);
+    g_mouse_hook = nullptr;
+  }
 }
 
 }  // namespace
@@ -97,5 +141,20 @@ __declspec(dllexport) RtForegroundAppInfo* rt_get_foreground_app() {
   return &info;
 }
 
-}  // extern "C"
+// 初始化全局鼠标钩子，用于 AFK 检测。
+__declspec(dllexport) void rt_init_stroke_hook() { InstallMouseHookIfNeeded(); }
 
+// 获取最近一次左键按下的时间（Unix 毫秒，若未初始化则返回 0）。
+__declspec(dllexport) std::uint64_t rt_get_last_left_click_millis() {
+  return g_last_left_click_millis.load(std::memory_order_relaxed);
+}
+
+// 左键是否按下
+__declspec(dllexport) std::uint32_t rt_is_left_button_down() {
+  return g_left_button_down.load(std::memory_order_relaxed) ? 1u : 0u;
+}
+
+// 可选的清理函数，当前未在 Dart 侧调用。
+__declspec(dllexport) void rt_shutdown_stroke_hook() { UninstallMouseHook(); }
+
+}  // extern "C"
