@@ -41,6 +41,8 @@ class UsageService {
 
   final _deltaController =
       StreamController<Map<DateTime, Map<String, Duration>>>.broadcast();
+  final _hourlyDeltaController =
+      StreamController<Map<DateTime, Map<int, Map<String, Duration>>>>.broadcast();
 
   static const _idleAppId = '__ringotrack_idle__';
 
@@ -61,6 +63,12 @@ class UsageService {
   /// 方便 UI 侧增量刷新统计数据。
   Stream<Map<DateTime, Map<String, Duration>>> get deltaStream =>
       _deltaController.stream;
+
+  /// 小时级增量流：结构为「日期 -> 小时索引(0-23) -> AppId -> 增量时长」。
+  ///
+  /// 供 UI 侧按日合并为「24 小时分布」做实时刷新使用。
+  Stream<Map<DateTime, Map<int, Map<String, Duration>>>> get hourlyDeltaStream =>
+      _hourlyDeltaController.stream;
 
   Future<void> _onForegroundEvent(ForegroundAppEvent event) async {
     if (kDebugMode) {
@@ -238,6 +246,10 @@ class UsageService {
       _mergePendingDbDelta(dailyDelta);
     }
 
+    if (hourlyDelta.isNotEmpty) {
+      _hourlyDeltaController.add(hourlyDelta);
+    }
+
     _mergePendingHourlyDbDelta(hourlyDelta);
 
     await _flushDbDeltaIfNeeded();
@@ -251,6 +263,7 @@ class UsageService {
     await _flushAggregatorDelta();
     await _flushDbDelta(force: true);
     await _deltaController.close();
+    await _hourlyDeltaController.close();
   }
 
   void _mergePendingDbDelta(Map<DateTime, Map<String, Duration>> delta) {

@@ -33,13 +33,51 @@ final hourlySelectedDayProvider = NotifierProvider<HourlySelectedDay, DateTime>(
   HourlySelectedDay.new,
 );
 
-final hourlyUsageByDayProvider = FutureProvider.autoDispose
-    .family<Map<int, Map<String, Duration>>, DateTime>((ref, day) async {
-      final repo = ref.watch(usageRepositoryProvider);
-      final normalized = _normalizeDayDashboard(day);
-      final map = await repo.loadHourlyRange(normalized, normalized);
-      return map[normalized] ?? const <int, Map<String, Duration>>{};
-    });
+final hourlyUsageByDayProvider =
+    StreamProvider.autoDispose.family<Map<int, Map<String, Duration>>, DateTime>(
+      (ref, day) async* {
+        final repo = ref.watch(usageRepositoryProvider);
+        final service = ref.watch(usageServiceProvider);
+        final normalizedDay = _normalizeDayDashboard(day);
+
+        // 初始：从数据库加载该日的小时级用时分布
+        final initial = await repo.loadHourlyRange(normalizedDay, normalizedDay);
+        final initialForDay = initial[normalizedDay] ?? const <int, Map<String, Duration>>{};
+
+        Map<int, Map<String, Duration>> current = initialForDay.map(
+          (hour, perApp) => MapEntry(hour, Map<String, Duration>.from(perApp)),
+        );
+
+        yield current;
+
+        // 后续：监听 UsageService 的小时级增量流，增量合并到当日数据
+        await for (final delta in service.hourlyDeltaStream) {
+          final dayDelta = delta[normalizedDay];
+          if (dayDelta == null || dayDelta.isEmpty) {
+            continue;
+          }
+
+          dayDelta.forEach((hour, perAppDelta) {
+            final perApp = current.putIfAbsent(
+              hour,
+              () => <String, Duration>{},
+            );
+            perAppDelta.forEach((appId, duration) {
+              perApp[appId] =
+                  (perApp[appId] ?? Duration.zero) + duration;
+            });
+          });
+
+          // 输出一份深拷贝，避免外部修改内部状态
+          yield current.map(
+            (hour, perApp) => MapEntry(
+              hour,
+              Map<String, Duration>.from(perApp),
+            ),
+          );
+        }
+      },
+    );
 
 class DashboardPage extends ConsumerStatefulWidget {
   const DashboardPage({super.key});
