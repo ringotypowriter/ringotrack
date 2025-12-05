@@ -842,9 +842,26 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     List<DailyTotal> daily,
   ) {
     final color = theme.colorScheme.primary;
+    final maxMinutes = daily.isEmpty
+        ? 0.0
+        : daily
+            .map((e) => e.total.inSeconds / 60.0)
+            .fold<double>(0.0, (prev, m) => m > prev ? m : prev);
+    final useMinutes = maxMinutes > 0 && maxMinutes < 60;
+    final interval = useMinutes ? (maxMinutes <= 30 ? 10.0 : 20.0) : 1.0;
+    final maxValue = useMinutes ? maxMinutes : maxMinutes / 60.0;
+    final maxY = maxValue <= 0
+        ? interval
+        : ((maxValue / interval).ceil() * interval);
+
     final spots = <FlSpot>[
       for (var i = 0; i < daily.length; i++)
-        FlSpot(i.toDouble(), _hours(daily[i].total)),
+        FlSpot(
+          i.toDouble(),
+          useMinutes
+              ? daily[i].total.inSeconds / 60.0
+              : _hours(daily[i].total),
+        ),
     ];
 
     return LineChartData(
@@ -875,7 +892,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
       ),
       gridData: FlGridData(
         drawVerticalLine: false,
-        horizontalInterval: 1,
+        horizontalInterval: interval,
         getDrawingHorizontalLine: (value) =>
             FlLine(color: Colors.grey.withValues(alpha: 0.15), strokeWidth: 1),
       ),
@@ -883,10 +900,12 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
         leftTitles: AxisTitles(
           sideTitles: SideTitles(
             showTitles: true,
-            interval: 1,
+            interval: interval,
             reservedSize: 36,
             getTitlesWidget: (value, _) => Text(
-              '${value.toStringAsFixed(0)}h',
+              useMinutes
+                  ? '${value.toStringAsFixed(0)}m'
+                  : '${value.toStringAsFixed(0)}h',
               style: theme.textTheme.bodySmall,
             ),
           ),
@@ -919,6 +938,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
       ),
       borderData: FlBorderData(show: false),
       minY: 0,
+      maxY: maxY,
       lineBarsData: [
         LineChartBarData(
           spots: spots,
@@ -937,15 +957,29 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
 
   BarChartData _buildWeeklyBarData(ThemeData theme, List<WeeklyTotal> weekly) {
     final color = theme.colorScheme.primary;
+    final maxMinutes = weekly.isEmpty
+        ? 0.0
+        : weekly
+            .map((e) => e.total.inSeconds / 60.0)
+            .fold<double>(0.0, (prev, m) => m > prev ? m : prev);
+    final useMinutes = maxMinutes > 0 && maxMinutes < 60;
+    final interval = useMinutes ? (maxMinutes <= 30 ? 10.0 : 20.0) : 2.0;
+    final maxValue = useMinutes ? maxMinutes : maxMinutes / 60.0;
+    final maxY = maxValue <= 0
+        ? interval
+        : ((maxValue / interval).ceil() * interval);
     final groups = <BarChartGroupData>[];
 
     for (var i = 0; i < weekly.length; i++) {
+      final total = weekly[i].total;
+      final value =
+          useMinutes ? total.inSeconds / 60.0 : _hours(weekly[i].total);
       groups.add(
         BarChartGroupData(
           x: i,
           barRods: [
             BarChartRodData(
-              toY: _hours(weekly[i].total),
+              toY: value,
               color: color,
               width: 16,
               borderRadius: BorderRadius.circular(_dashboardElementRadius),
@@ -975,7 +1009,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
       ),
       gridData: FlGridData(
         drawVerticalLine: false,
-        horizontalInterval: 2,
+        horizontalInterval: interval,
         getDrawingHorizontalLine: (value) =>
             FlLine(color: Colors.grey.withValues(alpha: 0.15), strokeWidth: 1),
       ),
@@ -984,9 +1018,11 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
           sideTitles: SideTitles(
             showTitles: true,
             reservedSize: 40,
-            interval: 2,
+            interval: interval,
             getTitlesWidget: (value, _) => Text(
-              '${value.toStringAsFixed(0)}h',
+              useMinutes
+                  ? '${value.toStringAsFixed(0)}m'
+                  : '${value.toStringAsFixed(0)}h',
               style: theme.textTheme.bodySmall,
             ),
           ),
@@ -1021,6 +1057,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
       borderData: FlBorderData(show: false),
       barGroups: groups,
       minY: 0,
+      maxY: maxY,
     );
   }
 
@@ -1085,6 +1122,10 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
               .fold<double>(0.0, (prev, m) => m > prev ? m : prev);
     final useMinutes = maxMinutes > 0 && maxMinutes < 60;
     final interval = useMinutes ? (maxMinutes <= 30 ? 10.0 : 20.0) : 1.0;
+    final maxValue = useMinutes ? maxMinutes : maxMinutes / 60.0;
+    final maxY = maxValue <= 0
+        ? interval
+        : ((maxValue / interval).ceil() * interval);
     final labels = ['一', '二', '三', '四', '五', '六', '日'];
 
     final bars = data.map((e) {
@@ -1169,6 +1210,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
       borderData: FlBorderData(show: false),
       barGroups: bars,
       minY: 0,
+      maxY: maxY,
     );
   }
 
