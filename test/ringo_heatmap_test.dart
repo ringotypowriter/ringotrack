@@ -51,6 +51,37 @@ void main() {
     });
 
     testWidgets(
+        'day with sub-minute usage still gets non-empty color', (tester) async {
+      final start = DateTime(2025, 1, 1);
+      final end = DateTime(2025, 1, 1);
+
+      final dailyTotals = <DateTime, Duration>{
+        DateTime(2025, 1, 1): const Duration(seconds: 10),
+      };
+
+      const empty = Color(0xFFCCCCCC);
+      const base = Colors.green;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: RingoHeatmap(
+              start: start,
+              end: end,
+              dailyTotals: dailyTotals,
+              baseColor: base,
+              emptyColor: empty,
+            ),
+          ),
+        ),
+      );
+
+      final color = _colorForDay(tester, DateTime(2025, 1, 1));
+      expect(color, isNot(equals(empty)));
+      expect(color.opacity, greaterThan(0));
+    });
+
+    testWidgets(
         'day with >5h always has at least half opacity even when average is high',
         (tester) async {
       final start = DateTime(2025, 1, 1);
@@ -136,11 +167,9 @@ void main() {
         MaterialApp(
           home: Scaffold(
             body: RingoHeatmap(
-              start: DateTime(2025, 1, 1),
-              end: DateTime(2025, 1, 3),
-              dailyTotals: {
-                DateTime(2025, 1, 2): Duration(hours: 2, minutes: 30),
-              },
+              start: start,
+              end: end,
+              dailyTotals: dailyTotals,
             ),
           ),
         ),

@@ -54,7 +54,7 @@ RingoTrack 就是在这个背景下做出来的：
   - 通过 Swift + AppKit，使用 `NSWorkspace` 前台应用通知获取当前 App。
   - 当前暂未提供打包好的安装包，可通过源码自行构建运行。
 
-应用基于 **Flutter 3.38.3 / Dart 3.10.1** 开发，主要面向 Windows 10+ 与 macOS 13+ 的桌面环境（其他版本未做系统性验证）。
+主要面向 Windows 10+ 与 macOS 13+ 的桌面环境（其他版本未做系统性验证）。
 
 ---
 
@@ -114,28 +114,28 @@ RingoTrack 当前仍处在早期版本阶段，界面和功能会随着使用反
 
 ---
 
-## 技术栈与架构概览
+## 常见问题 (FAQ)
 
-- **前端 UI**
-  - Flutter 桌面端应用
-  - 使用 Riverpod 做状态管理，使用 GoRouter 负责路由导航
-  - 自定义 GitHub 风格的小绿砖日历组件 `RingoHeatmap`
-- **平台集成**
-  - Windows：通过 win32 API（Dart FFI）轮询前台窗口并获取 exe 名
-  - macOS：通过 Swift + AppKit 监听 `NSWorkspace` 前台应用变化
-- **领域模型**
-  - `AppUsageEntry`：单次前台使用记录
-  - `DailyUsage`：按自然日聚合后的使用数据（含各 App 分布）
-  - `ForegroundAppEvent`：前台应用切换事件
-  - `UsageAggregator`：核心时间统计与跨天拆分逻辑
-- **数据表示**
-  - 统一抽象为 `Map<Date, Map<AppId, Duration>>`
-  - Windows 使用 exe 名作为 `AppId`，macOS 使用 bundle identifier
-- **测试与质量**
-  - 使用 Flutter 自带测试框架，配合 TDD 驱动实现：
-    - 采集与统计逻辑单元测试
-    - 热力图组件与仪表盘 UI 的 Widget 测试
-  - 使用 `flutter_lints` 规范代码风格
+### Q: Windows 系统下程序无法运行或闪退？
+
+**A:** 这通常是由于文件路径中包含中文字符导致的。Flutter 桌面应用在 Windows 上对中文路径支持存在兼容性问题。
+
+**解决方案：**
+1. 将 RingoTrack 程序文件移动到英文路径下（如 `C:ingotrackingotrack.exe`）
+2. 确保运行目录和临时目录路径中不包含中文字符
+3. 如果问题仍然存在，请尝试以管理员身份运行程序
+
+### Q: 为什么我的绘画软件没有被记录？
+
+**A:** 请检查以下几点：
+1. 确认该软件已在「偏好设置」的绘画软件列表中
+2. 确保 RingoTrack 正在后台运行
+3. 某些软件可能需要重新启动才能被正确识别
+4. 检查是否被安全软件拦截了窗口监控权限
+
+### Q: 数据会上传到服务器吗？
+
+**A:** 不会。RingoTrack 所有数据都保存在本地，不会上传到任何服务器。你的使用记录完全由你自己掌控。
 
 ---
 

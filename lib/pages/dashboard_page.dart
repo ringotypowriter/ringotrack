@@ -953,9 +953,27 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
   }
 
   String _formatDuration(Duration duration) {
-    final hours = duration.inHours;
-    final minutes = duration.inMinutes.remainder(60);
-    return '${hours}h ${minutes.toString().padLeft(2, '0')}m';
+    final totalSeconds = duration.inSeconds;
+    if (totalSeconds <= 0) {
+      return '0s';
+    }
+
+    final hours = totalSeconds ~/ 3600;
+    final minutes = (totalSeconds % 3600) ~/ 60;
+    final seconds = totalSeconds % 60;
+
+    if (hours > 0) {
+      return '${hours}h '
+          '${minutes.toString().padLeft(2, '0')}m '
+          '${seconds.toString().padLeft(2, '0')}s';
+    }
+
+    if (minutes > 0) {
+      return '${minutes}m '
+          '${seconds.toString().padLeft(2, '0')}s';
+    }
+
+    return '${seconds}s';
   }
 
   String _formatLastUpdated(DateTime timestamp) {

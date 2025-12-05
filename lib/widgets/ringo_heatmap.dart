@@ -259,7 +259,7 @@ class _HeatmapGridState extends State<_HeatmapGrid> {
   Duration _hoveredDuration = Duration.zero;
 
   late double _avgMinutes;
-  late int _maxMinutes;
+  late double _maxMinutes;
 
   @override
   void initState() {
@@ -276,21 +276,25 @@ class _HeatmapGridState extends State<_HeatmapGrid> {
   }
 
   void _recomputeStats() {
-    final nonZeroMinutes = widget.normalizedTotals.values
-        .where((d) => d.inMinutes > 0)
-        .map((d) => d.inMinutes)
+    final nonZeroDurations = widget.normalizedTotals.values
+        .where((d) => d.inSeconds > 0)
         .toList();
 
-    if (nonZeroMinutes.isEmpty) {
+    if (nonZeroDurations.isEmpty) {
       _avgMinutes = 0;
       _maxMinutes = 0;
       return;
     }
 
+    final minutesList = nonZeroDurations
+        .map((d) => d.inSeconds / 60.0)
+        .toList();
+
     final totalMinutes =
-        nonZeroMinutes.fold<int>(0, (sum, m) => sum + m);
-    _avgMinutes = totalMinutes / nonZeroMinutes.length;
-    _maxMinutes = nonZeroMinutes.reduce((a, b) => a > b ? a : b);
+        minutesList.fold<double>(0, (sum, m) => sum + m);
+    _avgMinutes = totalMinutes / minutesList.length;
+    _maxMinutes =
+        minutesList.reduce((a, b) => a > b ? a : b);
   }
 
   @override
@@ -448,13 +452,14 @@ class _HeatmapGridState extends State<_HeatmapGrid> {
   Color _colorForDuration(
     Duration duration, {
     required double avgMinutes,
-    required int maxMinutes,
+    required double maxMinutes,
   }) {
-    final minutes = duration.inMinutes;
-
-    if (minutes <= 0) {
+    final totalSeconds = duration.inSeconds;
+    if (totalSeconds <= 0) {
       return widget.emptyColor;
     }
+
+    final minutes = totalSeconds / 60.0;
 
     double relativeScore = 0;
     if (avgMinutes > 0) {
