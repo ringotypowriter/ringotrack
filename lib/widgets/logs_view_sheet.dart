@@ -79,7 +79,7 @@ class _LogsViewSheetState extends State<LogsViewSheet> {
             ),
             SizedBox(height: 6.h),
             Text(
-              '用于跨平台排查前台窗口采集与聚合写库的问题（Windows / macOS 通用），最新记录在顶部。',
+              '用于跨平台排查前台窗口采集与聚合写库的问题，最新记录在顶部。',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: const Color(0xFF4C5A52),
               ),
@@ -106,7 +106,7 @@ class _LogsViewSheetState extends State<LogsViewSheet> {
     if (entries.isEmpty) {
       return Center(
         child: Text(
-          '当前还没有日志记录。请在 Windows 上运行应用并切换前台软件后再查看。',
+          '当前还没有日志记录。请运行应用并切换前台软件后再查看。',
           style: theme.textTheme.bodySmall?.copyWith(
             color: const Color(0xFFCBD5F5),
           ),
