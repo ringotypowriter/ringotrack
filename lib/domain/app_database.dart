@@ -222,22 +222,37 @@ class AppDatabase extends _$AppDatabase {
   }
 
   Future<void> deleteByAppId(String appId) {
-    return (delete(
-      dailyUsageEntries,
-    )..where((tbl) => tbl.appId.equals(appId))).go();
+    return transaction(() async {
+      await (delete(
+        dailyUsageEntries,
+      )..where((tbl) => tbl.appId.equals(appId))).go();
+
+      await (delete(
+        hourlyUsageEntries,
+      )..where((tbl) => tbl.appId.equals(appId))).go();
+    });
   }
 
   Future<void> deleteByDateRange(DateTime start, DateTime end) {
     final startDay = _normalizeDay(start);
     final endDay = _normalizeDay(end);
 
-    return (delete(
-      dailyUsageEntries,
-    )..where((tbl) => tbl.date.isBetweenValues(startDay, endDay))).go();
+    return transaction(() async {
+      await (delete(
+        dailyUsageEntries,
+      )..where((tbl) => tbl.date.isBetweenValues(startDay, endDay))).go();
+
+      await (delete(
+        hourlyUsageEntries,
+      )..where((tbl) => tbl.date.isBetweenValues(startDay, endDay))).go();
+    });
   }
 
   Future<void> clearAll() {
-    return delete(dailyUsageEntries).go();
+    return transaction(() async {
+      await delete(dailyUsageEntries).go();
+      await delete(hourlyUsageEntries).go();
+    });
   }
 }
 
