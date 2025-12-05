@@ -1,6 +1,6 @@
-#include <windows.h>
 #include <atomic>
 #include <cstdint>
+#include <windows.h>
 
 // 简单的前台窗口信息结构，用于 Dart FFI 映射。
 struct RtForegroundAppInfo {
@@ -156,5 +156,171 @@ __declspec(dllexport) std::uint32_t rt_is_left_button_down() {
 
 // 可选的清理函数，当前未在 Dart 侧调用。
 __declspec(dllexport) void rt_shutdown_stroke_hook() { UninstallMouseHook(); }
+
+// ------------------- 窗口置顶 / 固定大小控制 -------------------
+
+namespace {
+
+std::atomic<bool> g_is_pinned{false};
+HWND g_pinned_hwnd = nullptr;
+WINDOWPLACEMENT g_prev_placement{};
+LONG g_prev_style = 0;
+LONG g_prev_ex_style = 0;
+
+RECT GetWorkAreaForWindow(HWND hwnd) {
+  RECT work_area{};
+
+  // 首选系统工作区（考虑任务栏等保留区域）。
+  if (SystemParametersInfoW(SPI_GETWORKAREA, 0, &work_area, 0)) {
+    return work_area;
+  }
+
+  // 回退到窗口所在的监视器工作区。
+  HMONITOR monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+  MONITORINFO info{};
+  info.cbSize = sizeof(info);
+  if (GetMonitorInfoW(monitor, &info)) {
+    return info.rcWork;
+  }
+
+  // 如果连监视器信息都拿不到，就退回到当前窗口区域，
+  // 让 pinned 小窗仍然相对当前窗口位置调整，而不是假设一个固定屏幕分辨率。
+  if (GetWindowRect(hwnd, &work_area)) {
+    return work_area;
+  }
+
+  // 最后的兜底：使用与应用默认窗口一致的区域大小（1280x720）。
+  work_area.left = 0;
+  work_area.top = 0;
+  work_area.right = 1280;
+  work_area.bottom = 720;
+  return work_area;
+}
+
+bool EnsureWindowHandle() {
+  if (g_pinned_hwnd != nullptr) {
+    return true;
+  }
+
+  HWND hwnd = ::GetActiveWindow();
+  if (hwnd == nullptr) {
+    hwnd = ::GetForegroundWindow();
+  }
+
+  if (hwnd == nullptr) {
+    return false;
+  }
+
+  g_pinned_hwnd = hwnd;
+  return true;
+}
+
+}  // namespace
+
+// 将当前窗口缩放到较小尺寸并置顶，便于作为「时钟挂件」悬浮。
+// 返回值：非 0 表示成功，0 表示失败（例如无法获取窗口句柄）。
+__declspec(dllexport) std::int32_t rt_enter_pinned_mode() {
+  if (g_is_pinned.load(std::memory_order_acquire)) {
+    return 1;
+  }
+
+  if (!EnsureWindowHandle()) {
+    return 0;
+  }
+
+  HWND hwnd = g_pinned_hwnd;
+
+  WINDOWPLACEMENT placement{};
+  placement.length = sizeof(placement);
+  if (!::GetWindowPlacement(hwnd, &placement)) {
+    return 0;
+  }
+
+  g_prev_placement = placement;
+  g_prev_style = static_cast<LONG>(::GetWindowLongPtrW(hwnd, GWL_STYLE));
+  g_prev_ex_style = static_cast<LONG>(::GetWindowLongPtrW(hwnd, GWL_EXSTYLE));
+
+  RECT work_area = GetWorkAreaForWindow(hwnd);
+
+  const int target_width = 360;
+  const int target_height = 220;
+  const int margin = 16;
+
+  int x = work_area.right - target_width - margin;
+  int y = work_area.top + margin;
+
+  ::SetWindowPos(
+      hwnd,
+      HWND_TOPMOST,
+      x,
+      y,
+      target_width,
+      target_height,
+      SWP_SHOWWINDOW | SWP_NOACTIVATE);
+
+  // 清理最大化按钮，防止在小窗模式下被误触。
+  LONG new_style = g_prev_style & ~WS_MAXIMIZEBOX;
+  ::SetWindowLongPtrW(hwnd, GWL_STYLE, new_style);
+  ::SetWindowPos(hwnd,
+                 nullptr,
+                 0,
+                 0,
+                 0,
+                 0,
+                 SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
+
+  g_is_pinned.store(true, std::memory_order_release);
+  return 1;
+}
+
+// 退出置顶小窗模式，恢复窗口原有位置和大小。
+// 返回值：非 0 表示成功，0 表示失败。
+__declspec(dllexport) std::int32_t rt_exit_pinned_mode() {
+  if (!g_is_pinned.load(std::memory_order_acquire)) {
+    return 1;
+  }
+
+  if (g_pinned_hwnd == nullptr) {
+    g_is_pinned.store(false, std::memory_order_release);
+    return 0;
+  }
+
+  HWND hwnd = g_pinned_hwnd;
+
+  const RECT& rect = g_prev_placement.rcNormalPosition;
+  int width = rect.right - rect.left;
+  int height = rect.bottom - rect.top;
+
+  ::SetWindowPos(
+      hwnd,
+      HWND_NOTOPMOST,
+      rect.left,
+      rect.top,
+      width,
+      height,
+      SWP_SHOWWINDOW);
+
+  if (g_prev_style != 0) {
+    ::SetWindowLongPtrW(hwnd, GWL_STYLE, g_prev_style);
+  }
+  if (g_prev_ex_style != 0) {
+    ::SetWindowLongPtrW(hwnd, GWL_EXSTYLE, g_prev_ex_style);
+  }
+  ::SetWindowPos(hwnd,
+                 nullptr,
+                 0,
+                 0,
+                 0,
+                 0,
+                 SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
+
+  g_is_pinned.store(false, std::memory_order_release);
+  g_pinned_hwnd = nullptr;
+  ::ZeroMemory(&g_prev_placement, sizeof(g_prev_placement));
+  g_prev_style = 0;
+  g_prev_ex_style = 0;
+
+  return 1;
+}
 
 }  // extern "C"

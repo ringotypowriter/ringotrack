@@ -1,14 +1,69 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ringotrack/providers.dart';
+import 'package:ringotrack/platform/window_pin_controller.dart';
 
-class ClockPage extends ConsumerWidget {
+class ClockPage extends ConsumerStatefulWidget {
   const ClockPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ClockPage> createState() => _ClockPageState();
+}
+
+class _ClockPageState extends ConsumerState<ClockPage> {
+  bool _isPinned = false;
+  bool _isTogglingPin = false;
+
+  bool get _isWindowsDesktop =>
+      !kIsWeb && Platform.isWindows && defaultTargetPlatform == TargetPlatform.windows;
+
+  Future<void> _togglePin() async {
+    if (!_isWindowsDesktop) {
+      return;
+    }
+    if (_isTogglingPin) {
+      return;
+    }
+
+    setState(() {
+      _isTogglingPin = true;
+    });
+
+    final controller = WindowPinController.instance;
+    if (!controller.isSupported) {
+      setState(() {
+        _isTogglingPin = false;
+      });
+      return;
+    }
+
+    final bool success;
+    if (_isPinned) {
+      success = await controller.exitPinnedMode();
+    } else {
+      success = await controller.enterPinnedMode();
+    }
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _isTogglingPin = false;
+      if (success) {
+        _isPinned = !_isPinned;
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ref = this.ref;
     final theme = Theme.of(context);
 
     final timeTextStyle = theme.textTheme.displayLarge?.copyWith(
@@ -32,14 +87,30 @@ class ClockPage extends ConsumerWidget {
           padding: EdgeInsets.symmetric(horizontal: 40.w, vertical: 24.h),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Align(
-                alignment: Alignment.centerLeft,
-                child: IconButton(
-                  onPressed: () => context.go('/'),
-                  icon: const Icon(Icons.arrow_back_rounded),
-                  tooltip: '返回仪表盘',
-                ),
+            children: <Widget>[
+              Row(
+                children: [
+                  if (!_isPinned)
+                    IconButton(
+                      onPressed: () => context.go('/'),
+                      icon: const Icon(Icons.arrow_back_rounded),
+                      tooltip: '返回仪表盘',
+                    ),
+                  if (_isPinned)
+                    SizedBox(
+                      width: 48.w,
+                      height: 48.w,
+                    ),
+                  const Spacer(),
+                  if (_isWindowsDesktop && WindowPinController.instance.isSupported)
+                    IconButton(
+                      onPressed: _isTogglingPin ? null : _togglePin,
+                      icon: Icon(
+                        _isPinned ? Icons.push_pin : Icons.push_pin_outlined,
+                      ),
+                      tooltip: _isPinned ? '取消锁定并恢复窗口' : '锁定时钟窗口置顶',
+                    ),
+                ],
               ),
               SizedBox(height: 24.h),
               Expanded(
