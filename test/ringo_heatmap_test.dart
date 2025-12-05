@@ -1,11 +1,9 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ringotrack/widgets/ringo_heatmap.dart';
 
 void main() {
-  Color _colorForDay(WidgetTester tester, DateTime day) {
+  Color colorForDay(WidgetTester tester, DateTime day) {
     final y = day.year.toString().padLeft(4, '0');
     final m = day.month.toString().padLeft(2, '0');
     final d = day.day.toString().padLeft(2, '0');
@@ -43,8 +41,8 @@ void main() {
         ),
       );
 
-      final zeroDayColor = _colorForDay(tester, DateTime(2025, 1, 1));
-      final nonZeroDayColor = _colorForDay(tester, DateTime(2025, 1, 2));
+      final zeroDayColor = colorForDay(tester, DateTime(2025, 1, 1));
+      final nonZeroDayColor = colorForDay(tester, DateTime(2025, 1, 2));
 
       expect(zeroDayColor, empty);
       expect(nonZeroDayColor, isNot(equals(empty)));
@@ -77,9 +75,9 @@ void main() {
         ),
       );
 
-      final color = _colorForDay(tester, DateTime(2025, 1, 1));
+      final color = colorForDay(tester, DateTime(2025, 1, 1));
       expect(color, isNot(equals(empty)));
-      expect(color.opacity, greaterThan(0));
+      expect(color.a, greaterThan(0));
     });
 
     testWidgets(
@@ -113,8 +111,8 @@ void main() {
           ),
         );
 
-        final fiveHourColor = _colorForDay(tester, DateTime(2025, 1, 5));
-        expect(fiveHourColor.opacity, greaterThanOrEqualTo(0.5));
+        final fiveHourColor = colorForDay(tester, DateTime(2025, 1, 5));
+        expect(fiveHourColor.a, greaterThanOrEqualTo(0.5));
       },
     );
 
@@ -148,10 +146,10 @@ void main() {
           ),
         );
 
-        final nearAverageColor = _colorForDay(tester, DateTime(2025, 1, 1));
-        final highRatioColor = _colorForDay(tester, DateTime(2025, 1, 4));
+        final nearAverageColor = colorForDay(tester, DateTime(2025, 1, 1));
+        final highRatioColor = colorForDay(tester, DateTime(2025, 1, 4));
 
-        expect(highRatioColor.opacity, greaterThan(nearAverageColor.opacity));
+        expect(highRatioColor.a, greaterThan(nearAverageColor.a));
       },
     );
   });

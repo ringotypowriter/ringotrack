@@ -147,7 +147,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
           return '—';
         },
         loading: () => '计算中…',
-        error: (_, __) => '—',
+        error: (error, stackTrace) => '—',
       );
     }
 
@@ -286,7 +286,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
         return map;
       },
       loading: () => const <String, String>{},
-      error: (_, __) => const <String, String>{},
+      error: (error, stackTrace) => const <String, String>{},
     );
 
     return LayoutBuilder(
@@ -500,7 +500,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                 width: 10.r,
                 height: 10.r,
                 decoration: BoxDecoration(
-                  color: baseColor.withOpacity(opacity),
+                  color: baseColor.withValues(alpha: opacity),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -532,7 +532,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
         return map;
       },
       loading: () => const <String, String>{},
-      error: (_, __) => const <String, String>{},
+      error: (error, stackTrace) => const <String, String>{},
     );
 
     String displayName(String appId) {
@@ -669,20 +669,25 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
       lineTouchData: LineTouchData(
         touchTooltipData: LineTouchTooltipData(
           getTooltipItems: (touchedSpots) {
-            return touchedSpots.map((spot) {
-              final index = spot.x.round();
-              if (index < 0 || index >= daily.length) {
-                return null;
-              }
-              final item = daily[index];
-              final date = item.date;
-              final dateLabel = '${date.month}/${date.day}';
-              final durationLabel = _formatDuration(item.total);
-              final style =
-                  theme.textTheme.bodySmall?.copyWith(color: Colors.white) ??
-                  const TextStyle(color: Colors.white, fontSize: 11);
-              return LineTooltipItem('$dateLabel\n$durationLabel', style);
-            }).whereType<LineTooltipItem>().toList();
+            return touchedSpots
+                .map((spot) {
+                  final index = spot.x.round();
+                  if (index < 0 || index >= daily.length) {
+                    return null;
+                  }
+                  final item = daily[index];
+                  final date = item.date;
+                  final dateLabel = '${date.month}/${date.day}';
+                  final durationLabel = _formatDuration(item.total);
+                  final style =
+                      theme.textTheme.bodySmall?.copyWith(
+                        color: Colors.white,
+                      ) ??
+                      const TextStyle(color: Colors.white, fontSize: 11);
+                  return LineTooltipItem('$dateLabel\n$durationLabel', style);
+                })
+                .whereType<LineTooltipItem>()
+                .toList();
           },
         ),
       ),
@@ -690,7 +695,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
         drawVerticalLine: false,
         horizontalInterval: 1,
         getDrawingHorizontalLine: (value) =>
-            FlLine(color: Colors.grey.withOpacity(0.15), strokeWidth: 1),
+            FlLine(color: Colors.grey.withValues(alpha: 0.15), strokeWidth: 1),
       ),
       titlesData: FlTitlesData(
         leftTitles: AxisTitles(
@@ -738,7 +743,10 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
           isCurved: true,
           color: color,
           dotData: const FlDotData(show: false),
-          belowBarData: BarAreaData(show: true, color: color.withOpacity(0.12)),
+          belowBarData: BarAreaData(
+            show: true,
+            color: color.withValues(alpha: 0.12),
+          ),
           barWidth: 2.6,
         ),
       ],
@@ -787,7 +795,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
         drawVerticalLine: false,
         horizontalInterval: 2,
         getDrawingHorizontalLine: (value) =>
-            FlLine(color: Colors.grey.withOpacity(0.15), strokeWidth: 1),
+            FlLine(color: Colors.grey.withValues(alpha: 0.15), strokeWidth: 1),
       ),
       titlesData: FlTitlesData(
         leftTitles: AxisTitles(
@@ -891,12 +899,10 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     final maxMinutes = data.isEmpty
         ? 0.0
         : data
-            .map((e) => e.average.inSeconds / 60.0)
-            .fold<double>(0.0, (prev, m) => m > prev ? m : prev);
+              .map((e) => e.average.inSeconds / 60.0)
+              .fold<double>(0.0, (prev, m) => m > prev ? m : prev);
     final useMinutes = maxMinutes > 0 && maxMinutes < 60;
-    final interval = useMinutes
-        ? (maxMinutes <= 30 ? 10.0 : 20.0)
-          : 1.0;
+    final interval = useMinutes ? (maxMinutes <= 30 ? 10.0 : 20.0) : 1.0;
     final labels = ['一', '二', '三', '四', '五', '六', '日'];
 
     final bars = data.map((e) {
@@ -939,7 +945,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
         drawVerticalLine: false,
         horizontalInterval: interval,
         getDrawingHorizontalLine: (value) =>
-            FlLine(color: Colors.grey.withOpacity(0.15), strokeWidth: 1),
+            FlLine(color: Colors.grey.withValues(alpha: 0.15), strokeWidth: 1),
       ),
       titlesData: FlTitlesData(
         leftTitles: AxisTitles(
@@ -993,7 +999,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     final text = metricsAsync.when(
       data: (metrics) => '数据更新于 ${_formatLastUpdated(metrics.lastUpdatedAt)}',
       loading: () => '数据更新中…',
-      error: (_, __) => '数据加载失败，稍后自动重试',
+      error: (error, stackTrace) => '数据加载失败，稍后自动重试',
     );
 
     return Center(
@@ -1107,7 +1113,7 @@ class _AnalysisCard extends StatelessWidget {
         border: Border.all(color: const Color(0xFFE3E3E3)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 8,
             offset: const Offset(0, 4),
           ),

@@ -508,7 +508,7 @@ class _HeatmapGridState extends State<_HeatmapGrid> {
       intensity = 1.0;
     }
 
-    return widget.baseColor.withOpacity(intensity);
+    return widget.baseColor.withValues(alpha: intensity);
   }
 
   String _dayKey(DateTime day) {

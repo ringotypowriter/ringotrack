@@ -314,7 +314,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         border: Border.all(color: _cardBorder),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 20,
             offset: const Offset(0, 12),
           ),
@@ -329,7 +329,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               Container(
                 padding: EdgeInsets.all(10.r),
                 decoration: BoxDecoration(
-                  color: primary.withOpacity(0.12),
+                  color: primary.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(12.r),
                 ),
                 child: Icon(icon, color: primary),
@@ -359,7 +359,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     required String helper,
     required Widget child,
   }) {
-    final surfaceTint = theme.colorScheme.primary.withOpacity(0.03);
+    final surfaceTint = theme.colorScheme.primary.withValues(alpha: 0.03);
 
     return Container(
       width: double.infinity,
@@ -388,7 +388,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       width: double.infinity,
       padding: EdgeInsets.all(12.r),
       decoration: BoxDecoration(
-        color: errorContainer.withOpacity(0.16),
+        color: errorContainer.withValues(alpha: 0.16),
         borderRadius: BorderRadius.circular(12.r),
         border: Border.all(color: errorContainer),
       ),
@@ -434,7 +434,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     width: 28.r,
                     height: 28.r,
                     decoration: BoxDecoration(
-                      color: primary.withOpacity(0.12),
+                      color: primary.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(8.r),
                     ),
                     alignment: Alignment.center,
@@ -593,8 +593,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                   vertical: 8.h,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: theme.colorScheme.primary.withOpacity(
-                                    0.03,
+                                  color: theme.colorScheme.primary.withValues(
+                                    alpha: 0.03,
                                   ),
                                   borderRadius: BorderRadius.circular(12.r),
                                   border: Border.all(color: _cardBorder),
@@ -683,7 +683,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         SizedBox(
           width: 260.w,
           child: DropdownButtonFormField<String>(
-            value: currentLogicalId,
+            initialValue: currentLogicalId,
             decoration: const InputDecoration(
               prefixIcon: Icon(Icons.apps_outlined),
             ),
@@ -819,7 +819,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               DropdownButtonFormField<HeatmapRangeMode>(
-                value: current,
+                initialValue: current,
                 decoration: const InputDecoration(
                   prefixIcon: Icon(Icons.timeline_outlined),
                 ),
@@ -974,7 +974,7 @@ class _ThemeDot extends StatelessWidget {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               border: Border.all(color: ring, width: 3),
-              color: theme.primary.withOpacity(0.9),
+              color: theme.primary.withValues(alpha: 0.9),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.05),

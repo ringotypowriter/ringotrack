@@ -48,11 +48,7 @@ RingoTrack 就是在这个背景下做出来的：
 ## 平台支持
 
 - **Windows**
-  - 通过 win32 API（Dart FFI）轮询前台窗口，识别当前前台进程 exe 名。
-  - Releases 中目前提供 Windows 版可执行文件。
 - **macOS**
-  - 通过 Swift + AppKit，使用 `NSWorkspace` 前台应用通知获取当前 App。
-  - 当前暂未提供打包好的安装包，可通过源码自行构建运行。
 
 主要面向 Windows 10+ 与 macOS 13+ 的桌面环境（其他版本未做系统性验证）。
 

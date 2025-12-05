@@ -20,7 +20,9 @@ class _ClockPageState extends ConsumerState<ClockPage> {
   bool _isTogglingPin = false;
 
   bool get _isWindowsDesktop =>
-      !kIsWeb && Platform.isWindows && defaultTargetPlatform == TargetPlatform.windows;
+      !kIsWeb &&
+      Platform.isWindows &&
+      defaultTargetPlatform == TargetPlatform.windows;
 
   Future<void> _togglePin() async {
     if (!_isWindowsDesktop) {
@@ -76,7 +78,7 @@ class _ClockPageState extends ConsumerState<ClockPage> {
     );
 
     final secondaryTextStyle = theme.textTheme.bodyLarge?.copyWith(
-      color: theme.colorScheme.onSurface.withOpacity(0.6),
+      color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
       fontFeatures: const [FontFeature.tabularFigures()],
     );
 
@@ -96,13 +98,10 @@ class _ClockPageState extends ConsumerState<ClockPage> {
                       icon: const Icon(Icons.arrow_back_rounded),
                       tooltip: '返回仪表盘',
                     ),
-                  if (_isPinned)
-                    SizedBox(
-                      width: 48.w,
-                      height: 48.w,
-                    ),
+                  if (_isPinned) SizedBox(width: 48.w, height: 48.w),
                   const Spacer(),
-                  if (_isWindowsDesktop && WindowPinController.instance.isSupported)
+                  if (_isWindowsDesktop &&
+                      WindowPinController.instance.isSupported)
                     IconButton(
                       onPressed: _isTogglingPin ? null : _togglePin,
                       icon: Icon(
@@ -155,7 +154,7 @@ class _ClockPageState extends ConsumerState<ClockPage> {
               Text(
                 '数据加载失败：$err',
                 style: secondaryTextStyle.copyWith(
-                  color: theme.colorScheme.error.withOpacity(0.8),
+                  color: theme.colorScheme.error.withValues(alpha: 0.8),
                   fontSize: secondaryTextStyle.fontSize?.sp,
                 ),
                 textAlign: TextAlign.center,

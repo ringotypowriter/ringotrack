@@ -36,14 +36,14 @@ final class WindowPinController {
 
     try {
       final lib = ffi.DynamicLibrary.process();
-      final enterFn = lib.lookupFunction<
-          _RtEnterPinnedModeNative, _RtEnterPinnedModeDart>(
-        'rt_enter_pinned_mode',
-      );
-      final exitFn = lib.lookupFunction<
-          _RtExitPinnedModeNative, _RtExitPinnedModeDart>(
-        'rt_exit_pinned_mode',
-      );
+      final enterFn = lib
+          .lookupFunction<_RtEnterPinnedModeNative, _RtEnterPinnedModeDart>(
+            'rt_enter_pinned_mode',
+          );
+      final exitFn = lib
+          .lookupFunction<_RtExitPinnedModeNative, _RtExitPinnedModeDart>(
+            'rt_exit_pinned_mode',
+          );
 
       if (kDebugMode) {
         debugPrint('[WindowPinController] FFI functions resolved');
@@ -109,10 +109,7 @@ final class WindowPinController {
       }
       return ok;
     } catch (e, st) {
-      AppLogService.instance.logError(
-        _logTag,
-        'exitPinnedMode threw: $e\n$st',
-      );
+      AppLogService.instance.logError(_logTag, 'exitPinnedMode threw: $e\n$st');
       if (kDebugMode) {
         debugPrint('[WindowPinController] exitPinnedMode error: $e');
       }
@@ -120,4 +117,3 @@ final class WindowPinController {
     }
   }
 }
-
