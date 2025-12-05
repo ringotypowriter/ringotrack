@@ -50,6 +50,9 @@ class UsageService {
   bool _pointerDown = false;
 
   final Map<DateTime, Map<String, Duration>> _pendingDbDelta = {};
+  // 聚合层是毫秒精度；为了让 UI / DB 都按整秒工作，同时不丢失「不足 1 秒」的片段，
+  // 这里为每个 (day, appId) 维护一个 < 1 秒的余数，在后续 flush 中继续累加。
+  final Map<DateTime, Map<String, Duration>> _fractionalRemainder = {};
   DateTime _lastDbFlushAt = DateTime.now();
   bool _isFlushingDb = false;
 
@@ -190,20 +193,10 @@ class UsageService {
       return;
     }
 
-    // 为了让实时 UI 与持久化后的结果严格按「整秒」对齐，这里将聚合结果
-    // 统一量化到整数秒：对每个 (day, appId) 只保留 duration.inSeconds。
-    final delta = <DateTime, Map<String, Duration>>{};
-    rawDelta.forEach((day, perApp) {
-      final perAppSeconds = <String, Duration>{};
-      perApp.forEach((appId, duration) {
-        final seconds = duration.inSeconds;
-        if (seconds <= 0) return;
-        perAppSeconds[appId] = Duration(seconds: seconds);
-      });
-      if (perAppSeconds.isNotEmpty) {
-        delta[day] = perAppSeconds;
-      }
-    });
+    final delta = quantizeUsageWithRemainder(
+      rawDelta,
+      _fractionalRemainder,
+    );
 
     if (delta.isEmpty) {
       return;
@@ -288,4 +281,55 @@ class UsageService {
       _isFlushingDb = false;
     }
   }
+}
+
+/// 将 UsageAggregator 的毫秒级增量与现有的「余数」一起量化为整秒输出。
+///
+/// - [rawDelta]: 本次聚合产生的增量（毫秒级）。
+/// - [fractionalRemainder]: 按 (day, appId) 存储的「未满 1 秒」余数，会被就地更新。
+///
+/// 返回值是本次应向 UI / DB 输出的「整秒」增量；所有不足 1 秒的部分会继续累积在
+/// [fractionalRemainder] 中，以避免高频 flush 时被丢弃。
+Map<DateTime, Map<String, Duration>> quantizeUsageWithRemainder(
+  Map<DateTime, Map<String, Duration>> rawDelta,
+  Map<DateTime, Map<String, Duration>> fractionalRemainder,
+) {
+  final result = <DateTime, Map<String, Duration>>{};
+
+  rawDelta.forEach((day, perApp) {
+    final normalizedDay = DateTime(day.year, day.month, day.day);
+    final perAppSeconds = <String, Duration>{};
+
+    perApp.forEach((appId, duration) {
+      final dayRemainder =
+          fractionalRemainder.putIfAbsent(
+            normalizedDay,
+            () => <String, Duration>{},
+          );
+      final previousRemainder = dayRemainder[appId] ?? Duration.zero;
+
+      final total = previousRemainder + duration;
+      final wholeSeconds = total.inSeconds;
+      final remainder = total - Duration(seconds: wholeSeconds);
+
+      if (wholeSeconds > 0) {
+        perAppSeconds[appId] = Duration(seconds: wholeSeconds);
+      }
+
+      if (remainder == Duration.zero) {
+        dayRemainder.remove(appId);
+        if (dayRemainder.isEmpty) {
+          fractionalRemainder.remove(normalizedDay);
+        }
+      } else {
+        dayRemainder[appId] = remainder;
+      }
+    });
+
+    if (perAppSeconds.isNotEmpty) {
+      result[normalizedDay] = perAppSeconds;
+    }
+  });
+
+  return result;
 }

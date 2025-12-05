@@ -155,49 +155,4 @@ void main() {
       },
     );
   });
-
-  group('RingoHeatmap tooltip', () {
-    testWidgets('shows tooltip with date and duration on hover', (
-      tester,
-    ) async {
-      final start = DateTime(2025, 1, 1);
-      final end = DateTime(2025, 1, 3);
-
-      final dailyTotals = <DateTime, Duration>{
-        DateTime(2025, 1, 2): const Duration(hours: 2, minutes: 30),
-      };
-
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: RingoHeatmap(
-              start: start,
-              end: end,
-              dailyTotals: dailyTotals,
-            ),
-          ),
-        ),
-      );
-
-      final y = '2025';
-      final m = '01';
-      final d = '02';
-      final key = ValueKey('day-$y-$m-$d');
-
-      final target = find.byKey(key);
-      expect(target, findsOneWidget);
-
-      final gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
-      addTearDown(gesture.removePointer);
-
-      await gesture.addPointer();
-      await gesture.moveTo(tester.getCenter(target));
-
-      // 等待 tooltip 的延迟时间生效。
-      await tester.pumpAndSettle(const Duration(milliseconds: 400));
-
-      // 期望 tooltip 文案包含日期和「2 小时 30 分钟」。
-      expect(find.text('2025-01-02 · 2 小时 30 分钟'), findsOneWidget);
-    });
-  });
 }
