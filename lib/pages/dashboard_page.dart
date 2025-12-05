@@ -306,7 +306,6 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
 
         var tileSize =
             (heatmapAvailableWidth - (weekCount - 1) * spacing) / weekCount;
-        // 基于设计尺寸做一个合理的夹紧，避免过大或过小
         tileSize = tileSize.clamp(baseTileSize * 0.9, baseTileSize * 1.4);
 
         Widget buildHeatmap(
@@ -394,7 +393,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                 });
 
               return SizedBox(
-                height: 260.h,
+                height: 350.h,
                 child: ListView.builder(
                   itemCount: appIds.length,
                   itemBuilder: (context, index) {
@@ -661,12 +660,32 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     List<DailyTotal> daily,
   ) {
     final color = theme.colorScheme.primary;
-    final spots = <FlSpot>[];
-    for (var i = 0; i < daily.length; i++) {
-      spots.add(FlSpot(i.toDouble(), _hours(daily[i].total)));
-    }
+    final spots = <FlSpot>[
+      for (var i = 0; i < daily.length; i++)
+        FlSpot(i.toDouble(), _hours(daily[i].total)),
+    ];
 
     return LineChartData(
+      lineTouchData: LineTouchData(
+        touchTooltipData: LineTouchTooltipData(
+          getTooltipItems: (touchedSpots) {
+            return touchedSpots.map((spot) {
+              final index = spot.x.round();
+              if (index < 0 || index >= daily.length) {
+                return null;
+              }
+              final item = daily[index];
+              final date = item.date;
+              final dateLabel = '${date.month}/${date.day}';
+              final durationLabel = _formatDuration(item.total);
+              final style =
+                  theme.textTheme.bodySmall?.copyWith(color: Colors.white) ??
+                  const TextStyle(color: Colors.white, fontSize: 11);
+              return LineTooltipItem('$dateLabel\n$durationLabel', style);
+            }).whereType<LineTooltipItem>().toList();
+          },
+        ),
+      ),
       gridData: FlGridData(
         drawVerticalLine: false,
         horizontalInterval: 1,
@@ -731,13 +750,12 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     final groups = <BarChartGroupData>[];
 
     for (var i = 0; i < weekly.length; i++) {
-      final item = weekly[i];
       groups.add(
         BarChartGroupData(
           x: i,
           barRods: [
             BarChartRodData(
-              toY: _hours(item.total),
+              toY: _hours(weekly[i].total),
               color: color,
               width: 16,
               borderRadius: BorderRadius.circular(2),
@@ -748,6 +766,23 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     }
 
     return BarChartData(
+      barTouchData: BarTouchData(
+        touchTooltipData: BarTouchTooltipData(
+          getTooltipItem: (group, groupIndex, rod, rodIndex) {
+            if (groupIndex < 0 || groupIndex >= weekly.length) {
+              return null;
+            }
+            final item = weekly[groupIndex];
+            final date = item.weekStart;
+            final dateLabel = '${date.month}/${date.day}';
+            final durationLabel = _formatDuration(item.total);
+            final style =
+                theme.textTheme.bodySmall?.copyWith(color: Colors.white) ??
+                const TextStyle(color: Colors.white, fontSize: 11);
+            return BarTooltipItem('$dateLabel\n$durationLabel', style);
+          },
+        ),
+      ),
       gridData: FlGridData(
         drawVerticalLine: false,
         horizontalInterval: 2,
@@ -853,15 +888,25 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     List<WeekdayAverage> data,
   ) {
     final color = theme.colorScheme.primary;
+    final maxMinutes = data.isEmpty
+        ? 0.0
+        : data
+            .map((e) => e.average.inSeconds / 60.0)
+            .fold<double>(0.0, (prev, m) => m > prev ? m : prev);
+    final useMinutes = maxMinutes > 0 && maxMinutes < 60;
+    final interval = useMinutes
+        ? (maxMinutes <= 30 ? 10.0 : 20.0)
+          : 1.0;
     final labels = ['一', '二', '三', '四', '五', '六', '日'];
 
     final bars = data.map((e) {
       final idx = e.weekday - 1;
+      final value = useMinutes ? e.average.inSeconds / 60.0 : _hours(e.average);
       return BarChartGroupData(
         x: idx,
         barRods: [
           BarChartRodData(
-            toY: _hours(e.average),
+            toY: value,
             color: color,
             width: 18,
             borderRadius: BorderRadius.circular(2),
@@ -871,9 +916,28 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     }).toList();
 
     return BarChartData(
+      barTouchData: BarTouchData(
+        touchTooltipData: BarTouchTooltipData(
+          getTooltipItem: (group, groupIndex, rod, rodIndex) {
+            final weekdayIndex = group.x.toInt();
+            if (weekdayIndex < 0 ||
+                weekdayIndex >= labels.length ||
+                weekdayIndex >= data.length) {
+              return null;
+            }
+            final avg = data[weekdayIndex].average;
+            final weekdayLabel = labels[weekdayIndex];
+            final durationLabel = _formatDuration(avg);
+            final style =
+                theme.textTheme.bodySmall?.copyWith(color: Colors.white) ??
+                const TextStyle(color: Colors.white, fontSize: 11);
+            return BarTooltipItem('周$weekdayLabel\n$durationLabel', style);
+          },
+        ),
+      ),
       gridData: FlGridData(
         drawVerticalLine: false,
-        horizontalInterval: 1,
+        horizontalInterval: interval,
         getDrawingHorizontalLine: (value) =>
             FlLine(color: Colors.grey.withOpacity(0.15), strokeWidth: 1),
       ),
@@ -881,10 +945,12 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
         leftTitles: AxisTitles(
           sideTitles: SideTitles(
             showTitles: true,
-            interval: 1,
+            interval: interval,
             reservedSize: 40,
             getTitlesWidget: (value, _) => Text(
-              '${value.toStringAsFixed(0)}h',
+              useMinutes
+                  ? '${value.toStringAsFixed(0)}m'
+                  : '${value.toStringAsFixed(0)}h',
               style: theme.textTheme.bodySmall,
             ),
           ),
