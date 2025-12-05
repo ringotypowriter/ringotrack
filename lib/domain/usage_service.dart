@@ -122,9 +122,9 @@ class UsageService {
       AppLogService.instance.logInfo(
         'usage_afk',
         'enter_idle platform=${Platform.operatingSystem} '
-        'idleDurationMs=${idleDuration.inMilliseconds} '
-        'lastStroke=$_lastStrokeTime now=$now '
-        'pointerDown=$_pointerDown',
+            'idleDurationMs=${idleDuration.inMilliseconds} '
+            'lastStroke=$_lastStrokeTime now=$now '
+            'pointerDown=$_pointerDown',
       );
 
       _enterIdle(now);
@@ -145,9 +145,9 @@ class UsageService {
       AppLogService.instance.logInfo(
         'usage_afk',
         'leave_idle platform=${Platform.operatingSystem} '
-        'idleDurationMs=${idleDuration.inMilliseconds} '
-        'lastStroke=$_lastStrokeTime now=$now '
-        'pointerDown=$_pointerDown',
+            'idleDurationMs=${idleDuration.inMilliseconds} '
+            'lastStroke=$_lastStrokeTime now=$now '
+            'pointerDown=$_pointerDown',
       );
 
       _leaveIdle(now);
@@ -193,10 +193,7 @@ class UsageService {
       return;
     }
 
-    final delta = quantizeUsageWithRemainder(
-      rawDelta,
-      _fractionalRemainder,
-    );
+    final delta = quantizeUsageWithRemainder(rawDelta, _fractionalRemainder);
 
     if (delta.isEmpty) {
       return;
@@ -259,8 +256,9 @@ class UsageService {
     }
 
     _isFlushingDb = true;
-    final toPersist =
-        Map<DateTime, Map<String, Duration>>.from(_pendingDbDelta);
+    final toPersist = Map<DateTime, Map<String, Duration>>.from(
+      _pendingDbDelta,
+    );
     _pendingDbDelta.clear();
     _lastDbFlushAt = DateTime.now();
     try {
@@ -301,11 +299,10 @@ Map<DateTime, Map<String, Duration>> quantizeUsageWithRemainder(
     final perAppSeconds = <String, Duration>{};
 
     perApp.forEach((appId, duration) {
-      final dayRemainder =
-          fractionalRemainder.putIfAbsent(
-            normalizedDay,
-            () => <String, Duration>{},
-          );
+      final dayRemainder = fractionalRemainder.putIfAbsent(
+        normalizedDay,
+        () => <String, Duration>{},
+      );
       final previousRemainder = dayRemainder[appId] ?? Duration.zero;
 
       final total = previousRemainder + duration;

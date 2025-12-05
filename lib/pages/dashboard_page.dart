@@ -58,7 +58,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              _buildSummaryRow(theme, metricsAsync),
+                              _buildSummaryRow(context, theme, metricsAsync),
                               const SizedBox(height: 40),
                               _buildTabs(theme),
                               const SizedBox(height: 16),
@@ -125,6 +125,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
   }
 
   Widget _buildSummaryRow(
+    BuildContext context,
     ThemeData theme,
     AsyncValue<DashboardMetrics> metricsAsync,
   ) {
@@ -162,28 +163,46 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                 border: Border.all(color: const Color(0xFFE3E3E3)),
               ),
               padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 20.h),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              child: Stack(
                 children: [
-                  Text(
-                    titles[i],
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: Colors.black87,
-                    ),
-                  ),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        valueFor(i),
-                        style: theme.textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.w500,
-                          letterSpacing: -0.2,
+                        titles[i],
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: Colors.black87,
                         ),
+                      ),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            valueFor(i),
+                            style: theme.textTheme.headlineSmall?.copyWith(
+                              fontWeight: FontWeight.w500,
+                              letterSpacing: -0.2,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
+                  if (i == 0)
+                    Positioned(
+                      top: 0,
+                      right: 0,
+                      child: IconButton(
+                        onPressed: () => context.go('/clock'),
+                        icon: const Icon(Icons.fullscreen),
+                        tooltip: '全屏时钟',
+                        splashRadius: 18.r,
+                        iconSize: 18.r,
+                        padding: EdgeInsets.zero,
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    ),
                 ],
               ),
             ),

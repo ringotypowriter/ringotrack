@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ringotrack/pages/dashboard_page.dart';
+import 'package:ringotrack/pages/clock_page.dart';
 import 'package:ringotrack/pages/settings_page.dart';
 import 'package:ringotrack/providers.dart';
 import 'package:ringotrack/theme/app_theme.dart';
@@ -12,6 +13,7 @@ class RingoTrackApp extends ConsumerWidget {
 
   static const String dashboardRouteName = 'dashboard';
   static const String settingsRouteName = 'settings';
+  static const String clockRouteName = 'clock';
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -35,6 +37,33 @@ class RingoTrackApp extends ConsumerWidget {
               transitionsBuilder:
                   (context, animation, secondaryAnimation, child) {
                     const begin = Offset(-1.0, 0.0);
+                    const end = Offset.zero;
+                    final tween = Tween(
+                      begin: begin,
+                      end: end,
+                    ).chain(CurveTween(curve: Curves.easeInOut));
+                    return SlideTransition(
+                      position: animation.drive(tween),
+                      child: child,
+                    );
+                  },
+            );
+          },
+        ),
+        GoRoute(
+          path: '/clock',
+          name: clockRouteName,
+          pageBuilder: (context, state) {
+            return CustomTransitionPage<void>(
+              key: state.pageKey,
+              child: Title(
+                title: '全屏时钟',
+                color: Colors.black,
+                child: const ClockPage(),
+              ),
+              transitionsBuilder:
+                  (context, animation, secondaryAnimation, child) {
+                    const begin = Offset(0.0, 1.0);
                     const end = Offset.zero;
                     final tween = Tween(
                       begin: begin,
