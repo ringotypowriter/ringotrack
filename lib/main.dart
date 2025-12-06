@@ -14,8 +14,9 @@ void main() async {
   // 所以仅在启动时根据用户偏好来决定是否启用。
   if (Platform.isWindows) {
     final repo = DashboardPreferencesRepository();
-    final prefs = await repo.load();
-    if (prefs.enableGlassEffect) {
+    // 先应用 pending 值（如果有的话），这样 UI 层读取到的是最新的设置
+    final enableGlass = await repo.applyPendingGlassEffect();
+    if (enableGlass) {
       await GlassTintController.instance.enableGlass();
     }
     // 如果 enableGlassEffect 为 false，则完全不启用玻璃效果，

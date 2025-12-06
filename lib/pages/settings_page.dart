@@ -1009,11 +1009,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 
   Widget _appearanceSection(ThemeData theme) {
-    final dashboardPrefsAsync = ref.watch(
-      dashboardPreferencesControllerProvider,
-    );
-    final enableGlass = dashboardPrefsAsync.value?.enableGlassEffect ?? true;
-
     final tiles = <Widget>[
       _dataTile(
         theme,
@@ -1024,49 +1019,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     ];
 
     if (Platform.isMacOS || Platform.isWindows) {
-      tiles.add(
-        _dataTile(
-          theme,
-          title: '毛玻璃效果（实验性）',
-          helper: '启用后窗口背景将呈现半透明模糊效果。',
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Switch(
-                    value: enableGlass,
-                    onChanged: (value) {
-                      ref
-                          .read(dashboardPreferencesControllerProvider.notifier)
-                          .setEnableGlassEffect(value);
-                      // Windows 平台提示用户需要重启
-                      if (Platform.isWindows) {
-                        _showSnack('设置已保存，重启应用后生效');
-                      }
-                    },
-                  ),
-                  SizedBox(width: 8.w),
-                  Text(
-                    enableGlass ? '已启用' : '已关闭',
-                    style: theme.textTheme.bodyMedium,
-                  ),
-                ],
-              ),
-              // Windows 平台显示重启提示
-              if (Platform.isWindows) ...[
-                SizedBox(height: 6.h),
-                Text(
-                  '⚠️ 需要重启应用才能生效',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-      );
+      tiles.add(_buildGlassEffectTile(theme));
     }
 
     return _sectionCard(
@@ -1076,6 +1029,64 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: _withDividers(tiles, theme),
+      ),
+    );
+  }
+
+  Widget _buildGlassEffectTile(ThemeData theme) {
+    // Windows 平台：显示 pending 值（用户设置的值，待重启生效）
+    // macOS 平台：显示当前生效的值
+    final bool enableGlass;
+    if (Platform.isWindows) {
+      final displayAsync = ref.watch(windowsGlassEffectDisplayProvider);
+      enableGlass = displayAsync.value ?? false;
+    } else {
+      final dashboardPrefsAsync = ref.watch(
+        dashboardPreferencesControllerProvider,
+      );
+      enableGlass = dashboardPrefsAsync.value?.enableGlassEffect ?? false;
+    }
+
+    return _dataTile(
+      theme,
+      title: '毛玻璃效果（实验性）',
+      helper: '启用后窗口背景将呈现半透明模糊效果。',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Switch(
+                value: enableGlass,
+                onChanged: (value) {
+                  ref
+                      .read(dashboardPreferencesControllerProvider.notifier)
+                      .setEnableGlassEffect(value);
+                  // Windows 平台：刷新 display provider 并提示用户需要重启
+                  if (Platform.isWindows) {
+                    ref.invalidate(windowsGlassEffectDisplayProvider);
+                    _showSnack('设置已保存，重启应用后生效');
+                  }
+                },
+              ),
+              SizedBox(width: 8.w),
+              Text(
+                enableGlass ? '已启用' : '已关闭',
+                style: theme.textTheme.bodyMedium,
+              ),
+            ],
+          ),
+          // Windows 平台显示重启提示
+          if (Platform.isWindows) ...[
+            SizedBox(height: 6.h),
+            Text(
+              '⚠️ 需要重启应用才能生效',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }
