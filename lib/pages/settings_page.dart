@@ -9,6 +9,7 @@ import 'package:ringotrack/domain/dashboard_preferences_controller.dart';
 import 'package:ringotrack/providers.dart';
 import 'package:ringotrack/theme/app_theme.dart';
 import 'package:ringotrack/widgets/logs_view_sheet.dart';
+import 'dart:io' show Platform;
 
 const _cardBorder = Color(0xFFE1E7DF);
 
@@ -41,18 +42,23 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: theme.colorScheme.surface,
+      backgroundColor: Platform.isMacOS
+          ? Colors.transparent
+          : theme.colorScheme.surface,
       body: Center(
         child: ConstrainedBox(
           constraints: BoxConstraints(maxWidth: 1440.w, maxHeight: 900.h),
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 40.w, vertical: 24.h),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _buildTopBar(theme, context),
-                SizedBox(height: 16.h),
-                Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildTopBar(theme, context),
+              const Divider(height: 1),
+              Expanded(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 40.w,
+                    vertical: 32.h,
+                  ),
                   child: SingleChildScrollView(
                     child: Column(
                       children: [
@@ -62,8 +68,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     ),
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -73,32 +79,51 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   Widget _buildTopBar(ThemeData theme, BuildContext context) {
     final onSurface = theme.colorScheme.onSurface;
 
-    return Row(
-      children: [
-        Container(
-          width: 12.r,
-          height: 12.r,
-          decoration: BoxDecoration(
-            color: theme.colorScheme.primary,
-            shape: BoxShape.circle,
+    final horizontal = 45.w;
+    final topPadding = Platform.isMacOS ? 44.h : 24.h;
+    final bottomPadding = Platform.isMacOS ? 26.h : 24.h;
+
+    return Container(
+      color: Platform.isMacOS ? Colors.transparent : theme.colorScheme.surface,
+      padding: EdgeInsets.fromLTRB(
+        horizontal,
+        topPadding,
+        horizontal,
+        bottomPadding,
+      ),
+      child: Row(
+        children: [
+          if (!Platform.isMacOS) ...[
+            Container(
+              width: 12.r,
+              height: 12.r,
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primary,
+                shape: BoxShape.circle,
+              ),
+            ),
+            SizedBox(width: 12.w),
+          ],
+          Text(
+            '偏好设置',
+            style:
+                (Platform.isMacOS
+                        ? theme.textTheme.titleLarge
+                        : theme.textTheme.titleMedium)
+                    ?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.2,
+                      color: onSurface,
+                    ),
           ),
-        ),
-        SizedBox(width: 12.w),
-        Text(
-          '偏好设置',
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.2,
-            color: onSurface,
+          const Spacer(),
+          TextButton.icon(
+            onPressed: () => context.go('/'),
+            icon: const Icon(Icons.arrow_back_rounded, size: 18),
+            label: const Text('返回仪表盘'),
           ),
-        ),
-        const Spacer(),
-        TextButton.icon(
-          onPressed: () => context.go('/'),
-          icon: const Icon(Icons.arrow_back_rounded, size: 18),
-          label: const Text('返回仪表盘'),
-        ),
-      ],
+        ],
+      ),
     );
   }
 

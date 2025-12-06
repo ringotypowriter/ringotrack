@@ -84,7 +84,13 @@ class MainFlutterWindow: NSWindow {
 
     super.awakeFromNib()
 
-    // 在 Flutter 内容视图内部添加一层毛玻璃背景，仅影响内容区域，不动系统标题栏。
+    // 让内容视图覆盖到整个窗口区域，并让系统标题栏背景透明，
+    // 这样我们可以用一整块毛玻璃把 titlebar + content 统一起来。
+    self.titlebarAppearsTransparent = true
+    self.styleMask.insert(.fullSizeContentView)
+    self.titleVisibility = .visible
+
+    // 在 Flutter 内容视图内部添加一层毛玻璃背景，覆盖整个窗口区域。
     if let contentView = self.contentView {
       let blurView = NSVisualEffectView(frame: contentView.bounds)
       blurView.autoresizingMask = [.width, .height]
@@ -92,11 +98,26 @@ class MainFlutterWindow: NSWindow {
       blurView.blendingMode = .behindWindow
       blurView.state = .active
 
-      // 叠加更明显的白色 tint，让背景更接近纯白磨砂。
+      // 叠加一层带渐变的白色 tint：顶部更白，向下渐变到几乎透明，
+      // 这样 titlebar + 顶部区域会更亮，但没有生硬的分界高度。
       let tintView = NSView(frame: blurView.bounds)
       tintView.autoresizingMask = [.width, .height]
       tintView.wantsLayer = true
-      tintView.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.38).cgColor
+      let gradientLayer = CAGradientLayer()
+      gradientLayer.colors = [
+        NSColor.white.withAlphaComponent(0.78).cgColor,
+        NSColor.white.withAlphaComponent(0.46).cgColor,
+        NSColor.white.withAlphaComponent(0.18).cgColor,
+        NSColor.white.withAlphaComponent(0.02).cgColor,
+      ]
+      gradientLayer.locations = [0.0, 0.22, 0.55, 1.0]
+      gradientLayer.startPoint = CGPoint(x: 0.5, y: 1.0)
+      gradientLayer.endPoint = CGPoint(x: 0.5, y: 0.0)
+      gradientLayer.frame = tintView.bounds
+      gradientLayer.autoresizingMask = [.layerWidthSizable, .layerHeightSizable]
+      tintView.layer = CALayer()
+      tintView.layer?.masksToBounds = true
+      tintView.layer?.addSublayer(gradientLayer)
       blurView.addSubview(tintView)
 
       contentView.wantsLayer = true

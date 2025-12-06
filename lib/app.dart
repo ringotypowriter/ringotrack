@@ -38,13 +38,24 @@ class RingoTrackApp extends ConsumerWidget {
                   (context, animation, secondaryAnimation, child) {
                     const begin = Offset(-1.0, 0.0);
                     const end = Offset.zero;
-                    final tween = Tween(
+                    final slideTween = Tween(
                       begin: begin,
                       end: end,
                     ).chain(CurveTween(curve: Curves.easeInOut));
-                    return SlideTransition(
-                      position: animation.drive(tween),
-                      child: child,
+                    final fadeTween = Tween(begin: 0.0, end: 1.0)
+                        .chain(CurveTween(curve: Curves.easeIn));
+                    // 当本页面被其他页面覆盖时（secondaryAnimation），淡出
+                    final secondaryFadeTween = Tween(begin: 1.0, end: 0.0)
+                        .chain(CurveTween(curve: Curves.easeOut));
+                    return FadeTransition(
+                      opacity: secondaryAnimation.drive(secondaryFadeTween),
+                      child: FadeTransition(
+                        opacity: animation.drive(fadeTween),
+                        child: SlideTransition(
+                          position: animation.drive(slideTween),
+                          child: child,
+                        ),
+                      ),
                     );
                   },
             );
@@ -65,13 +76,23 @@ class RingoTrackApp extends ConsumerWidget {
                   (context, animation, secondaryAnimation, child) {
                     const begin = Offset(0.0, 1.0);
                     const end = Offset.zero;
-                    final tween = Tween(
+                    final slideTween = Tween(
                       begin: begin,
                       end: end,
                     ).chain(CurveTween(curve: Curves.easeInOut));
-                    return SlideTransition(
-                      position: animation.drive(tween),
-                      child: child,
+                    final fadeTween = Tween(begin: 0.0, end: 1.0)
+                        .chain(CurveTween(curve: Curves.easeIn));
+                    final secondaryFadeTween = Tween(begin: 1.0, end: 0.0)
+                        .chain(CurveTween(curve: Curves.easeOut));
+                    return FadeTransition(
+                      opacity: secondaryAnimation.drive(secondaryFadeTween),
+                      child: FadeTransition(
+                        opacity: animation.drive(fadeTween),
+                        child: SlideTransition(
+                          position: animation.drive(slideTween),
+                          child: child,
+                        ),
+                      ),
                     );
                   },
             );
@@ -92,13 +113,23 @@ class RingoTrackApp extends ConsumerWidget {
                   (context, animation, secondaryAnimation, child) {
                     const begin = Offset(1.0, 0.0);
                     const end = Offset.zero;
-                    final tween = Tween(
+                    final slideTween = Tween(
                       begin: begin,
                       end: end,
                     ).chain(CurveTween(curve: Curves.easeInOut));
-                    return SlideTransition(
-                      position: animation.drive(tween),
-                      child: child,
+                    final fadeTween = Tween(begin: 0.0, end: 1.0)
+                        .chain(CurveTween(curve: Curves.easeIn));
+                    final secondaryFadeTween = Tween(begin: 1.0, end: 0.0)
+                        .chain(CurveTween(curve: Curves.easeOut));
+                    return FadeTransition(
+                      opacity: secondaryAnimation.drive(secondaryFadeTween),
+                      child: FadeTransition(
+                        opacity: animation.drive(fadeTween),
+                        child: SlideTransition(
+                          position: animation.drive(slideTween),
+                          child: child,
+                        ),
+                      ),
                     );
                   },
             );

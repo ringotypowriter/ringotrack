@@ -155,25 +155,39 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
   }
 
   Widget _buildTopBar(BuildContext context, ThemeData theme) {
+    final horizontal = 64.w;
+    final topPadding = Platform.isMacOS ? 40.h : 18.h;
+    final bottomPadding = Platform.isMacOS ? 24.h : 18.h;
+
     return Container(
-      color: Colors.white,
-      padding: EdgeInsets.symmetric(horizontal: 64.w, vertical: 18.h),
+      color: Platform.isMacOS ? Colors.transparent : Colors.white,
+      padding: EdgeInsets.fromLTRB(
+        horizontal,
+        topPadding,
+        horizontal,
+        bottomPadding,
+      ),
       child: Row(
         children: [
-          Container(
-            width: 10.r,
-            height: 10.r,
-            decoration: BoxDecoration(
-              color: theme.colorScheme.primary,
-              shape: BoxShape.circle,
+          if (!Platform.isMacOS) ...[
+            Container(
+              width: 10.r,
+              height: 10.r,
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primary,
+                shape: BoxShape.circle,
+              ),
             ),
-          ),
-          const SizedBox(width: 12),
+            const SizedBox(width: 12),
+          ],
           Text(
             '仪表盘',
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w500,
-              letterSpacing: 0.4,
+            style: (Platform.isMacOS
+                    ? theme.textTheme.titleLarge
+                    : theme.textTheme.titleMedium)
+                ?.copyWith(
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.3,
             ),
           ),
           const Spacer(),
