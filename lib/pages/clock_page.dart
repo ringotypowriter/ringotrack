@@ -17,8 +17,8 @@ class ClockPage extends ConsumerStatefulWidget {
 }
 
 class _ClockPageState extends ConsumerState<ClockPage> {
-  bool _isPinned = false;
-  bool _isTogglingPin = false;
+  bool _isMiniMode = false;
+  bool _isTogglingMiniMode = false;
 
   @override
   void didChangeDependencies() {
@@ -46,8 +46,8 @@ class _ClockPageState extends ConsumerState<ClockPage> {
     GlassTintController.instance.setTintColor(clockBgColor);
   }
 
-  Future<void> _togglePin() async {
-    if (_isTogglingPin) {
+  Future<void> _toggleMiniMode() async {
+    if (_isTogglingMiniMode) {
       return;
     }
 
@@ -57,11 +57,11 @@ class _ClockPageState extends ConsumerState<ClockPage> {
     }
 
     setState(() {
-      _isTogglingPin = true;
+      _isTogglingMiniMode = true;
     });
 
     final bool success;
-    if (_isPinned) {
+    if (_isMiniMode) {
       success = await controller.exitPinnedMode();
     } else {
       success = await controller.enterPinnedMode();
@@ -72,9 +72,9 @@ class _ClockPageState extends ConsumerState<ClockPage> {
     }
 
     setState(() {
-      _isTogglingPin = false;
+      _isTogglingMiniMode = false;
       if (success) {
-        _isPinned = !_isPinned;
+        _isMiniMode = !_isMiniMode;
       }
     });
   }
@@ -135,13 +135,13 @@ class _ClockPageState extends ConsumerState<ClockPage> {
       backgroundColor: useGlass ? Colors.transparent : clockBgColor,
       body: SafeArea(
         child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 32.w, vertical: 24.h),
+          padding: EdgeInsets.symmetric(horizontal: 32.w, vertical: 32.h),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
               Row(
                 children: [
-                  if (!_isPinned)
+                  if (!_isMiniMode)
                     IconButton(
                       onPressed: () => _handleBack(context),
                       icon: Icon(
@@ -150,26 +150,28 @@ class _ClockPageState extends ConsumerState<ClockPage> {
                       ),
                       tooltip: '返回仪表盘',
                     ),
-                  if (_isPinned) SizedBox(width: 48.w, height: 48.w),
+                  if (_isMiniMode) SizedBox(width: 48.w, height: 48.w),
                   const Spacer(),
                   if (pinSupported)
                     IconButton(
-                      iconSize: _isPinned ? 12 : 24,
+                      iconSize: _isMiniMode ? 16 : 24,
                       padding: EdgeInsets.all(8.w),
                       constraints: BoxConstraints(
                         minWidth: 44.w,
                         minHeight: 44.w,
                       ),
-                      onPressed: _isTogglingPin ? null : _togglePin,
+                      onPressed: _isTogglingMiniMode ? null : _toggleMiniMode,
                       icon: Icon(
-                        _isPinned ? Icons.push_pin : Icons.push_pin_outlined,
+                        _isMiniMode
+                            ? Icons.crop_square
+                            : Icons.crop_square_outlined,
                         color: theme.colorScheme.onPrimary,
                       ),
-                      tooltip: _isPinned ? '取消锁定并恢复窗口' : '锁定时钟窗口置顶',
+                      tooltip: _isMiniMode ? '退出迷你模式' : '进入迷你模式',
                     ),
                 ],
               ),
-              if (!_isPinned) SizedBox(height: 24.h),
+              if (!_isMiniMode) SizedBox(height: 24.h),
               Expanded(
                 child: _buildTimeContent(context, ref, theme, timeTextStyle),
               ),
