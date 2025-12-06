@@ -186,44 +186,42 @@ Win32Window::MessageHandler(HWND hwnd,
   switch (message) {
     case WM_NCHITTEST: {
       // 在无边框（例如 pinned 小窗）模式下，窗口本身没有标题栏，
-      // 这里把四周的一圈区域当作可拖动区域，方便拖动小窗。
-      LRESULT hit = DefWindowProc(hwnd, message, wparam, lparam);
-      if (hit == HTCLIENT) {
-        const LONG style =
-            static_cast<LONG>(GetWindowLongPtr(hwnd, GWL_STYLE));
-        const bool has_caption = (style & WS_CAPTION) != 0;
-        const bool has_thick_frame = (style & WS_THICKFRAME) != 0;
+      // 这里将除右上角一小块区域外的所有区域都视为可拖动区域，
+      // 这样整个页面几乎都可以拖动，小窗更好用。
+      const LONG style =
+          static_cast<LONG>(GetWindowLongPtr(hwnd, GWL_STYLE));
+      const bool has_caption = (style & WS_CAPTION) != 0;
 
-        // 仅当窗口本身是无标题栏、无粗边框的无边框样式时才启用自定义拖动逻辑，
-        // 避免影响普通窗口的交互。
-        if (!has_caption && !has_thick_frame) {
-          POINT cursor_pos{GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam)};
-          ScreenToClient(hwnd, &cursor_pos);
-
-          RECT client_rect{};
-          GetClientRect(hwnd, &client_rect);
-
-          // 四周边缘一定宽度区域都允许拖动，中心区域保持普通点击行为。
-          constexpr int kDragBorderThickness = 16;  // 物理像素
-          const bool in_left =
-              cursor_pos.x >= client_rect.left &&
-              cursor_pos.x < client_rect.left + kDragBorderThickness;
-          const bool in_right =
-              cursor_pos.x <= client_rect.right &&
-              cursor_pos.x > client_rect.right - kDragBorderThickness;
-          const bool in_top =
-              cursor_pos.y >= client_rect.top &&
-              cursor_pos.y < client_rect.top + kDragBorderThickness;
-          const bool in_bottom =
-              cursor_pos.y <= client_rect.bottom &&
-              cursor_pos.y > client_rect.bottom - kDragBorderThickness;
-
-          if (in_left || in_right || in_top || in_bottom) {
-            return HTCAPTION;
-          }
-        }
+      // 约定：只要还带系统标题栏（WS_CAPTION），就认为是普通窗口，
+      // 完全交给系统默认非客户区命中逻辑处理。
+      if (has_caption) {
+        return DefWindowProc(hwnd, message, wparam, lparam);
       }
-      return hit;
+
+      POINT cursor_pos{GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam)};
+      ScreenToClient(hwnd, &cursor_pos);
+
+      RECT client_rect{};
+      GetClientRect(hwnd, &client_rect);
+
+      // 右上角区域留给 Flutter 的 pin 按钮点击，其余区域都当作标题栏可拖动。
+      // 这里不做精确坐标匹配，只保留一个大致 80x80 像素的安全区域。
+      constexpr int kPinSafeWidth = 80;   // 顶部右侧的安全宽度
+      constexpr int kPinSafeHeight = 80;  // 顶部的安全高度
+
+      const bool in_pin_safe_region =
+          cursor_pos.x >= client_rect.right - kPinSafeWidth &&
+          cursor_pos.x <= client_rect.right &&
+          cursor_pos.y >= client_rect.top &&
+          cursor_pos.y <= client_rect.top + kPinSafeHeight;
+
+      if (in_pin_safe_region) {
+        // 交给 Flutter 处理点击事件（用于 pin 按钮）。
+        return HTCLIENT;
+      }
+
+      // 其他所有区域都视为标题栏，允许拖动。
+      return HTCAPTION;
     }
 
     case WM_CLOSE:
