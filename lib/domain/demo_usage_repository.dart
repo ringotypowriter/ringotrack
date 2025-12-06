@@ -51,12 +51,54 @@ class DemoUsageRepository implements UsageRepository {
       }
 
       final selectedApps = _selectAppsForDay();
-      for (final appId in selectedApps) {
-        final duration = _randomDailyDuration();
+      final dayDuration = _randomDailyDuration();
+      if (dayDuration <= Duration.zero) {
+        continue;
+      }
+
+      final allocations = _splitDurationAcrossApps(selectedApps, dayDuration);
+      allocations.forEach((appId, duration) {
         _mergeDailyDuration(normalized, appId, duration);
         _distributeHourly(normalized, appId, duration);
-      }
+      });
     }
+  }
+
+  Map<String, Duration> _splitDurationAcrossApps(
+    List<String> apps,
+    Duration total,
+  ) {
+    if (apps.isEmpty || total <= Duration.zero) {
+      return {};
+    }
+
+    final totalSeconds = total.inSeconds;
+    final weights =
+        List.generate(apps.length, (_) => _random.nextDouble() + 0.1);
+    final totalWeight = weights.fold<double>(0, (prev, item) => prev + item);
+    var remainingSeconds = totalSeconds;
+
+    final result = <String, Duration>{};
+    for (var i = 0; i < apps.length; i++) {
+      final appId = apps[i];
+      final slotsLeft = apps.length - i;
+      final maxForThis = max(1, remainingSeconds - (slotsLeft - 1));
+      final candidate = (totalSeconds * (weights[i] / totalWeight)).round();
+      final share = i == apps.length - 1
+          ? remainingSeconds
+          : candidate.clamp(1, maxForThis);
+      final finalShare = min(share, remainingSeconds);
+      result[appId] = Duration(seconds: finalShare);
+      remainingSeconds -= finalShare;
+    }
+
+    if (remainingSeconds > 0 && result.isNotEmpty) {
+      final lastApp = apps.last;
+      result[lastApp] =
+          result[lastApp]! + Duration(seconds: remainingSeconds);
+    }
+
+    return result;
   }
 
   List<String> _selectAppsForDay() {

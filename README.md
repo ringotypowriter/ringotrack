@@ -1,5 +1,9 @@
 # RingoTrack
 
+<p align="center">
+  <img src="docs/screenshot.jpg" alt="RingoTrack Screenshot" width="600"/>
+</p>
+
 > 跨平台绘画时间追踪工具，用 GitHub 风格日历热力图记录创作习惯
 
 RingoTrack 是一个基于 Flutter 的桌面应用程序，自动统计绘画软件使用时长，并通过类似 GitHub contributions 的日历热力图展示绘画活跃度。
