@@ -56,18 +56,29 @@ LRESULT CALLBACK FlutterViewWindowProc(HWND hwnd,
         // 在右上角预留一块区域给 Flutter 内部的 pin 按钮点击
         constexpr int kPinSafeWidthDip = 80;
         constexpr int kPinSafeHeightDip = 80;
+        constexpr int kLockSafeWidthDip = 80;
+        constexpr int kLockSafeHeightDip = 80;
         const double scale_factor = GetFlutterWindowScaleFactor(hwnd);
         const int kPinSafeWidthScaled =
             ScaleToDpiValue(kPinSafeWidthDip, scale_factor);
         const int kPinSafeHeightScaled =
             ScaleToDpiValue(kPinSafeHeightDip, scale_factor);
+        const int kLockSafeWidthScaled =
+            ScaleToDpiValue(kLockSafeWidthDip, scale_factor);
+        const int kLockSafeHeightScaled =
+            ScaleToDpiValue(kLockSafeHeightDip, scale_factor);
         const bool in_pin_safe_region =
             client_pos.x >= client_rect.right - kPinSafeWidthScaled &&
             client_pos.x <= client_rect.right &&
             client_pos.y >= client_rect.top &&
             client_pos.y <= client_rect.top + kPinSafeHeightScaled;
+        const bool in_lock_safe_region =
+            client_pos.x >= client_rect.right - kLockSafeWidthScaled &&
+            client_pos.x <= client_rect.right &&
+            client_pos.y >= client_rect.bottom - kLockSafeHeightScaled &&
+            client_pos.y <= client_rect.bottom;
 
-        if (!in_pin_safe_region) {
+        if (!in_pin_safe_region && !in_lock_safe_region) {
           // 返回 HTTRANSPARENT，让系统将命中测试传递给父窗口，
           // 父窗口会返回 HTCAPTION，从而触发系统原生拖动。
           return HTTRANSPARENT;
