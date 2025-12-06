@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io' show Platform;
 import 'dart:math' as math;
 
@@ -21,6 +22,8 @@ class _ClockPageState extends ConsumerState<ClockPage> {
   bool _isTogglingMiniMode = false;
   bool _isLocked = false;
   bool _isLocking = false;
+  bool _hudVisible = true;
+  Timer? _hudHideTimer;
 
   @override
   void didChangeDependencies() {
@@ -32,6 +35,7 @@ class _ClockPageState extends ConsumerState<ClockPage> {
   void dispose() {
     // 离开页面时恢复默认白色 tint（macOS/Windows 都支持更新 tint 颜色）
     GlassTintController.instance.resetTintColor();
+    _hudHideTimer?.cancel();
     super.dispose();
   }
 
@@ -129,6 +133,39 @@ class _ClockPageState extends ConsumerState<ClockPage> {
     }
   }
 
+  void _resetHudHideTimer() {
+    _hudHideTimer?.cancel();
+    _hudHideTimer = Timer(const Duration(seconds: 5), () {
+      if (mounted) {
+        setState(() {
+          _hudVisible = false;
+        });
+      }
+    });
+  }
+
+  void _handleMouseActivity() {
+    if (!_hudVisible && mounted) {
+      setState(() {
+        _hudVisible = true;
+      });
+    }
+    _resetHudHideTimer();
+  }
+
+  void _handleMouseEnter(PointerEvent event) {
+    _handleMouseActivity();
+  }
+
+  void _handleMouseHover(PointerEvent event) {
+    _handleMouseActivity();
+  }
+
+  void _handleMouseExit(PointerEvent event) {
+    // 鼠标离开窗口时开始计时隐藏
+    _resetHudHideTimer();
+  }
+
   @override
   Widget build(BuildContext context) {
     final ref = this.ref;
@@ -175,41 +212,52 @@ class _ClockPageState extends ConsumerState<ClockPage> {
 
     return Scaffold(
       backgroundColor: useGlass ? Colors.transparent : clockBgColor,
-      body: SafeArea(
-        child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 32.w, vertical: 32.h),
+      body: MouseRegion(
+        onEnter: _handleMouseEnter,
+        onHover: _handleMouseHover,
+        onExit: _handleMouseExit,
+        opaque: false,
+        child: SafeArea(
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 32.w, vertical: 32.h),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
               Row(
                 children: [
                   if (!_isMiniMode)
-                    IconButton(
-                      onPressed: () => _handleBack(context),
-                      icon: Icon(
-                        Icons.arrow_back_rounded,
-                        color: theme.colorScheme.onPrimary,
+                    Visibility(
+                      visible: _hudVisible,
+                      child: IconButton(
+                        onPressed: () => _handleBack(context),
+                        icon: Icon(
+                          Icons.arrow_back_rounded,
+                          color: theme.colorScheme.onPrimary,
+                        ),
+                        tooltip: '返回仪表盘',
                       ),
-                      tooltip: '返回仪表盘',
                     ),
                   if (_isMiniMode) SizedBox(width: 48.w, height: 48.w),
                   const Spacer(),
                   if (pinSupported)
-                    IconButton(
-                      iconSize: _isMiniMode ? 16 : 24,
-                      padding: EdgeInsets.all(8.w),
-                      constraints: BoxConstraints(
-                        minWidth: 44.w,
-                        minHeight: 44.w,
+                    Visibility(
+                      visible: _hudVisible,
+                      child: IconButton(
+                        iconSize: _isMiniMode ? 16 : 24,
+                        padding: EdgeInsets.all(8.w),
+                        constraints: BoxConstraints(
+                          minWidth: 44.w,
+                          minHeight: 44.w,
+                        ),
+                        onPressed: _isTogglingMiniMode ? null : _toggleMiniMode,
+                        icon: Icon(
+                          _isMiniMode
+                              ? Icons.crop_square
+                              : Icons.crop_square_outlined,
+                          color: theme.colorScheme.onPrimary,
+                        ),
+                        tooltip: _isMiniMode ? '退出迷你模式' : '进入迷你模式',
                       ),
-                      onPressed: _isTogglingMiniMode ? null : _toggleMiniMode,
-                      icon: Icon(
-                        _isMiniMode
-                            ? Icons.crop_square
-                            : Icons.crop_square_outlined,
-                        color: theme.colorScheme.onPrimary,
-                      ),
-                      tooltip: _isMiniMode ? '退出迷你模式' : '进入迷你模式',
                     ),
                 ],
               ),
@@ -223,23 +271,27 @@ class _ClockPageState extends ConsumerState<ClockPage> {
                   alignment: Alignment.bottomRight,
                   child: Padding(
                     padding: EdgeInsets.only(top: 8.h, right: 8.w),
-                    child: IconButton(
-                      iconSize: 16,
-                      padding: EdgeInsets.all(8.w),
-                      constraints: BoxConstraints(
-                        minWidth: 44.w,
-                        minHeight: 44.w,
+                    child: Visibility(
+                      visible: _hudVisible,
+                      child: IconButton(
+                        iconSize: 16,
+                        padding: EdgeInsets.all(8.w),
+                        constraints: BoxConstraints(
+                          minWidth: 44.w,
+                          minHeight: 44.w,
+                        ),
+                        onPressed: _isLocking ? null : _toggleLock,
+                        icon: Icon(
+                          _isLocked ? Icons.lock_outline : Icons.lock_open,
+                          color: theme.colorScheme.onPrimary,
+                        ),
+                        tooltip: _isLocked ? '解锁窗口' : '锁定窗口',
                       ),
-                      onPressed: _isLocking ? null : _toggleLock,
-                      icon: Icon(
-                        _isLocked ? Icons.lock_outline : Icons.lock_open,
-                        color: theme.colorScheme.onPrimary,
-                      ),
-                      tooltip: _isLocked ? '解锁窗口' : '锁定窗口',
                     ),
                   ),
                 ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
