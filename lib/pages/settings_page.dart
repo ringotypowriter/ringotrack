@@ -164,74 +164,75 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     ThemeData theme,
     AsyncValue<DrawingAppPreferences> prefsAsync,
   ) {
+    final tiles = [
+      _dataTile(
+        theme,
+        title: '已追踪的软件',
+        helper: '仅下列软件计时，留空用默认列表。',
+        child: prefsAsync.when(
+          data: (prefs) => _buildTrackedList(theme, prefs),
+          loading: () => const Padding(
+            padding: EdgeInsets.symmetric(vertical: 12),
+            child: LinearProgressIndicator(minHeight: 4),
+          ),
+          error: (err, _) => _errorText(theme, '加载失败: $err'),
+        ),
+      ),
+      _dataTile(
+        theme,
+        title: '添加新软件',
+        helper:
+            '优先用“内置列表”。未包含时输入系统识别名（如 Photoshop.exe / com.adobe.photoshop）。',
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _addAppController,
+                    decoration: const InputDecoration(
+                      labelText: '软件名称或系统识别名',
+                      prefixIcon: Icon(Icons.add_circle_outline),
+                    ),
+                    onSubmitted: (_) => _onAddTrackedApp(),
+                  ),
+                ),
+                SizedBox(width: 10.w),
+                FilledButton.icon(
+                  onPressed: _onAddTrackedApp,
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text('添加'),
+                ),
+              ],
+            ),
+            SizedBox(height: 10.h),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: _showBuiltInAppPicker,
+                icon: const Icon(Icons.list_alt_outlined, size: 18),
+                label: const Text('从内置列表选择'),
+                style: TextButton.styleFrom(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 10.w,
+                    vertical: 8.h,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ];
+
     return _sectionCard(
       theme,
       title: '追踪的软件',
       icon: Icons.brush_outlined,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _dataTile(
-            theme,
-            title: '已追踪的软件',
-            helper: '仅下列软件计时，留空用默认列表。',
-            child: prefsAsync.when(
-              data: (prefs) => _buildTrackedList(theme, prefs),
-              loading: () => const Padding(
-                padding: EdgeInsets.symmetric(vertical: 12),
-                child: LinearProgressIndicator(minHeight: 4),
-              ),
-              error: (err, _) => _errorText(theme, '加载失败: $err'),
-            ),
-          ),
-          SizedBox(height: 14.h),
-          _dataTile(
-            theme,
-            title: '添加新软件',
-            helper:
-                '优先用“内置列表”。未包含时输入系统识别名（如 Photoshop.exe / com.adobe.photoshop）。',
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _addAppController,
-                        decoration: const InputDecoration(
-                          labelText: '软件名称或系统识别名',
-                          prefixIcon: Icon(Icons.add_circle_outline),
-                        ),
-                        onSubmitted: (_) => _onAddTrackedApp(),
-                      ),
-                    ),
-                    SizedBox(width: 10.w),
-                    FilledButton.icon(
-                      onPressed: _onAddTrackedApp,
-                      icon: const Icon(Icons.add, size: 18),
-                      label: const Text('添加'),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 10.h),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: TextButton.icon(
-                    onPressed: _showBuiltInAppPicker,
-                    icon: const Icon(Icons.list_alt_outlined, size: 18),
-                    label: const Text('从内置列表选择'),
-                    style: TextButton.styleFrom(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 10.w,
-                        vertical: 8.h,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+        children: _withDividers(tiles, theme),
       ),
     );
   }
@@ -257,6 +258,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final titleStyle = theme.textTheme.bodyLarge?.copyWith(
       fontWeight: FontWeight.w600,
     );
+    final managementTiles = _buildDataManagementTiles(theme, prefsAsync);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -312,7 +314,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               SizedBox(height: 14.h),
-              ..._buildDataManagementTiles(theme, prefsAsync),
+              if (managementTiles.isNotEmpty) ...[
+                _sectionDivider(theme),
+                ..._withDividers(managementTiles, theme),
+              ],
             ],
           ),
           crossFadeState: _isDataDangerExpanded
@@ -345,7 +350,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           error: (err, _) => _errorText(theme, '加载失败: $err'),
         ),
       ),
-      SizedBox(height: 14.h),
       _dataTile(
         theme,
         title: '删除日期范围（全部软件）',
@@ -373,7 +377,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           ],
         ),
       ),
-      SizedBox(height: 14.h),
       _dataTile(
         theme,
         title: '清空全部数据',
@@ -391,7 +394,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           ),
         ),
       ),
-      SizedBox(height: 14.h),
       _dataTile(
         theme,
         title: '日志',
@@ -419,16 +421,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
     return Container(
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(18.r),
         border: Border.all(color: _cardBorder),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 20,
-            offset: const Offset(0, 12),
-          ),
-        ],
       ),
       padding: EdgeInsets.symmetric(horizontal: 22.w, vertical: 20.h),
       child: Column(
@@ -469,16 +464,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     required String helper,
     required Widget child,
   }) {
-    final surfaceTint = theme.colorScheme.primary.withValues(alpha: 0.03);
-
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
-      decoration: BoxDecoration(
-        color: surfaceTint,
-        borderRadius: BorderRadius.circular(14.r),
-        border: Border.all(color: _cardBorder),
-      ),
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 10.h),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -976,45 +963,49 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     );
     final enableGlass = dashboardPrefsAsync.value?.enableGlassEffect ?? true;
 
+    final tiles = <Widget>[
+      _dataTile(
+        theme,
+        title: '主题色',
+        helper: '选择你喜欢的颜色。',
+        child: _buildThemePicker(theme),
+      ),
+    ];
+
+    if (Platform.isMacOS || Platform.isWindows) {
+      tiles.add(
+        _dataTile(
+          theme,
+          title: '毛玻璃效果（实验性）',
+          helper: '启用后窗口背景将呈现半透明模糊效果。',
+          child: Row(
+            children: [
+              Switch(
+                value: enableGlass,
+                onChanged: (value) {
+                  ref
+                      .read(dashboardPreferencesControllerProvider.notifier)
+                      .setEnableGlassEffect(value);
+                },
+              ),
+              SizedBox(width: 8.w),
+              Text(
+                enableGlass ? '已启用' : '已关闭',
+                style: theme.textTheme.bodyMedium,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return _sectionCard(
       theme,
       title: '外观',
       icon: Icons.palette_outlined,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _dataTile(
-            theme,
-            title: '主题色',
-            helper: '选择你喜欢的颜色。',
-            child: _buildThemePicker(theme),
-          ),
-          if (Platform.isMacOS || Platform.isWindows) ...[
-            SizedBox(height: 14.h),
-            _dataTile(
-              theme,
-              title: '毛玻璃效果（实验性）',
-              helper: '启用后窗口背景将呈现半透明模糊效果。',
-              child: Row(
-                children: [
-                  Switch(
-                    value: enableGlass,
-                    onChanged: (value) {
-                      ref
-                          .read(dashboardPreferencesControllerProvider.notifier)
-                          .setEnableGlassEffect(value);
-                    },
-                  ),
-                  SizedBox(width: 8.w),
-                  Text(
-                    enableGlass ? '已启用' : '已关闭',
-                    style: theme.textTheme.bodyMedium,
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ],
+        children: _withDividers(tiles, theme),
       ),
     );
   }
@@ -1092,6 +1083,28 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         _helperText(theme, helper, height: helperHeight),
       ],
     );
+  }
+
+  Widget _sectionDivider(ThemeData theme) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 8.h),
+      child: Divider(
+        height: 1,
+        thickness: 1,
+        color: theme.colorScheme.onSurface.withOpacity(0.16),
+      ),
+    );
+  }
+
+  List<Widget> _withDividers(List<Widget> items, ThemeData theme) {
+    final result = <Widget>[];
+    for (var i = 0; i < items.length; i++) {
+      if (i > 0) {
+        result.add(_sectionDivider(theme));
+      }
+      result.add(items[i]);
+    }
+    return result;
   }
 
   void _showSnack(String message) {

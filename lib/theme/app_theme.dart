@@ -2,7 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// 可选主题的唯一标识
-enum AppThemeId { ringoGreen, exusiaiCoral, mintJade, pumpkinGold }
+enum AppThemeId {
+  ringoGreen,
+  exusiaiCoral,
+  mintJade,
+  pumpkinGold,
+  midnightLilac,
+}
 
 /// 主题描述结构，集中管理颜色与 ThemeData 构建。
 class AppTheme {
@@ -150,11 +156,21 @@ const AppTheme pumpkinGoldTheme = AppTheme(
   scaffoldBackground: Color(0xFFFFF4ED),
 );
 
+const AppTheme midnightLilacTheme = AppTheme(
+  id: AppThemeId.midnightLilac,
+  name: '夜色紫',
+  seedColor: Color(0xFF4B2C8A),
+  primary: Color(0xFF9D6EFD),
+  surface: Color(0xFFF7F4FF),
+  scaffoldBackground: Color(0xFF0B0F3A),
+);
+
 const List<AppTheme> availableThemes = [
   ringoGreenTheme,
   exusiaiCoralTheme,
   mintJadeTheme,
   pumpkinGoldTheme,
+  midnightLilacTheme,
 ];
 
 TextTheme _scaleTextTheme(TextTheme base) {
