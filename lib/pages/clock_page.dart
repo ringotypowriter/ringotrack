@@ -220,76 +220,78 @@ class _ClockPageState extends ConsumerState<ClockPage> {
         child: SafeArea(
           child: Padding(
             padding: EdgeInsets.symmetric(horizontal: 32.w, vertical: 32.h),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: <Widget>[
-              Row(
-                children: [
-                  if (!_isMiniMode)
-                    Visibility(
-                      visible: _hudVisible,
-                      child: IconButton(
-                        onPressed: () => _handleBack(context),
-                        icon: Icon(
-                          Icons.arrow_back_rounded,
-                          color: theme.colorScheme.onPrimary,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                Row(
+                  children: [
+                    if (!_isMiniMode)
+                      Visibility(
+                        visible: _hudVisible,
+                        child: IconButton(
+                          onPressed: () => _handleBack(context),
+                          icon: Icon(
+                            Icons.arrow_back_rounded,
+                            color: theme.colorScheme.onPrimary,
+                          ),
+                          tooltip: '返回仪表盘',
                         ),
-                        tooltip: '返回仪表盘',
                       ),
-                    ),
-                  if (_isMiniMode) SizedBox(width: 48.w, height: 48.w),
-                  const Spacer(),
-                  if (pinSupported)
-                    Visibility(
-                      visible: _hudVisible,
-                      child: IconButton(
-                        iconSize: _isMiniMode ? 16 : 24,
-                        padding: EdgeInsets.all(8.w),
-                        constraints: BoxConstraints(
-                          minWidth: 44.w,
-                          minHeight: 44.w,
+                    if (_isMiniMode) SizedBox(width: 48.w, height: 48.w),
+                    const Spacer(),
+                    if (pinSupported)
+                      Visibility(
+                        visible: _hudVisible,
+                        child: IconButton(
+                          iconSize: _isMiniMode ? 16 : 24,
+                          padding: EdgeInsets.all(8.w),
+                          constraints: BoxConstraints(
+                            minWidth: 44.w,
+                            minHeight: 44.w,
+                          ),
+                          onPressed: _isTogglingMiniMode
+                              ? null
+                              : _toggleMiniMode,
+                          icon: Icon(
+                            _isMiniMode
+                                ? Icons.crop_square
+                                : Icons.crop_square_outlined,
+                            color: theme.colorScheme.onPrimary,
+                          ),
+                          tooltip: _isMiniMode ? '退出迷你模式' : '进入迷你模式',
                         ),
-                        onPressed: _isTogglingMiniMode ? null : _toggleMiniMode,
-                        icon: Icon(
-                          _isMiniMode
-                              ? Icons.crop_square
-                              : Icons.crop_square_outlined,
-                          color: theme.colorScheme.onPrimary,
-                        ),
-                        tooltip: _isMiniMode ? '退出迷你模式' : '进入迷你模式',
                       ),
-                    ),
-                ],
-              ),
-              if (!_isMiniMode) SizedBox(height: 24.h),
-              Expanded(
-                child: _buildTimeContent(context, ref, theme, timeTextStyle),
-              ),
-              // 在底部显示锁定按钮（仅在mini mode下）
-              if (pinSupported && _isMiniMode)
-                Align(
-                  alignment: Alignment.bottomRight,
-                  child: Padding(
-                    padding: EdgeInsets.only(top: 8.h, right: 8.w),
-                    child: Visibility(
-                      visible: _hudVisible,
-                      child: IconButton(
-                        iconSize: 16,
-                        padding: EdgeInsets.all(8.w),
-                        constraints: BoxConstraints(
-                          minWidth: 44.w,
-                          minHeight: 44.w,
+                  ],
+                ),
+                if (!_isMiniMode) SizedBox(height: 24.h),
+                Expanded(
+                  child: _buildTimeContent(context, ref, theme, timeTextStyle),
+                ),
+                // 在底部显示锁定按钮（仅在mini mode下）
+                if (pinSupported && _isMiniMode)
+                  Align(
+                    alignment: Alignment.bottomRight,
+                    child: Padding(
+                      padding: EdgeInsets.only(top: 8.h, right: 8.w),
+                      child: Visibility(
+                        visible: _hudVisible,
+                        child: IconButton(
+                          iconSize: 16,
+                          padding: EdgeInsets.all(8.w),
+                          constraints: BoxConstraints(
+                            minWidth: 44.w,
+                            minHeight: 44.w,
+                          ),
+                          onPressed: _isLocking ? null : _toggleLock,
+                          icon: Icon(
+                            _isLocked ? Icons.lock_outline : Icons.lock_open,
+                            color: theme.colorScheme.onPrimary,
+                          ),
+                          tooltip: _isLocked ? '解锁窗口' : '锁定窗口',
                         ),
-                        onPressed: _isLocking ? null : _toggleLock,
-                        icon: Icon(
-                          _isLocked ? Icons.lock_outline : Icons.lock_open,
-                          color: theme.colorScheme.onPrimary,
-                        ),
-                        tooltip: _isLocked ? '解锁窗口' : '锁定窗口',
                       ),
                     ),
                   ),
-                ),
               ],
             ),
           ),

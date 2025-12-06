@@ -213,7 +213,6 @@ class RingoHeatmap extends StatelessWidget {
   DateTime _normalizeDate(DateTime date) {
     return DateTime(date.year, date.month, date.day);
   }
-
 }
 
 class _MonthPosition {

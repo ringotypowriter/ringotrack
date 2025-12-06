@@ -73,8 +73,10 @@ class DemoUsageRepository implements UsageRepository {
     }
 
     final totalSeconds = total.inSeconds;
-    final weights =
-        List.generate(apps.length, (_) => _random.nextDouble() + 0.1);
+    final weights = List.generate(
+      apps.length,
+      (_) => _random.nextDouble() + 0.1,
+    );
     final totalWeight = weights.fold<double>(0, (prev, item) => prev + item);
     var remainingSeconds = totalSeconds;
 
@@ -94,8 +96,7 @@ class DemoUsageRepository implements UsageRepository {
 
     if (remainingSeconds > 0 && result.isNotEmpty) {
       final lastApp = apps.last;
-      result[lastApp] =
-          result[lastApp]! + Duration(seconds: remainingSeconds);
+      result[lastApp] = result[lastApp]! + Duration(seconds: remainingSeconds);
     }
 
     return result;
@@ -125,12 +126,14 @@ class DemoUsageRepository implements UsageRepository {
     const earliestStartHour = 8;
     final startHour = earliestStartHour <= latestStartHour
         ? earliestStartHour +
-            _random.nextInt(latestStartHour - earliestStartHour + 1)
+              _random.nextInt(latestStartHour - earliestStartHour + 1)
         : earliestStartHour;
 
     final maxSegments = min(segmentCount, 24 - startHour);
-    final occupancyForDay =
-        _hourlyOccupancy.putIfAbsent(day, () => <int, int>{});
+    final occupancyForDay = _hourlyOccupancy.putIfAbsent(
+      day,
+      () => <int, int>{},
+    );
     var remainingSeconds = duration.inSeconds;
     var currentHour = startHour;
     var hoursAssigned = 0;
@@ -138,7 +141,10 @@ class DemoUsageRepository implements UsageRepository {
     while (remainingSeconds > 0 &&
         hoursAssigned < maxSegments &&
         currentHour < 24) {
-      final existingOccupancy = occupancyForDay.putIfAbsent(currentHour, () => 0);
+      final existingOccupancy = occupancyForDay.putIfAbsent(
+        currentHour,
+        () => 0,
+      );
       final capacity = max(3600 - existingOccupancy, 0);
       if (capacity <= 0) {
         currentHour++;
@@ -171,7 +177,10 @@ class DemoUsageRepository implements UsageRepository {
     }
 
     while (remainingSeconds > 0 && currentHour < 24) {
-      final existingOccupancy = occupancyForDay.putIfAbsent(currentHour, () => 0);
+      final existingOccupancy = occupancyForDay.putIfAbsent(
+        currentHour,
+        () => 0,
+      );
       final capacity = max(3600 - existingOccupancy, 0);
       if (capacity <= 0) {
         currentHour++;
@@ -192,8 +201,7 @@ class DemoUsageRepository implements UsageRepository {
 
     if (remainingSeconds > 0) {
       final fallbackHour = min(startHour + maxSegments - 1, 23);
-      final occupancyValue =
-          occupancyForDay.putIfAbsent(fallbackHour, () => 0);
+      final occupancyValue = occupancyForDay.putIfAbsent(fallbackHour, () => 0);
       final available = max(3600 - occupancyValue, 0);
       if (available > 0) {
         final chunkSeconds = min(available, remainingSeconds);

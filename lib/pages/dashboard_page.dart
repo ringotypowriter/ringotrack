@@ -146,7 +146,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      _buildFooter(theme, metricsAsync),
+                      _buildFooter(theme, metricsAsync, ref),
                     ],
                   ),
                 ),
@@ -405,9 +405,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
             width: innerWidth,
             child: Align(
               alignment: Alignment.topCenter,
-            child: RingoHeatmap(
-              start: start,
-              end: end,
+              child: RingoHeatmap(
+                start: start,
+                end: end,
                 dailyTotals: totals,
                 baseColor: theme.colorScheme.primary,
                 tileSize: tileSize,
@@ -1271,21 +1271,47 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
   Widget _buildFooter(
     ThemeData theme,
     AsyncValue<DashboardMetrics> metricsAsync,
+    WidgetRef ref,
   ) {
-    final text = metricsAsync.when(
+    final packageInfoAsync = ref.watch(packageInfoProvider);
+
+    final statusText = metricsAsync.when(
       data: (metrics) => '数据更新于 ${_formatLastUpdated(metrics.lastUpdatedAt)}',
       loading: () => '数据更新中…',
       error: (error, stackTrace) => '数据加载失败，稍后自动重试',
     );
 
-    return Center(
-      child: Text(
-        text,
-        style: theme.textTheme.bodySmall?.copyWith(
-          color: Colors.black54,
-          fontSize: theme.textTheme.bodySmall?.fontSize?.sp,
+    return Column(
+      children: [
+        Center(
+          child: Text(
+            statusText,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: Colors.black54,
+              fontSize: theme.textTheme.bodySmall?.fontSize?.sp,
+            ),
+          ),
         ),
-      ),
+        const SizedBox(height: 6),
+        packageInfoAsync.when(
+          data: (packageInfo) {
+            final versionText =
+                'v${packageInfo.version}+${packageInfo.buildNumber}';
+            return Center(
+              child: Text(
+                versionText,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: Colors.black38,
+                  fontSize:
+                      (theme.textTheme.bodySmall?.fontSize?.sp ?? 12) * 0.9,
+                ),
+              ),
+            );
+          },
+          loading: () => const SizedBox.shrink(),
+          error: (error, stackTrace) => const SizedBox.shrink(),
+        ),
+      ],
     );
   }
 

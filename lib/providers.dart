@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:ringotrack/domain/app_database.dart';
 import 'package:ringotrack/domain/demo_mode_controller.dart';
 import 'package:ringotrack/domain/demo_usage_repository.dart';
@@ -21,6 +22,11 @@ final appDatabaseProvider = Provider<AppDatabase>((ref) {
 final demoModeControllerProvider = NotifierProvider<DemoModeController, bool>(
   DemoModeController.new,
 );
+
+/// 应用版本信息
+final packageInfoProvider = FutureProvider<PackageInfo>((ref) async {
+  return await PackageInfo.fromPlatform();
+});
 
 final demoUsageRepositoryProvider = Provider.autoDispose<DemoUsageRepository>((
   ref,

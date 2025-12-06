@@ -47,8 +47,9 @@ class DashboardPreferencesRepository {
   static const _keyRangeMode = 'ringotrack.dashboard.heatmapRangeMode';
   static const _keyGlassEffect = 'ringotrack.dashboard.enableGlassEffect';
   // Windows 平台：待生效的玻璃效果设置，下次启动时应用
-  static const _keyGlassEffectPending = 'ringotrack.dashboard.enableGlassEffect.pending';
-  
+  static const _keyGlassEffectPending =
+      'ringotrack.dashboard.enableGlassEffect.pending';
+
   static const _keyWeekStartMode = 'ringotrack.dashboard.weekStartMode';
 
   Future<DashboardPreferences> load() async {

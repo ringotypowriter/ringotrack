@@ -116,10 +116,10 @@ final class WindowPinController {
       return false;
     }
     if (Platform.isWindows) {
-      return _enterPinnedMode != null && 
-             _exitPinnedMode != null && 
-             _lockWindow != null && 
-             _unlockWindow != null;
+      return _enterPinnedMode != null &&
+          _exitPinnedMode != null &&
+          _lockWindow != null &&
+          _unlockWindow != null;
     }
     if (Platform.isMacOS) {
       return _methodChannel != null;
@@ -262,10 +262,7 @@ final class WindowPinController {
         }
         return ok;
       } catch (e, st) {
-        AppLogService.instance.logError(
-          _logTag,
-          'lockWindow threw: $e\n$st',
-        );
+        AppLogService.instance.logError(_logTag, 'lockWindow threw: $e\n$st');
         if (kDebugMode) {
           debugPrint('[WindowPinController] lockWindow error: $e');
         }
@@ -277,8 +274,7 @@ final class WindowPinController {
     final channel = _methodChannel;
     if (Platform.isMacOS && channel != null) {
       try {
-        final result =
-            await channel.invokeMethod<bool>('lockWindow') ?? false;
+        final result = await channel.invokeMethod<bool>('lockWindow') ?? false;
         if (!result) {
           AppLogService.instance.logError(
             _logTag,
@@ -320,10 +316,7 @@ final class WindowPinController {
         }
         return ok;
       } catch (e, st) {
-        AppLogService.instance.logError(
-          _logTag,
-          'unlockWindow threw: $e\n$st',
-        );
+        AppLogService.instance.logError(_logTag, 'unlockWindow threw: $e\n$st');
         if (kDebugMode) {
           debugPrint('[WindowPinController] unlockWindow error: $e');
         }

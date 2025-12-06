@@ -16,7 +16,11 @@ typedef _RtDisableGlassDart = int Function();
 
 /// 毛玻璃 tint 颜色控制器（macOS / Windows）
 class GlassTintController {
-  GlassTintController._(this._setTintFn, this._resetTintFn, this._disableGlassFn);
+  GlassTintController._(
+    this._setTintFn,
+    this._resetTintFn,
+    this._disableGlassFn,
+  );
 
   static final GlassTintController instance = GlassTintController._create();
 
@@ -168,9 +172,7 @@ class GlassTintController {
         final code = fn();
         return code != 0;
       } catch (e, st) {
-        debugPrint(
-          'GlassTintController.disableGlass(Windows) error: $e\n$st',
-        );
+        debugPrint('GlassTintController.disableGlass(Windows) error: $e\n$st');
         return false;
       }
     }
@@ -194,4 +196,3 @@ class GlassTintController {
     return resetTintColor();
   }
 }
-
