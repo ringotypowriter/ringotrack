@@ -15,12 +15,13 @@ class DashboardPreferences {
 
   final HeatmapRangeMode heatmapRangeMode;
 
-  /// 是否启用毛玻璃效果（仅 macOS 支持）。
+  /// 是否启用毛玻璃效果（macOS / Windows 支持）。
   final bool enableGlassEffect;
 
   /// 当前平台是否实际使用毛玻璃效果。
-  /// 只有 macOS 且 enableGlassEffect 为 true 时才生效。
-  bool get useGlassEffect => Platform.isMacOS && enableGlassEffect;
+  /// 只有 macOS / Windows 且 enableGlassEffect 为 true 时才生效。
+  bool get useGlassEffect =>
+      (Platform.isMacOS || Platform.isWindows) && enableGlassEffect;
 
   DashboardPreferences copyWith({
     HeatmapRangeMode? heatmapRangeMode,

@@ -989,7 +989,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             helper: '选择你喜欢的颜色。',
             child: _buildThemePicker(theme),
           ),
-          if (Platform.isMacOS) ...[
+          if (Platform.isMacOS || Platform.isWindows) ...[
             SizedBox(height: 14.h),
             _dataTile(
               theme,

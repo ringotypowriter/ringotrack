@@ -215,6 +215,139 @@ bool EnsureWindowHandle() {
   return true;
 }
 
+// ------------------- 毛玻璃 / Acrylic 背景控制 -------------------
+
+// 和 win32_window.cpp 中注册的窗口类名保持一致，用于定位 Flutter 主窗口。
+constexpr const wchar_t kFlutterWindowClassName[] = L"FLUTTER_RUNNER_WIN32_WINDOW";
+
+// 非官方的 Window composition 定义，来自社区约定：
+// - WCA_ACCENT_POLICY = 19
+// - AccentState 里包含 BLUR / ACRYLIC / HOSTBACKDROP 等状态。
+enum AccentState {
+  ACCENT_DISABLED = 0,
+  ACCENT_ENABLE_GRADIENT = 1,
+  ACCENT_ENABLE_TRANSPARENTGRADIENT = 2,
+  ACCENT_ENABLE_BLURBEHIND = 3,
+  ACCENT_ENABLE_ACRYLICBLURBEHIND = 4,
+  ACCENT_ENABLE_HOSTBACKDROP = 5,
+  ACCENT_INVALID_STATE = 6,
+};
+
+struct AccentPolicy {
+  int AccentState;
+  int AccentFlags;
+  unsigned int GradientColor;
+  int AnimationId;
+};
+
+enum WindowCompositionAttribute {
+  WCA_UNDEFINED = 0,
+  WCA_NCRENDERING_ENABLED = 1,
+  WCA_NCRENDERING_POLICY = 2,
+  WCA_TRANSITIONS_FORCEDISABLED = 3,
+  WCA_ALLOW_NCPAINT = 4,
+  WCA_CAPTION_BUTTON_BOUNDS = 5,
+  WCA_NONCLIENT_RTL_LAYOUT = 6,
+  WCA_FORCE_ICONIC_REPRESENTATION = 7,
+  WCA_EXTENDED_FRAME_BOUNDS = 8,
+  WCA_HAS_ICONIC_BITMAP = 9,
+  WCA_THEME_ATTRIBUTES = 10,
+  WCA_NCRENDERING_EXILED = 11,
+  WCA_NCADORNMENTINFO = 12,
+  WCA_EXCLUDED_FROM_LIVEPREVIEW = 13,
+  WCA_VIDEO_OVERLAY_ACTIVE = 14,
+  WCA_FORCE_ACTIVEWINDOW_APPEARANCE = 15,
+  WCA_DISALLOW_PEEK = 16,
+  WCA_CLOAK = 17,
+  WCA_CLOAKED = 18,
+  WCA_ACCENT_POLICY = 19,
+};
+
+struct WindowCompositionAttributeData {
+  WindowCompositionAttribute Attribute;
+  PVOID Data;
+  SIZE_T SizeOfData;
+};
+
+using SetWindowCompositionAttributeFn =
+    BOOL(WINAPI*)(HWND, WindowCompositionAttributeData*);
+
+// 尝试找到当前 Flutter 主窗口。
+HWND GetFlutterMainWindow() {
+  static HWND cached = nullptr;
+  if (cached != nullptr && ::IsWindow(cached)) {
+    return cached;
+  }
+  cached = ::FindWindowW(kFlutterWindowClassName, nullptr);
+  return cached;
+}
+
+bool ApplyAccentPolicy(HWND hwnd,
+                       AccentState state,
+                       unsigned int gradient_color) {
+  HMODULE user32 = ::GetModuleHandleW(L"user32.dll");
+  if (!user32) {
+    return false;
+  }
+
+  const auto set_wca =
+      reinterpret_cast<SetWindowCompositionAttributeFn>(
+          ::GetProcAddress(user32, "SetWindowCompositionAttribute"));
+  if (!set_wca) {
+    return false;
+  }
+
+  AccentPolicy policy{};
+  policy.AccentState = state;
+  // Flag = 2 让模糊覆盖边框 / 客户区，社区使用最广。
+  policy.AccentFlags = 2;
+  policy.GradientColor = gradient_color;
+  policy.AnimationId = 0;
+
+  WindowCompositionAttributeData data{};
+  data.Attribute = WCA_ACCENT_POLICY;
+  data.Data = &policy;
+  data.SizeOfData = sizeof(policy);
+
+  const BOOL ok = set_wca(hwnd, &data);
+  return ok == TRUE;
+}
+
+// 使用给定 RGB 颜色启动毛玻璃效果。
+bool EnableGlassWithColor(COLORREF rgb, BYTE alpha) {
+  HWND hwnd = GetFlutterMainWindow();
+  if (!hwnd) {
+    return false;
+  }
+
+  const BYTE r = GetRValue(rgb);
+  const BYTE g = GetGValue(rgb);
+  const BYTE b = GetBValue(rgb);
+
+  // GradientColor: AARRGGBB，但 AccentPolicy 通常以 ABGR 形式解析。
+  const unsigned int gradient_color =
+      (static_cast<unsigned int>(alpha) << 24) |
+      (static_cast<unsigned int>(b) << 16) |
+      (static_cast<unsigned int>(g) << 8) |
+      static_cast<unsigned int>(r);
+
+  // 优先尝试 Acrylic，失败则回退到普通 BlurBehind，兼容 Win10 早期版本。
+  if (ApplyAccentPolicy(hwnd, ACCENT_ENABLE_ACRYLICBLURBEHIND,
+                        gradient_color)) {
+    return true;
+  }
+  return ApplyAccentPolicy(hwnd, ACCENT_ENABLE_BLURBEHIND, gradient_color);
+}
+
+// 将窗口恢复为默认（关闭毛玻璃）。
+bool DisableGlass() {
+  HWND hwnd = GetFlutterMainWindow();
+  if (!hwnd) {
+    return false;
+  }
+  return ApplyAccentPolicy(hwnd, ACCENT_DISABLED, 0);
+}
+
 }  // namespace
 
 // 将当前窗口缩放到较小尺寸并置顶，便于作为「时钟挂件」悬浮。
@@ -327,6 +460,26 @@ __declspec(dllexport) std::int32_t rt_exit_pinned_mode() {
   g_prev_ex_style = 0;
 
   return 1;
+}
+
+// ------------------- 毛玻璃 tint 控制导出（Windows FFI） -------------------
+
+// 根据给定的 RGB 值，为主窗口应用带毛玻璃的背景颜色。
+// 返回值：非 0 表示成功，0 表示失败。
+__declspec(dllexport) std::int32_t rt_set_glass_tint(std::uint8_t r,
+                                                     std::uint8_t g,
+                                                     std::uint8_t b) {
+  const COLORREF rgb = RGB(r, g, b);
+  // 适中的透明度，避免过分刺眼。
+  constexpr BYTE kAlpha = 0x99;
+  return EnableGlassWithColor(rgb, kAlpha) ? 1 : 0;
+}
+
+// 重置为默认的白色毛玻璃背景。
+__declspec(dllexport) std::int32_t rt_reset_glass_tint() {
+  const COLORREF rgb = RGB(255, 255, 255);
+  constexpr BYTE kAlpha = 0xC0;
+  return EnableGlassWithColor(rgb, kAlpha) ? 1 : 0;
 }
 
 }  // extern "C"
