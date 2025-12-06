@@ -183,6 +183,48 @@ Win32Window::MessageHandler(HWND hwnd,
                             WPARAM const wparam,
                             LPARAM const lparam) noexcept {
   switch (message) {
+    case WM_NCHITTEST: {
+      // 在无边框（例如 pinned 小窗）模式下，窗口本身没有标题栏，
+      // 这里把四周的一圈区域当作可拖动区域，方便拖动小窗。
+      LRESULT hit = DefWindowProc(hwnd, message, wparam, lparam);
+      if (hit == HTCLIENT) {
+        const LONG style =
+            static_cast<LONG>(GetWindowLongPtr(hwnd, GWL_STYLE));
+        const bool has_caption = (style & WS_CAPTION) != 0;
+        const bool has_thick_frame = (style & WS_THICKFRAME) != 0;
+
+        // 仅当窗口本身是无标题栏、无粗边框的无边框样式时才启用自定义拖动逻辑，
+        // 避免影响普通窗口的交互。
+        if (!has_caption && !has_thick_frame) {
+          POINT cursor_pos{GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam)};
+          ScreenToClient(hwnd, &cursor_pos);
+
+          RECT client_rect{};
+          GetClientRect(hwnd, &client_rect);
+
+          // 四周边缘一定宽度区域都允许拖动，中心区域保持普通点击行为。
+          constexpr int kDragBorderThickness = 16;  // 物理像素
+          const bool in_left =
+              cursor_pos.x >= client_rect.left &&
+              cursor_pos.x < client_rect.left + kDragBorderThickness;
+          const bool in_right =
+              cursor_pos.x <= client_rect.right &&
+              cursor_pos.x > client_rect.right - kDragBorderThickness;
+          const bool in_top =
+              cursor_pos.y >= client_rect.top &&
+              cursor_pos.y < client_rect.top + kDragBorderThickness;
+          const bool in_bottom =
+              cursor_pos.y <= client_rect.bottom &&
+              cursor_pos.y > client_rect.bottom - kDragBorderThickness;
+
+          if (in_left || in_right || in_top || in_bottom) {
+            return HTCAPTION;
+          }
+        }
+      }
+      return hit;
+    }
+
     case WM_CLOSE:
       // 如果当前处于 pinned 小窗模式，先恢复为原始窗口尺寸和样式，
       // 避免系统在关闭时记住的是小窗大小。

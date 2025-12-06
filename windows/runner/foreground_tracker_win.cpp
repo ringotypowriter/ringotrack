@@ -1,6 +1,7 @@
 #include <atomic>
 #include <cstdint>
 #include <windows.h>
+#include <dwmapi.h>
 
 // 简单的前台窗口信息结构，用于 Dart FFI 映射。
 struct RtForegroundAppInfo {
@@ -166,6 +167,18 @@ HWND g_pinned_hwnd = nullptr;
 WINDOWPLACEMENT g_prev_placement{};
 LONG g_prev_style = 0;
 LONG g_prev_ex_style = 0;
+
+// Window attribute for controlling rounded-corner behavior on Windows 11。
+#ifndef DWMWA_WINDOW_CORNER_PREFERENCE
+#define DWMWA_WINDOW_CORNER_PREFERENCE 33
+#endif
+
+enum DwmWindowCornerPreference {
+  DWMWCP_DEFAULT = 0,
+  DWMWCP_DONOTROUND = 1,
+  DWMWCP_ROUND = 2,
+  DWMWCP_ROUNDSMALL = 3,
+};
 
 RECT GetWorkAreaForWindow(HWND hwnd) {
   RECT work_area{};
@@ -408,6 +421,13 @@ __declspec(dllexport) std::int32_t rt_enter_pinned_mode() {
                  0,
                  SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
 
+  // 为 pinned 小窗显式启用圆角（在支持该属性的系统上，例如 Windows 11），
+  // 避免无边框样式退化为完全矩形窗口。
+  const auto corner_pref =
+      static_cast<UINT>(DwmWindowCornerPreference::DWMWCP_ROUNDSMALL);
+  DwmSetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, &corner_pref,
+                        sizeof(corner_pref));
+
   g_is_pinned.store(true, std::memory_order_release);
   return 1;
 }
@@ -452,6 +472,12 @@ __declspec(dllexport) std::int32_t rt_exit_pinned_mode() {
                  0,
                  0,
                  SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
+
+  // 恢复为系统默认的圆角策略，避免对普通窗口产生意外影响。
+  const auto corner_pref_reset =
+      static_cast<UINT>(DwmWindowCornerPreference::DWMWCP_DEFAULT);
+  DwmSetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE,
+                        &corner_pref_reset, sizeof(corner_pref_reset));
 
   g_is_pinned.store(false, std::memory_order_release);
   g_pinned_hwnd = nullptr;
