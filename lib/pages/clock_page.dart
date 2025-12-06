@@ -19,6 +19,8 @@ class ClockPage extends ConsumerStatefulWidget {
 class _ClockPageState extends ConsumerState<ClockPage> {
   bool _isMiniMode = false;
   bool _isTogglingMiniMode = false;
+  bool _isLocked = false;
+  bool _isLocking = false;
 
   @override
   void didChangeDependencies() {
@@ -62,6 +64,13 @@ class _ClockPageState extends ConsumerState<ClockPage> {
 
     final bool success;
     if (_isMiniMode) {
+      // 退出mini mode时自动解锁
+      if (_isLocked) {
+        await controller.unlockWindow();
+        setState(() {
+          _isLocked = false;
+        });
+      }
       success = await controller.exitPinnedMode();
     } else {
       success = await controller.enterPinnedMode();
@@ -75,6 +84,39 @@ class _ClockPageState extends ConsumerState<ClockPage> {
       _isTogglingMiniMode = false;
       if (success) {
         _isMiniMode = !_isMiniMode;
+      }
+    });
+  }
+
+  Future<void> _toggleLock() async {
+    if (_isLocking || !_isMiniMode) {
+      return;
+    }
+
+    final controller = WindowPinController.instance;
+    if (!controller.isSupported) {
+      return;
+    }
+
+    setState(() {
+      _isLocking = true;
+    });
+
+    final bool success;
+    if (_isLocked) {
+      success = await controller.unlockWindow();
+    } else {
+      success = await controller.lockWindow();
+    }
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _isLocking = false;
+      if (success) {
+        _isLocked = !_isLocked;
       }
     });
   }
@@ -175,6 +217,28 @@ class _ClockPageState extends ConsumerState<ClockPage> {
               Expanded(
                 child: _buildTimeContent(context, ref, theme, timeTextStyle),
               ),
+              // 在底部显示锁定按钮（仅在mini mode下）
+              if (pinSupported && _isMiniMode)
+                Align(
+                  alignment: Alignment.bottomRight,
+                  child: Padding(
+                    padding: EdgeInsets.only(top: 8.h, right: 8.w),
+                    child: IconButton(
+                      iconSize: 16,
+                      padding: EdgeInsets.all(8.w),
+                      constraints: BoxConstraints(
+                        minWidth: 44.w,
+                        minHeight: 44.w,
+                      ),
+                      onPressed: _isLocking ? null : _toggleLock,
+                      icon: Icon(
+                        _isLocked ? Icons.lock_outline : Icons.lock_open,
+                        color: theme.colorScheme.onPrimary,
+                      ),
+                      tooltip: _isLocked ? '解锁窗口' : '锁定窗口',
+                    ),
+                  ),
+                ),
             ],
           ),
         ),

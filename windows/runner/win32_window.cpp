@@ -216,7 +216,17 @@ Win32Window::MessageHandler(HWND hwnd,
               client_pos.y >= client_rect.top &&
               client_pos.y <= client_rect.top + kPinSafeHeight;
 
-          if (!in_pin_safe_region) {
+          // 在右下角预留一块区域给 Flutter 内部的 lock 按钮点击，
+          // 避免把 lock 按钮点击也拦截成拖动。
+          constexpr int kLockSafeWidth = 80;
+          constexpr int kLockSafeHeight = 80;
+          const bool in_lock_safe_region =
+              client_pos.x >= client_rect.right - kLockSafeWidth &&
+              client_pos.x <= client_rect.right &&
+              client_pos.y >= client_rect.bottom - kLockSafeHeight &&
+              client_pos.y <= client_rect.bottom;
+
+          if (!in_pin_safe_region && !in_lock_safe_region) {
             // 告诉系统这是标题栏，系统会自动处理拖动
             return HTCAPTION;
           }

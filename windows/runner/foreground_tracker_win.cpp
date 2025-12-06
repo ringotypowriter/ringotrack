@@ -163,6 +163,7 @@ __declspec(dllexport) void rt_shutdown_stroke_hook() { UninstallMouseHook(); }
 namespace {
 
 std::atomic<bool> g_is_pinned{false};
+std::atomic<bool> g_is_locked{false};
 HWND g_pinned_hwnd = nullptr;
 WINDOWPLACEMENT g_prev_placement{};
 LONG g_prev_style = 0;
@@ -490,7 +491,88 @@ __declspec(dllexport) std::int32_t rt_exit_pinned_mode() {
   ::ZeroMemory(&g_prev_placement, sizeof(g_prev_placement));
   g_prev_style = 0;
   g_prev_ex_style = 0;
+  g_is_locked.store(false, std::memory_order_release);
 
+  return 1;
+}
+
+// 锁定窗口（禁止移动）
+// 返回值：非 0 表示成功，0 表示失败
+__declspec(dllexport) std::int32_t rt_lock_window() {
+  if (!g_is_pinned.load(std::memory_order_acquire)) {
+    return 0;  // 仅在pinned模式下允许锁定
+  }
+  
+  if (g_is_locked.load(std::memory_order_acquire)) {
+    return 1;  // 已经锁定
+  }
+
+  if (g_pinned_hwnd == nullptr) {
+    return 0;
+  }
+
+  HWND hwnd = g_pinned_hwnd;
+
+  // 获取当前窗口样式
+  LONG current_style = static_cast<LONG>(::GetWindowLongPtrW(hwnd, GWL_STYLE));
+  
+  // 移除WS_THICKFRAME和WS_CAPTION以防止用户通过标题栏移动窗口
+  // 保留其他样式以确保窗口正常显示
+  LONG new_style = current_style;
+  new_style &= ~WS_THICKFRAME;  // 移除可调整大小的边框
+  new_style &= ~WS_CAPTION;     // 移除标题栏
+  
+  ::SetWindowLongPtrW(hwnd, GWL_STYLE, new_style);
+  
+  // 重新应用边框更改
+  ::SetWindowPos(hwnd,
+                 nullptr,
+                 0,
+                 0,
+                 0,
+                 0,
+                 SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
+
+  g_is_locked.store(true, std::memory_order_release);
+  return 1;
+}
+
+// 解锁窗口（允许移动）
+// 返回值：非 0 表示成功，0 表示失败
+__declspec(dllexport) std::int32_t rt_unlock_window() {
+  if (!g_is_pinned.load(std::memory_order_acquire)) {
+    return 0;  // 仅在pinned模式下允许解锁
+  }
+  
+  if (!g_is_locked.load(std::memory_order_acquire)) {
+    return 1;  // 已经解锁
+  }
+
+  if (g_pinned_hwnd == nullptr) {
+    return 0;
+  }
+
+  HWND hwnd = g_pinned_hwnd;
+
+  // 恢复原始的窗口样式（在pinned模式下）
+  LONG new_style = g_prev_style;
+  new_style &= ~WS_CAPTION;     // pinned模式下仍然隐藏标题栏
+  new_style &= ~WS_THICKFRAME;  // pinned模式下仍然隐藏可调整大小的边框
+  new_style &= ~WS_MINIMIZEBOX; // pinned模式下隐藏最小化按钮
+  new_style &= ~WS_MAXIMIZEBOX; // pinned模式下隐藏最大化按钮
+  
+  ::SetWindowLongPtrW(hwnd, GWL_STYLE, new_style);
+  
+  // 重新应用边框更改
+  ::SetWindowPos(hwnd,
+                 nullptr,
+                 0,
+                 0,
+                 0,
+                 0,
+                 SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
+
+  g_is_locked.store(false, std::memory_order_release);
   return 1;
 }
 

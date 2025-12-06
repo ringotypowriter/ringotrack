@@ -12,6 +12,12 @@ typedef _RtEnterPinnedModeDart = int Function();
 typedef _RtExitPinnedModeNative = ffi.Int32 Function();
 typedef _RtExitPinnedModeDart = int Function();
 
+typedef _RtLockWindowNative = ffi.Int32 Function();
+typedef _RtLockWindowDart = int Function();
+
+typedef _RtUnlockWindowNative = ffi.Int32 Function();
+typedef _RtUnlockWindowDart = int Function();
+
 /// 控制窗口在 Windows 上的置顶 / 取消置顶行为。
 ///
 /// 通过 FFI 调用 runner 进程中导出的 Win32 函数，实现：
@@ -21,6 +27,8 @@ final class WindowPinController {
   WindowPinController._(
     this._enterPinnedMode,
     this._exitPinnedMode,
+    this._lockWindow,
+    this._unlockWindow,
     this._methodChannel,
   );
 
@@ -31,6 +39,8 @@ final class WindowPinController {
 
   final _RtEnterPinnedModeDart? _enterPinnedMode;
   final _RtExitPinnedModeDart? _exitPinnedMode;
+  final _RtLockWindowDart? _lockWindow;
+  final _RtUnlockWindowDart? _unlockWindow;
   final MethodChannel? _methodChannel;
 
   static WindowPinController _create() {
@@ -39,7 +49,7 @@ final class WindowPinController {
       if (kDebugMode) {
         debugPrint('[WindowPinController] web platform, using noop');
       }
-      return WindowPinController._(null, null, null);
+      return WindowPinController._(null, null, null, null, null);
     }
 
     // Windows: 通过 FFI 调用 runner 导出的 C 接口。
@@ -59,7 +69,20 @@ final class WindowPinController {
           debugPrint('[WindowPinController] Windows FFI functions resolved');
         }
 
-        return WindowPinController._(enterFn, exitFn, null);
+        final lockFn = lib
+            .lookupFunction<_RtLockWindowNative, _RtLockWindowDart>(
+              'rt_lock_window',
+            );
+        final unlockFn = lib
+            .lookupFunction<_RtUnlockWindowNative, _RtUnlockWindowDart>(
+              'rt_unlock_window',
+            );
+
+        if (kDebugMode) {
+          debugPrint('[WindowPinController] Windows FFI functions resolved');
+        }
+
+        return WindowPinController._(enterFn, exitFn, lockFn, unlockFn, null);
       } catch (e, st) {
         AppLogService.instance.logError(
           _logTag,
@@ -68,7 +91,7 @@ final class WindowPinController {
         if (kDebugMode) {
           debugPrint('[WindowPinController] lookup failed: $e');
         }
-        return WindowPinController._(null, null, null);
+        return WindowPinController._(null, null, null, null, null);
       }
     }
 
@@ -78,14 +101,14 @@ final class WindowPinController {
       if (kDebugMode) {
         debugPrint('[WindowPinController] macOS MethodChannel created');
       }
-      return WindowPinController._(null, null, channel);
+      return WindowPinController._(null, null, null, null, channel);
     }
 
     // 其他平台暂不支持。
     if (kDebugMode) {
       debugPrint('[WindowPinController] unsupported platform, using noop');
     }
-    return WindowPinController._(null, null, null);
+    return WindowPinController._(null, null, null, null, null);
   }
 
   bool get isSupported {
@@ -93,7 +116,10 @@ final class WindowPinController {
       return false;
     }
     if (Platform.isWindows) {
-      return _enterPinnedMode != null && _exitPinnedMode != null;
+      return _enterPinnedMode != null && 
+             _exitPinnedMode != null && 
+             _lockWindow != null && 
+             _unlockWindow != null;
     }
     if (Platform.isMacOS) {
       return _methodChannel != null;
@@ -209,6 +235,122 @@ final class WindowPinController {
         );
         if (kDebugMode) {
           debugPrint('[WindowPinController] exitPinnedMode macOS error: $e');
+        }
+        return false;
+      }
+    }
+
+    return false;
+  }
+
+  Future<bool> lockWindow() async {
+    if (!isSupported) {
+      return false;
+    }
+
+    // Windows FFI 路径。
+    final lockFn = _lockWindow;
+    if (Platform.isWindows && lockFn != null) {
+      try {
+        final result = lockFn();
+        final ok = result != 0;
+        if (!ok) {
+          AppLogService.instance.logError(
+            _logTag,
+            'lockWindow failed with code: $result',
+          );
+        }
+        return ok;
+      } catch (e, st) {
+        AppLogService.instance.logError(
+          _logTag,
+          'lockWindow threw: $e\n$st',
+        );
+        if (kDebugMode) {
+          debugPrint('[WindowPinController] lockWindow error: $e');
+        }
+        return false;
+      }
+    }
+
+    // macOS MethodChannel 路径。
+    final channel = _methodChannel;
+    if (Platform.isMacOS && channel != null) {
+      try {
+        final result =
+            await channel.invokeMethod<bool>('lockWindow') ?? false;
+        if (!result) {
+          AppLogService.instance.logError(
+            _logTag,
+            'lockWindow(macOS) returned false',
+          );
+        }
+        return result;
+      } catch (e, st) {
+        AppLogService.instance.logError(
+          _logTag,
+          'lockWindow(macOS) threw: $e\n$st',
+        );
+        if (kDebugMode) {
+          debugPrint('[WindowPinController] lockWindow macOS error: $e');
+        }
+        return false;
+      }
+    }
+
+    return false;
+  }
+
+  Future<bool> unlockWindow() async {
+    if (!isSupported) {
+      return false;
+    }
+
+    // Windows FFI 路径。
+    final unlockFn = _unlockWindow;
+    if (Platform.isWindows && unlockFn != null) {
+      try {
+        final result = unlockFn();
+        final ok = result != 0;
+        if (!ok) {
+          AppLogService.instance.logError(
+            _logTag,
+            'unlockWindow failed with code: $result',
+          );
+        }
+        return ok;
+      } catch (e, st) {
+        AppLogService.instance.logError(
+          _logTag,
+          'unlockWindow threw: $e\n$st',
+        );
+        if (kDebugMode) {
+          debugPrint('[WindowPinController] unlockWindow error: $e');
+        }
+        return false;
+      }
+    }
+
+    // macOS MethodChannel 路径。
+    final channel = _methodChannel;
+    if (Platform.isMacOS && channel != null) {
+      try {
+        final result =
+            await channel.invokeMethod<bool>('unlockWindow') ?? false;
+        if (!result) {
+          AppLogService.instance.logError(
+            _logTag,
+            'unlockWindow(macOS) returned false',
+          );
+        }
+        return result;
+      } catch (e, st) {
+        AppLogService.instance.logError(
+          _logTag,
+          'unlockWindow(macOS) threw: $e\n$st',
+        );
+        if (kDebugMode) {
+          debugPrint('[WindowPinController] unlockWindow macOS error: $e');
         }
         return false;
       }
