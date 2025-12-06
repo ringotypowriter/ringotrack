@@ -14,44 +14,44 @@ void main() {
       await db.close();
     });
 
-    test(
-      'backfills today before noon from current hour backwards',
-      () async {
-        final today = DateTime(2025, 1, 1);
-        final now = DateTime(2025, 1, 1, 9, 10);
+    test('backfills today before noon from current hour backwards', () async {
+      final today = DateTime(2025, 1, 1);
+      final now = DateTime(2025, 1, 1, 9, 10);
 
-        // 插入一条「仅有日级」的旧数据。
-        await db.into(db.dailyUsageEntries).insert(
-          DailyUsageEntriesCompanion.insert(
-            date: today,
-            appId: 'Photoshop.exe',
-            durationSeconds: 150 * 60, // 2.5 小时
-          ),
-        );
+      // 插入一条「仅有日级」的旧数据。
+      await db
+          .into(db.dailyUsageEntries)
+          .insert(
+            DailyUsageEntriesCompanion.insert(
+              date: today,
+              appId: 'Photoshop.exe',
+              durationSeconds: 150 * 60, // 2.5 小时
+            ),
+          );
 
-        await db.backfillDailyUsageToHourly(now: now);
+      await db.backfillDailyUsageToHourly(now: now);
 
-        final rows = await (db.select(db.hourlyUsageEntries)
-              ..where((tbl) => tbl.date.equals(today))
-              ..where((tbl) => tbl.appId.equals('Photoshop.exe')))
-            .get();
+      final rows =
+          await (db.select(db.hourlyUsageEntries)
+                ..where((tbl) => tbl.date.equals(today))
+                ..where((tbl) => tbl.appId.equals('Photoshop.exe')))
+              .get();
 
-        final byHour = {
-          for (final row in rows) row.hourIndex: row.durationSeconds,
-        };
+      final byHour = {
+        for (final row in rows) row.hourIndex: row.durationSeconds,
+      };
 
-        // 期望：从 9 点往前填：9:3600, 8:3600, 7:1800。
-        expect(byHour[9], 3600);
-        expect(byHour[8], 3600);
-        expect(byHour[7], 1800);
+      // 期望：从 9 点往前填：9:3600, 8:3600, 7:1800。
+      expect(byHour[9], 3600);
+      expect(byHour[8], 3600);
+      expect(byHour[7], 1800);
 
-        // 其他小时为 null 或 0。
-        for (var h = 0; h < 24; h++) {
-          if (h == 7 || h == 8 || h == 9) continue;
-          expect(byHour[h] == null || byHour[h] == 0, isTrue);
-        }
-      },
-    );
+      // 其他小时为 null 或 0。
+      for (var h = 0; h < 24; h++) {
+        if (h == 7 || h == 8 || h == 9) continue;
+        expect(byHour[h] == null || byHour[h] == 0, isTrue);
+      }
+    });
 
     test(
       'backfills today after noon from 12:00 to now, then backwards',
@@ -59,20 +59,23 @@ void main() {
         final today = DateTime(2025, 1, 1);
         final now = DateTime(2025, 1, 1, 18, 10);
 
-        await db.into(db.dailyUsageEntries).insert(
-          DailyUsageEntriesCompanion.insert(
-            date: today,
-            appId: 'ClipStudio',
-            durationSeconds: 5 * 3600,
-          ),
-        );
+        await db
+            .into(db.dailyUsageEntries)
+            .insert(
+              DailyUsageEntriesCompanion.insert(
+                date: today,
+                appId: 'ClipStudio',
+                durationSeconds: 5 * 3600,
+              ),
+            );
 
         await db.backfillDailyUsageToHourly(now: now);
 
-        final rows = await (db.select(db.hourlyUsageEntries)
-              ..where((tbl) => tbl.date.equals(today))
-              ..where((tbl) => tbl.appId.equals('ClipStudio')))
-            .get();
+        final rows =
+            await (db.select(db.hourlyUsageEntries)
+                  ..where((tbl) => tbl.date.equals(today))
+                  ..where((tbl) => tbl.appId.equals('ClipStudio')))
+                .get();
 
         final byHour = {
           for (final row in rows) row.hourIndex: row.durationSeconds,
@@ -98,20 +101,23 @@ void main() {
         final day = DateTime(2025, 1, 1);
         final now = DateTime(2025, 1, 2, 10, 0); // 任意次日
 
-        await db.into(db.dailyUsageEntries).insert(
-          DailyUsageEntriesCompanion.insert(
-            date: day,
-            appId: 'Krita.exe',
-            durationSeconds: 14 * 3600,
-          ),
-        );
+        await db
+            .into(db.dailyUsageEntries)
+            .insert(
+              DailyUsageEntriesCompanion.insert(
+                date: day,
+                appId: 'Krita.exe',
+                durationSeconds: 14 * 3600,
+              ),
+            );
 
         await db.backfillDailyUsageToHourly(now: now);
 
-        final rows = await (db.select(db.hourlyUsageEntries)
-              ..where((tbl) => tbl.date.equals(day))
-              ..where((tbl) => tbl.appId.equals('Krita.exe')))
-            .get();
+        final rows =
+            await (db.select(db.hourlyUsageEntries)
+                  ..where((tbl) => tbl.date.equals(day))
+                  ..where((tbl) => tbl.appId.equals('Krita.exe')))
+                .get();
 
         final byHour = {
           for (final row in rows) row.hourIndex: row.durationSeconds,

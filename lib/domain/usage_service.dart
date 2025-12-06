@@ -42,7 +42,9 @@ class UsageService {
   final _deltaController =
       StreamController<Map<DateTime, Map<String, Duration>>>.broadcast();
   final _hourlyDeltaController =
-      StreamController<Map<DateTime, Map<int, Map<String, Duration>>>>.broadcast();
+      StreamController<
+        Map<DateTime, Map<int, Map<String, Duration>>>
+      >.broadcast();
 
   static const _idleAppId = '__ringotrack_idle__';
 
@@ -55,7 +57,7 @@ class UsageService {
   final Map<DateTime, Map<int, Map<String, Duration>>> _pendingHourlyDbDelta =
       {};
   final Map<DateTime, Map<int, Map<String, Duration>>>
-      _fractionalHourlyRemainder = {};
+  _fractionalHourlyRemainder = {};
   DateTime _lastDbFlushAt = DateTime.now();
   bool _isFlushingDb = false;
 
@@ -67,8 +69,8 @@ class UsageService {
   /// 小时级增量流：结构为「日期 -> 小时索引(0-23) -> AppId -> 增量时长」。
   ///
   /// 供 UI 侧按日合并为「24 小时分布」做实时刷新使用。
-  Stream<Map<DateTime, Map<int, Map<String, Duration>>>> get hourlyDeltaStream =>
-      _hourlyDeltaController.stream;
+  Stream<Map<DateTime, Map<int, Map<String, Duration>>>>
+  get hourlyDeltaStream => _hourlyDeltaController.stream;
 
   Future<void> _onForegroundEvent(ForegroundAppEvent event) async {
     if (kDebugMode) {
@@ -235,8 +237,7 @@ class UsageService {
       );
       perHour.forEach((_, perApp) {
         perApp.forEach((appId, duration) {
-          perAppDaily[appId] =
-              (perAppDaily[appId] ?? Duration.zero) + duration;
+          perAppDaily[appId] = (perAppDaily[appId] ?? Duration.zero) + duration;
         });
       });
     });
@@ -316,9 +317,7 @@ class UsageService {
     if (_isFlushingDb) {
       return;
     }
-    if (!force &&
-        _pendingDbDelta.isEmpty &&
-        _pendingHourlyDbDelta.isEmpty) {
+    if (!force && _pendingDbDelta.isEmpty && _pendingHourlyDbDelta.isEmpty) {
       return;
     }
 
@@ -326,10 +325,9 @@ class UsageService {
     final toPersistDaily = Map<DateTime, Map<String, Duration>>.from(
       _pendingDbDelta,
     );
-    final toPersistHourly =
-        Map<DateTime, Map<int, Map<String, Duration>>>.from(
-          _pendingHourlyDbDelta,
-        );
+    final toPersistHourly = Map<DateTime, Map<int, Map<String, Duration>>>.from(
+      _pendingHourlyDbDelta,
+    );
     _pendingDbDelta.clear();
     _pendingHourlyDbDelta.clear();
     _lastDbFlushAt = DateTime.now();

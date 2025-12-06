@@ -178,8 +178,10 @@ final class WindowPinController {
         }
         return ok;
       } catch (e, st) {
-        AppLogService.instance
-            .logError(_logTag, 'exitPinnedMode threw: $e\n$st');
+        AppLogService.instance.logError(
+          _logTag,
+          'exitPinnedMode threw: $e\n$st',
+        );
         if (kDebugMode) {
           debugPrint('[WindowPinController] exitPinnedMode error: $e');
         }

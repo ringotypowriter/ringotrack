@@ -35,51 +35,43 @@ final hourlySelectedDayProvider = NotifierProvider<HourlySelectedDay, DateTime>(
   HourlySelectedDay.new,
 );
 
-final hourlyUsageByDayProvider =
-    StreamProvider.autoDispose.family<Map<int, Map<String, Duration>>, DateTime>(
-      (ref, day) async* {
-        final repo = ref.watch(usageRepositoryProvider);
-        final service = ref.watch(usageServiceProvider);
-        final normalizedDay = _normalizeDayDashboard(day);
+final hourlyUsageByDayProvider = StreamProvider.autoDispose
+    .family<Map<int, Map<String, Duration>>, DateTime>((ref, day) async* {
+      final repo = ref.watch(usageRepositoryProvider);
+      final service = ref.watch(usageServiceProvider);
+      final normalizedDay = _normalizeDayDashboard(day);
 
-        // 初始：从数据库加载该日的小时级用时分布
-        final initial = await repo.loadHourlyRange(normalizedDay, normalizedDay);
-        final initialForDay = initial[normalizedDay] ?? const <int, Map<String, Duration>>{};
+      // 初始：从数据库加载该日的小时级用时分布
+      final initial = await repo.loadHourlyRange(normalizedDay, normalizedDay);
+      final initialForDay =
+          initial[normalizedDay] ?? const <int, Map<String, Duration>>{};
 
-        Map<int, Map<String, Duration>> current = initialForDay.map(
+      Map<int, Map<String, Duration>> current = initialForDay.map(
+        (hour, perApp) => MapEntry(hour, Map<String, Duration>.from(perApp)),
+      );
+
+      yield current;
+
+      // 后续：监听 UsageService 的小时级增量流，增量合并到当日数据
+      await for (final delta in service.hourlyDeltaStream) {
+        final dayDelta = delta[normalizedDay];
+        if (dayDelta == null || dayDelta.isEmpty) {
+          continue;
+        }
+
+        dayDelta.forEach((hour, perAppDelta) {
+          final perApp = current.putIfAbsent(hour, () => <String, Duration>{});
+          perAppDelta.forEach((appId, duration) {
+            perApp[appId] = (perApp[appId] ?? Duration.zero) + duration;
+          });
+        });
+
+        // 输出一份深拷贝，避免外部修改内部状态
+        yield current.map(
           (hour, perApp) => MapEntry(hour, Map<String, Duration>.from(perApp)),
         );
-
-        yield current;
-
-        // 后续：监听 UsageService 的小时级增量流，增量合并到当日数据
-        await for (final delta in service.hourlyDeltaStream) {
-          final dayDelta = delta[normalizedDay];
-          if (dayDelta == null || dayDelta.isEmpty) {
-            continue;
-          }
-
-          dayDelta.forEach((hour, perAppDelta) {
-            final perApp = current.putIfAbsent(
-              hour,
-              () => <String, Duration>{},
-            );
-            perAppDelta.forEach((appId, duration) {
-              perApp[appId] =
-                  (perApp[appId] ?? Duration.zero) + duration;
-            });
-          });
-
-          // 输出一份深拷贝，避免外部修改内部状态
-          yield current.map(
-            (hour, perApp) => MapEntry(
-              hour,
-              Map<String, Duration>.from(perApp),
-            ),
-          );
-        }
-      },
-    );
+      }
+    });
 
 class DashboardPage extends ConsumerStatefulWidget {
   const DashboardPage({super.key});
@@ -194,13 +186,11 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
           ],
           Text(
             '仪表盘',
-            style: (Platform.isMacOS
-                    ? theme.textTheme.titleLarge
-                    : theme.textTheme.titleMedium)
-                ?.copyWith(
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.3,
-            ),
+            style:
+                (Platform.isMacOS
+                        ? theme.textTheme.titleLarge
+                        : theme.textTheme.titleMedium)
+                    ?.copyWith(fontWeight: FontWeight.w600, letterSpacing: 0.3),
           ),
           const Spacer(),
           IconButton(
@@ -747,8 +737,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                     height: 10.r,
                     decoration: BoxDecoration(
                       color: color,
-                      borderRadius:
-                          BorderRadius.circular(_dashboardElementRadius),
+                      borderRadius: BorderRadius.circular(
+                        _dashboardElementRadius,
+                      ),
                     ),
                   ),
                 ),
@@ -910,8 +901,8 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     final maxMinutes = daily.isEmpty
         ? 0.0
         : daily
-            .map((e) => e.total.inSeconds / 60.0)
-            .fold<double>(0.0, (prev, m) => m > prev ? m : prev);
+              .map((e) => e.total.inSeconds / 60.0)
+              .fold<double>(0.0, (prev, m) => m > prev ? m : prev);
     final useMinutes = maxMinutes > 0 && maxMinutes < 60;
     final interval = useMinutes ? (maxMinutes <= 30 ? 10.0 : 20.0) : 1.0;
     final maxValue = useMinutes ? maxMinutes : maxMinutes / 60.0;
@@ -923,9 +914,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
       for (var i = 0; i < daily.length; i++)
         FlSpot(
           i.toDouble(),
-          useMinutes
-              ? daily[i].total.inSeconds / 60.0
-              : _hours(daily[i].total),
+          useMinutes ? daily[i].total.inSeconds / 60.0 : _hours(daily[i].total),
         ),
     ];
 
@@ -1025,8 +1014,8 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     final maxMinutes = weekly.isEmpty
         ? 0.0
         : weekly
-            .map((e) => e.total.inSeconds / 60.0)
-            .fold<double>(0.0, (prev, m) => m > prev ? m : prev);
+              .map((e) => e.total.inSeconds / 60.0)
+              .fold<double>(0.0, (prev, m) => m > prev ? m : prev);
     final useMinutes = maxMinutes > 0 && maxMinutes < 60;
     final interval = useMinutes ? (maxMinutes <= 30 ? 10.0 : 20.0) : 2.0;
     final maxValue = useMinutes ? maxMinutes : maxMinutes / 60.0;
@@ -1037,8 +1026,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
 
     for (var i = 0; i < weekly.length; i++) {
       final total = weekly[i].total;
-      final value =
-          useMinutes ? total.inSeconds / 60.0 : _hours(weekly[i].total);
+      final value = useMinutes
+          ? total.inSeconds / 60.0
+          : _hours(weekly[i].total);
       groups.add(
         BarChartGroupData(
           x: i,

@@ -4,7 +4,8 @@ import 'package:ringotrack/domain/usage_repository.dart';
 
 /// 用于调试截图的内存示例数据仓库。
 class DemoUsageRepository implements UsageRepository {
-  DemoUsageRepository({DateTime? now}) : _referenceDate = _normalizeDay(now ?? DateTime.now()) {
+  DemoUsageRepository({DateTime? now})
+    : _referenceDate = _normalizeDay(now ?? DateTime.now()) {
     _generateDemoData();
   }
 
@@ -22,6 +23,7 @@ class DemoUsageRepository implements UsageRepository {
   final Random _random = Random(DateTime.now().millisecondsSinceEpoch);
   final Map<DateTime, Map<String, Duration>> _dailyUsage = {};
   final Map<DateTime, Map<int, Map<String, Duration>>> _hourlyUsage = {};
+  final Map<DateTime, Map<int, int>> _hourlyOccupancy = {};
 
   static DateTime _normalizeDay(DateTime value) =>
       DateTime(value.year, value.month, value.day);
@@ -34,10 +36,14 @@ class DemoUsageRepository implements UsageRepository {
   }
 
   void _generateDemoData() {
-    final startDay = _referenceDate.subtract(const Duration(days: _historyDays));
-    for (var current = startDay;
-        !current.isAfter(_referenceDate);
-        current = current.add(const Duration(days: 1))) {
+    final startDay = _referenceDate.subtract(
+      const Duration(days: _historyDays),
+    );
+    for (
+      var current = startDay;
+      !current.isAfter(_referenceDate);
+      current = current.add(const Duration(days: 1))
+    ) {
       final normalized = _normalizeDay(current);
 
       if (_random.nextDouble() < 0.12) {
@@ -81,6 +87,8 @@ class DemoUsageRepository implements UsageRepository {
         : earliestStartHour;
 
     final maxSegments = min(segmentCount, 24 - startHour);
+    final occupancyForDay =
+        _hourlyOccupancy.putIfAbsent(day, () => <int, int>{});
     var remainingSeconds = duration.inSeconds;
     var currentHour = startHour;
     var hoursAssigned = 0;
@@ -88,12 +96,8 @@ class DemoUsageRepository implements UsageRepository {
     while (remainingSeconds > 0 &&
         hoursAssigned < maxSegments &&
         currentHour < 24) {
-      final bucket = _hourlyUsage
-          .putIfAbsent(day, () => <int, Map<String, Duration>>{})
-          .putIfAbsent(currentHour, () => <String, Duration>{});
-      final existingSeconds = bucket[appId]?.inSeconds ?? 0;
-      final capacity = max(3600 - existingSeconds, 0);
-
+      final existingOccupancy = occupancyForDay.putIfAbsent(currentHour, () => 0);
+      final capacity = max(3600 - existingOccupancy, 0);
       if (capacity <= 0) {
         currentHour++;
         continue;
@@ -112,45 +116,51 @@ class DemoUsageRepository implements UsageRepository {
       final jitteredTarget = max(1, targetPerHour + jitter);
       final chunkSeconds = min(maxAllocatable, jitteredTarget);
 
+      final bucket = _hourlyUsage
+          .putIfAbsent(day, () => <int, Map<String, Duration>>{})
+          .putIfAbsent(currentHour, () => <String, Duration>{});
       bucket[appId] =
           (bucket[appId] ?? Duration.zero) + Duration(seconds: chunkSeconds);
+      occupancyForDay[currentHour] = existingOccupancy + chunkSeconds;
+
       remainingSeconds -= chunkSeconds;
       hoursAssigned++;
       currentHour++;
     }
 
-    // 如果还没分完，继续向后填充，直至 23 点
     while (remainingSeconds > 0 && currentHour < 24) {
-      final bucket = _hourlyUsage
-          .putIfAbsent(day, () => <int, Map<String, Duration>>{})
-          .putIfAbsent(currentHour, () => <String, Duration>{});
-      final existingSeconds = bucket[appId]?.inSeconds ?? 0;
-      final capacity = max(3600 - existingSeconds, 0);
-
+      final existingOccupancy = occupancyForDay.putIfAbsent(currentHour, () => 0);
+      final capacity = max(3600 - existingOccupancy, 0);
       if (capacity <= 0) {
         currentHour++;
         continue;
       }
 
       final chunkSeconds = min(capacity, remainingSeconds);
+      final bucket = _hourlyUsage
+          .putIfAbsent(day, () => <int, Map<String, Duration>>{})
+          .putIfAbsent(currentHour, () => <String, Duration>{});
       bucket[appId] =
           (bucket[appId] ?? Duration.zero) + Duration(seconds: chunkSeconds);
+      occupancyForDay[currentHour] = existingOccupancy + chunkSeconds;
+
       remainingSeconds -= chunkSeconds;
       currentHour++;
     }
 
     if (remainingSeconds > 0) {
-      // 如果仍有剩余，就把它塞到最后一个小时（不超过 3600）
       final fallbackHour = min(startHour + maxSegments - 1, 23);
-      final bucket = _hourlyUsage
-          .putIfAbsent(day, () => <int, Map<String, Duration>>{})
-          .putIfAbsent(fallbackHour, () => <String, Duration>{});
-      final existingSeconds = bucket[appId]?.inSeconds ?? 0;
-      final available = max(3600 - existingSeconds, 0);
+      final occupancyValue =
+          occupancyForDay.putIfAbsent(fallbackHour, () => 0);
+      final available = max(3600 - occupancyValue, 0);
       if (available > 0) {
         final chunkSeconds = min(available, remainingSeconds);
+        final bucket = _hourlyUsage
+            .putIfAbsent(day, () => <int, Map<String, Duration>>{})
+            .putIfAbsent(fallbackHour, () => <String, Duration>{});
         bucket[appId] =
             (bucket[appId] ?? Duration.zero) + Duration(seconds: chunkSeconds);
+        occupancyForDay[fallbackHour] = occupancyValue + chunkSeconds;
         remainingSeconds -= chunkSeconds;
       }
     }
@@ -203,10 +213,7 @@ class DemoUsageRepository implements UsageRepository {
         return;
       }
       result[day] = perHour.map(
-        (hour, perApp) => MapEntry(
-          hour,
-          Map<String, Duration>.from(perApp),
-        ),
+        (hour, perApp) => MapEntry(hour, Map<String, Duration>.from(perApp)),
       );
     });
 
@@ -231,8 +238,7 @@ class DemoUsageRepository implements UsageRepository {
           final bucket = _hourlyUsage
               .putIfAbsent(normalized, () => <int, Map<String, Duration>>{})
               .putIfAbsent(hourIndex, () => <String, Duration>{});
-          bucket[appId] =
-              (bucket[appId] ?? Duration.zero) + duration;
+          bucket[appId] = (bucket[appId] ?? Duration.zero) + duration;
           _mergeDailyDuration(normalized, appId, duration);
         });
       });

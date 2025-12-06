@@ -161,10 +161,7 @@ class HourlyUsageAggregator {
         dayKey,
         () => <int, Map<String, Duration>>{},
       );
-      final perApp = perHour.putIfAbsent(
-        hourIndex,
-        () => <String, Duration>{},
-      );
+      final perApp = perHour.putIfAbsent(hourIndex, () => <String, Duration>{});
 
       perApp[appId] = (perApp[appId] ?? Duration.zero) + segmentDuration;
 

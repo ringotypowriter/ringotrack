@@ -168,8 +168,7 @@ class HourlyUsageAnalysis {
 
     return List<HourlyBucket>.generate(24, (index) {
       final hourData = perHour[index] ?? const {};
-      final total =
-          hourData.values.fold(Duration.zero, (acc, d) => acc + d);
+      final total = hourData.values.fold(Duration.zero, (acc, d) => acc + d);
       return HourlyBucket(
         date: normalizedDay,
         hourIndex: index,

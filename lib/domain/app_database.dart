@@ -208,7 +208,10 @@ class AppDatabase extends _$AppDatabase {
     final result = <DateTime, Map<int, Map<String, Duration>>>{};
     for (final row in rows) {
       final day = _normalizeDay(row.date);
-      final perHour = result.putIfAbsent(day, () => <int, Map<String, Duration>>{});
+      final perHour = result.putIfAbsent(
+        day,
+        () => <int, Map<String, Duration>>{},
+      );
       final perApp = perHour.putIfAbsent(
         row.hourIndex,
         () => <String, Duration>{},

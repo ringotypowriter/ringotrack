@@ -3,11 +3,8 @@ import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-typedef _RtSetGlassTintNative = ffi.Int32 Function(
-  ffi.Uint8 r,
-  ffi.Uint8 g,
-  ffi.Uint8 b,
-);
+typedef _RtSetGlassTintNative =
+    ffi.Int32 Function(ffi.Uint8 r, ffi.Uint8 g, ffi.Uint8 b);
 typedef _RtSetGlassTintDart = int Function(int r, int g, int b);
 
 typedef _RtResetGlassTintNative = ffi.Int32 Function();
@@ -37,9 +34,7 @@ class GlassTintController {
             );
         return GlassTintController._(setFn, resetFn);
       } catch (e, st) {
-        debugPrint(
-          'GlassTintController: Windows FFI lookup failed: $e\n$st',
-        );
+        debugPrint('GlassTintController: Windows FFI lookup failed: $e\n$st');
         return GlassTintController._(null, null);
       }
     }
@@ -48,8 +43,7 @@ class GlassTintController {
     return GlassTintController._(null, null);
   }
 
-  static const MethodChannel _channel =
-      MethodChannel('ringotrack/glass_tint');
+  static const MethodChannel _channel = MethodChannel('ringotrack/glass_tint');
 
   /// 当前平台是否支持毛玻璃 tint 控制（macOS / Windows）
   bool get isSupported {
@@ -111,9 +105,7 @@ class GlassTintController {
         final result = await _channel.invokeMethod<bool>('resetTintColor');
         return result ?? false;
       } catch (e, st) {
-        debugPrint(
-          'GlassTintController.resetTintColor(macOS) error: $e\n$st',
-        );
+        debugPrint('GlassTintController.resetTintColor(macOS) error: $e\n$st');
         return false;
       }
     }
@@ -136,4 +128,3 @@ class GlassTintController {
     return false;
   }
 }
-

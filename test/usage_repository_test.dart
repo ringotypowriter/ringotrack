@@ -117,97 +117,87 @@ void main() {
       expect(range.isEmpty, isTrue);
     });
 
-    test(
-      'deleteByAppId also clears hourly usage for that app',
-      () async {
-        final day = DateTime(2025, 1, 1);
+    test('deleteByAppId also clears hourly usage for that app', () async {
+      final day = DateTime(2025, 1, 1);
 
-        await repo.mergeUsage({
-          day: {
-            'Photoshop.exe': const Duration(minutes: 10),
-            'ClipStudio': const Duration(minutes: 20),
-          },
-        });
-        await repo.mergeHourlyUsage({
-          day: {
-            10: {'Photoshop.exe': const Duration(minutes: 5)},
-            11: {'ClipStudio': const Duration(minutes: 15)},
-          },
-        });
+      await repo.mergeUsage({
+        day: {
+          'Photoshop.exe': const Duration(minutes: 10),
+          'ClipStudio': const Duration(minutes: 20),
+        },
+      });
+      await repo.mergeHourlyUsage({
+        day: {
+          10: {'Photoshop.exe': const Duration(minutes: 5)},
+          11: {'ClipStudio': const Duration(minutes: 15)},
+        },
+      });
 
-        await repo.deleteByAppId('Photoshop.exe');
+      await repo.deleteByAppId('Photoshop.exe');
 
-        final hourlyRange = await repo.loadHourlyRange(day, day);
-        final perHour = hourlyRange[day]!;
+      final hourlyRange = await repo.loadHourlyRange(day, day);
+      final perHour = hourlyRange[day]!;
 
-        // Photoshop.exe 的小时数据应被删除，只保留 ClipStudio。
-        expect(
-          perHour.values
-              .every((perApp) => !perApp.containsKey('Photoshop.exe')),
-          isTrue,
-        );
-        expect(perHour[11]!['ClipStudio']!.inMinutes, 15);
-      },
-    );
+      // Photoshop.exe 的小时数据应被删除，只保留 ClipStudio。
+      expect(
+        perHour.values.every((perApp) => !perApp.containsKey('Photoshop.exe')),
+        isTrue,
+      );
+      expect(perHour[11]!['ClipStudio']!.inMinutes, 15);
+    });
 
-    test(
-      'deleteByDateRange also clears hourly usage within range',
-      () async {
-        final d1 = DateTime(2025, 1, 1);
-        final d2 = DateTime(2025, 1, 2);
-        final d3 = DateTime(2025, 1, 3);
+    test('deleteByDateRange also clears hourly usage within range', () async {
+      final d1 = DateTime(2025, 1, 1);
+      final d2 = DateTime(2025, 1, 2);
+      final d3 = DateTime(2025, 1, 3);
 
-        await repo.mergeUsage({
-          d1: {'App': const Duration(minutes: 10)},
-          d2: {'App': const Duration(minutes: 20)},
-          d3: {'App': const Duration(minutes: 30)},
-        });
-        await repo.mergeHourlyUsage({
-          d1: {
-            10: {'App': const Duration(minutes: 10)},
-          },
-          d2: {
-            11: {'App': const Duration(minutes: 20)},
-          },
-          d3: {
-            12: {'App': const Duration(minutes: 30)},
-          },
-        });
+      await repo.mergeUsage({
+        d1: {'App': const Duration(minutes: 10)},
+        d2: {'App': const Duration(minutes: 20)},
+        d3: {'App': const Duration(minutes: 30)},
+      });
+      await repo.mergeHourlyUsage({
+        d1: {
+          10: {'App': const Duration(minutes: 10)},
+        },
+        d2: {
+          11: {'App': const Duration(minutes: 20)},
+        },
+        d3: {
+          12: {'App': const Duration(minutes: 30)},
+        },
+      });
 
-        await repo.deleteByDateRange(d1, d2);
+      await repo.deleteByDateRange(d1, d2);
 
-        final hourlyRange = await repo.loadHourlyRange(d1, d3);
+      final hourlyRange = await repo.loadHourlyRange(d1, d3);
 
-        expect(hourlyRange.containsKey(d1), isFalse);
-        expect(hourlyRange.containsKey(d2), isFalse);
-        expect(hourlyRange.containsKey(d3), isTrue);
-        expect(hourlyRange[d3]![12]!['App']!.inMinutes, 30);
-      },
-    );
+      expect(hourlyRange.containsKey(d1), isFalse);
+      expect(hourlyRange.containsKey(d2), isFalse);
+      expect(hourlyRange.containsKey(d3), isTrue);
+      expect(hourlyRange[d3]![12]!['App']!.inMinutes, 30);
+    });
 
-    test(
-      'clearAll clears both daily and hourly tables',
-      () async {
-        final day = DateTime(2025, 1, 1);
+    test('clearAll clears both daily and hourly tables', () async {
+      final day = DateTime(2025, 1, 1);
 
-        await repo.mergeUsage({
-          day: {'App': const Duration(minutes: 10)},
-        });
-        await repo.mergeHourlyUsage({
-          day: {
-            10: {'App': const Duration(minutes: 10)},
-          },
-        });
+      await repo.mergeUsage({
+        day: {'App': const Duration(minutes: 10)},
+      });
+      await repo.mergeHourlyUsage({
+        day: {
+          10: {'App': const Duration(minutes: 10)},
+        },
+      });
 
-        await repo.clearAll();
+      await repo.clearAll();
 
-        final dailyRange = await repo.loadRange(day, day);
-        final hourlyRange = await repo.loadHourlyRange(day, day);
+      final dailyRange = await repo.loadRange(day, day);
+      final hourlyRange = await repo.loadHourlyRange(day, day);
 
-        expect(dailyRange.isEmpty, isTrue);
-        expect(hourlyRange.isEmpty, isTrue);
-      },
-    );
+      expect(dailyRange.isEmpty, isTrue);
+      expect(hourlyRange.isEmpty, isTrue);
+    });
 
     test(
       'mergeHourlyUsage accumulates durations for same day, hour and app',

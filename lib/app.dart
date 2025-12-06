@@ -42,11 +42,15 @@ class RingoTrackApp extends ConsumerWidget {
                       begin: begin,
                       end: end,
                     ).chain(CurveTween(curve: Curves.easeInOut));
-                    final fadeTween = Tween(begin: 0.0, end: 1.0)
-                        .chain(CurveTween(curve: Curves.easeIn));
+                    final fadeTween = Tween(
+                      begin: 0.0,
+                      end: 1.0,
+                    ).chain(CurveTween(curve: Curves.easeIn));
                     // 当本页面被其他页面覆盖时（secondaryAnimation），淡出
-                    final secondaryFadeTween = Tween(begin: 1.0, end: 0.0)
-                        .chain(CurveTween(curve: Curves.easeOut));
+                    final secondaryFadeTween = Tween(
+                      begin: 1.0,
+                      end: 0.0,
+                    ).chain(CurveTween(curve: Curves.easeOut));
                     return FadeTransition(
                       opacity: secondaryAnimation.drive(secondaryFadeTween),
                       child: FadeTransition(
@@ -80,10 +84,14 @@ class RingoTrackApp extends ConsumerWidget {
                       begin: begin,
                       end: end,
                     ).chain(CurveTween(curve: Curves.easeInOut));
-                    final fadeTween = Tween(begin: 0.0, end: 1.0)
-                        .chain(CurveTween(curve: Curves.easeIn));
-                    final secondaryFadeTween = Tween(begin: 1.0, end: 0.0)
-                        .chain(CurveTween(curve: Curves.easeOut));
+                    final fadeTween = Tween(
+                      begin: 0.0,
+                      end: 1.0,
+                    ).chain(CurveTween(curve: Curves.easeIn));
+                    final secondaryFadeTween = Tween(
+                      begin: 1.0,
+                      end: 0.0,
+                    ).chain(CurveTween(curve: Curves.easeOut));
                     return FadeTransition(
                       opacity: secondaryAnimation.drive(secondaryFadeTween),
                       child: FadeTransition(
@@ -117,10 +125,14 @@ class RingoTrackApp extends ConsumerWidget {
                       begin: begin,
                       end: end,
                     ).chain(CurveTween(curve: Curves.easeInOut));
-                    final fadeTween = Tween(begin: 0.0, end: 1.0)
-                        .chain(CurveTween(curve: Curves.easeIn));
-                    final secondaryFadeTween = Tween(begin: 1.0, end: 0.0)
-                        .chain(CurveTween(curve: Curves.easeOut));
+                    final fadeTween = Tween(
+                      begin: 0.0,
+                      end: 1.0,
+                    ).chain(CurveTween(curve: Curves.easeIn));
+                    final secondaryFadeTween = Tween(
+                      begin: 1.0,
+                      end: 0.0,
+                    ).chain(CurveTween(curve: Curves.easeOut));
                     return FadeTransition(
                       opacity: secondaryAnimation.drive(secondaryFadeTween),
                       child: FadeTransition(

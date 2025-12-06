@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:ringotrack/widgets/heatmap_color_scale.dart';
 
+const int _secondsPerHour = 3600;
+
 /// 单日 24 小时线性热力图。
 ///
 /// 颜色分段与日历热力图保持一致，便于复用同一 legend。
@@ -40,40 +42,6 @@ class _RingoHourlyLineHeatmapState extends State<RingoHourlyLineHeatmap> {
   int? _hoveredHour;
   Duration _hoveredDuration = Duration.zero;
 
-  late double _avgMinutes;
-  late double _maxMinutes;
-
-  @override
-  void initState() {
-    super.initState();
-    _recomputeStats();
-  }
-
-  @override
-  void didUpdateWidget(covariant RingoHourlyLineHeatmap oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (!identical(oldWidget.hourlyTotals, widget.hourlyTotals)) {
-      _recomputeStats();
-    }
-  }
-
-  void _recomputeStats() {
-    final nonZero = widget.hourlyTotals.values
-        .where((d) => d.inSeconds > 0)
-        .toList(growable: false);
-
-    if (nonZero.isEmpty) {
-      _avgMinutes = 0;
-      _maxMinutes = 0;
-      return;
-    }
-
-    final minutes = nonZero.map((d) => d.inSeconds / 60.0).toList();
-    final total = minutes.fold<double>(0, (sum, m) => sum + m);
-    _avgMinutes = total / minutes.length;
-    _maxMinutes = minutes.reduce((a, b) => a > b ? a : b);
-  }
-
   @override
   Widget build(BuildContext context) {
     final tickStyle = widget.tickStyle ?? Theme.of(context).textTheme.bodySmall;
@@ -88,17 +56,12 @@ class _RingoHourlyLineHeatmapState extends State<RingoHourlyLineHeatmap> {
         final segmentWidth = (totalWidth - totalSpacing) / segmentCount;
         final barHeight = widget.barHeight.h;
         final radius = widget.cornerRadius.r;
+        final tierColors = HeatmapColorScale.allTierColors(widget.baseColor);
 
         final segments = <Widget>[];
         for (var hour = 0; hour < segmentCount; hour++) {
           final duration = widget.hourlyTotals[hour] ?? Duration.zero;
-          final color = HeatmapColorScale.colorForDuration(
-            duration,
-            avgMinutes: _avgMinutes,
-            maxMinutes: _maxMinutes,
-            baseColor: widget.baseColor,
-            emptyColor: widget.emptyColor,
-          );
+          final color = _colorForHourlySegment(duration, tierColors);
 
           final isFirst = hour == 0;
           final isLast = hour == segmentCount - 1;
@@ -222,6 +185,21 @@ class _RingoHourlyLineHeatmapState extends State<RingoHourlyLineHeatmap> {
         ),
       ),
     );
+  }
+
+  /// 以小时内绘画时间占比决定 tier：任意非零都算 tier1，满 1 小时则为 tier7。
+  Color _colorForHourlySegment(Duration duration, List<Color> tierColors) {
+    if (duration.inSeconds <= 0) {
+      return widget.emptyColor;
+    }
+
+    final normalized = (duration.inSeconds / _secondsPerHour).clamp(0.0, 1.0);
+    final tierCount = tierColors.length;
+    final tierIndex = normalized >= 1.0
+        ? tierCount - 1
+        : (normalized * tierCount).ceil() - 1;
+
+    return tierColors[tierIndex.clamp(0, tierCount - 1)];
   }
 
   String _formatTooltip(int hour, Duration duration) {

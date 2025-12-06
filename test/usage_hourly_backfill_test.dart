@@ -3,32 +3,29 @@ import 'package:ringotrack/domain/usage_hourly_backfill.dart';
 
 void main() {
   group('backfillDailyToHourly', () {
-    test(
-      'today before noon: fills from current hour backwards',
-      () {
-        final day = DateTime(2025, 1, 1);
-        final now = DateTime(2025, 1, 1, 9, 10);
+    test('today before noon: fills from current hour backwards', () {
+      final day = DateTime(2025, 1, 1);
+      final now = DateTime(2025, 1, 1, 9, 10);
 
-        // 2.5 小时，总共 9000 秒。
-        final result = backfillDailyToHourly(
-          total: const Duration(minutes: 150),
-          day: day,
-          now: now,
-        );
+      // 2.5 小时，总共 9000 秒。
+      final result = backfillDailyToHourly(
+        total: const Duration(minutes: 150),
+        day: day,
+        now: now,
+      );
 
-        // 期望：从 9 点往前填：
-        // 9: 3600, 8: 3600, 7: 1800
-        expect(result[9]?.inSeconds, 3600);
-        expect(result[8]?.inSeconds, 3600);
-        expect(result[7]?.inSeconds, 1800);
+      // 期望：从 9 点往前填：
+      // 9: 3600, 8: 3600, 7: 1800
+      expect(result[9]?.inSeconds, 3600);
+      expect(result[8]?.inSeconds, 3600);
+      expect(result[7]?.inSeconds, 1800);
 
-        // 其他小时应该是 null 或 0。
-        for (var h = 0; h < 24; h++) {
-          if (h == 7 || h == 8 || h == 9) continue;
-          expect(result[h] == null || result[h] == Duration.zero, isTrue);
-        }
-      },
-    );
+      // 其他小时应该是 null 或 0。
+      for (var h = 0; h < 24; h++) {
+        if (h == 7 || h == 8 || h == 9) continue;
+        expect(result[h] == null || result[h] == Duration.zero, isTrue);
+      }
+    });
 
     test(
       'today after noon: fills from 12:00 to now, then backwards before 12 if needed',
@@ -133,4 +130,3 @@ void main() {
     });
   });
 }
-

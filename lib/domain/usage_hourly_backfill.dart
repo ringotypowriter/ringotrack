@@ -35,8 +35,7 @@ Map<int, Duration> backfillDailyToHourly({
       return;
     }
 
-    final assignSeconds =
-        remaining > maxPerHour ? maxPerHour : remaining;
+    final assignSeconds = remaining > maxPerHour ? maxPerHour : remaining;
     buckets[hourIndex] = Duration(seconds: assignSeconds);
     remaining -= assignSeconds;
   }
@@ -84,4 +83,3 @@ Map<int, Duration> backfillDailyToHourly({
 
   return buckets;
 }
-

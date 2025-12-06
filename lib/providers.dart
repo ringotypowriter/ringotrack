@@ -18,11 +18,13 @@ final appDatabaseProvider = Provider<AppDatabase>((ref) {
   return db;
 });
 
-final demoModeControllerProvider =
-    NotifierProvider<DemoModeController, bool>(DemoModeController.new);
+final demoModeControllerProvider = NotifierProvider<DemoModeController, bool>(
+  DemoModeController.new,
+);
 
-final demoUsageRepositoryProvider =
-    Provider.autoDispose<DemoUsageRepository>((ref) {
+final demoUsageRepositoryProvider = Provider.autoDispose<DemoUsageRepository>((
+  ref,
+) {
   return DemoUsageRepository();
 });
 
