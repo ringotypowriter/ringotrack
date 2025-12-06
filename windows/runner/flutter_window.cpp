@@ -1,8 +1,65 @@
 #include "flutter_window.h"
 
 #include <optional>
+#include <windowsx.h>
 
 #include "flutter/generated_plugin_registrant.h"
+
+// 来自 foreground_tracker_win.cpp：查询当前是否处于 pinned 模式。
+extern "C" int rt_is_pinned();
+
+namespace {
+
+// 原始 Flutter View 窗口过程，用于在自定义处理后转发消息。
+WNDPROC g_flutter_view_wndproc = nullptr;
+
+// 针对 Flutter 子窗口的自定义窗口过程：
+// 在 pinned 模式下，对 WM_NCHITTEST 返回 HTTRANSPARENT，
+// 让父窗口处理命中测试，从而实现流畅的窗口拖动。
+LRESULT CALLBACK FlutterViewWindowProc(HWND hwnd,
+                                       UINT const message,
+                                       WPARAM const wparam,
+                                       LPARAM const lparam) {
+  switch (message) {
+    case WM_NCHITTEST: {
+      if (rt_is_pinned()) {
+        // 获取鼠标屏幕坐标
+        POINT screen_pos{GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam)};
+
+        // 转换为客户区坐标
+        POINT client_pos = screen_pos;
+        ScreenToClient(hwnd, &client_pos);
+
+        RECT client_rect{};
+        GetClientRect(hwnd, &client_rect);
+
+        // 在右上角预留一块区域给 Flutter 内部的 pin 按钮点击
+        constexpr int kPinSafeWidth = 80;
+        constexpr int kPinSafeHeight = 80;
+        const bool in_pin_safe_region =
+            client_pos.x >= client_rect.right - kPinSafeWidth &&
+            client_pos.x <= client_rect.right &&
+            client_pos.y >= client_rect.top &&
+            client_pos.y <= client_rect.top + kPinSafeHeight;
+
+        if (!in_pin_safe_region) {
+          // 返回 HTTRANSPARENT，让系统将命中测试传递给父窗口，
+          // 父窗口会返回 HTCAPTION，从而触发系统原生拖动。
+          return HTTRANSPARENT;
+        }
+      }
+      break;
+    }
+  }
+
+  if (g_flutter_view_wndproc) {
+    return CallWindowProc(g_flutter_view_wndproc, hwnd, message, wparam,
+                          lparam);
+  }
+  return DefWindowProc(hwnd, message, wparam, lparam);
+}
+
+}  // namespace
 
 FlutterWindow::FlutterWindow(const flutter::DartProject& project)
     : project_(project) {}
@@ -35,6 +92,13 @@ bool FlutterWindow::OnCreate() {
   // registered. The following call ensures a frame is pending to ensure the
   // window is shown. It is a no-op if the first frame hasn't completed yet.
   flutter_controller_->ForceRedraw();
+
+  // 子类化 Flutter View 的窗口过程，以便在 pinned 模式下
+  // 对 WM_NCHITTEST 返回 HTTRANSPARENT，让父窗口处理拖动。
+  HWND flutter_view_hwnd = flutter_controller_->view()->GetNativeWindow();
+  g_flutter_view_wndproc = reinterpret_cast<WNDPROC>(
+      SetWindowLongPtr(flutter_view_hwnd, GWLP_WNDPROC,
+                       reinterpret_cast<LONG_PTR>(FlutterViewWindowProc)));
 
   return true;
 }
