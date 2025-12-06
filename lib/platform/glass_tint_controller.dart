@@ -70,9 +70,9 @@ class GlassTintController {
     if (Platform.isMacOS) {
       try {
         final result = await _channel.invokeMethod<bool>('setTintColor', {
-          'r': color.red / 255.0,
-          'g': color.green / 255.0,
-          'b': color.blue / 255.0,
+          'r': (color.r * 255.0).round().clamp(0, 255) / 255.0,
+          'g': (color.g * 255.0).round().clamp(0, 255) / 255.0,
+          'b': (color.b * 255.0).round().clamp(0, 255) / 255.0,
         });
         return result ?? false;
       } catch (e, st) {
@@ -86,7 +86,11 @@ class GlassTintController {
       final fn = _setTintFn;
       if (fn == null) return false;
       try {
-        final code = fn(color.red, color.green, color.blue);
+        final code = fn(
+          (color.r * 255.0).round().clamp(0, 255),
+          (color.g * 255.0).round().clamp(0, 255),
+          (color.b * 255.0).round().clamp(0, 255),
+        );
         return code != 0;
       } catch (e, st) {
         debugPrint('GlassTintController.setTintColor(Windows) error: $e\n$st');
