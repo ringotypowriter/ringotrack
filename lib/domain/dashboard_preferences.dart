@@ -10,7 +10,7 @@ enum HeatmapRangeMode { calendarYear, rolling12Months }
 class DashboardPreferences {
   const DashboardPreferences({
     this.heatmapRangeMode = HeatmapRangeMode.calendarYear,
-    this.enableGlassEffect = true,
+    this.enableGlassEffect = false,
   });
 
   final HeatmapRangeMode heatmapRangeMode;
@@ -45,7 +45,7 @@ class DashboardPreferencesRepository {
       (m) => m.name == saved,
       orElse: () => HeatmapRangeMode.calendarYear,
     );
-    final enableGlass = sp.getBool(_keyGlassEffect) ?? true;
+    final enableGlass = sp.getBool(_keyGlassEffect) ?? false;
     return DashboardPreferences(
       heatmapRangeMode: mode,
       enableGlassEffect: enableGlass,
