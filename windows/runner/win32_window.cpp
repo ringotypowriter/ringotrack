@@ -10,6 +10,9 @@
 // 这里声明为 C 接口，方便在窗口关闭前做一次 cleanup，恢复正常窗口尺寸。
 extern "C" int rt_exit_pinned_mode();
 
+// 来自 foreground_tracker_win.cpp：查询当前是否处于 pinned 模式。
+extern "C" int rt_is_pinned();
+
 namespace {
 
 /// Window attribute that enables dark mode window decorations.
@@ -184,6 +187,46 @@ Win32Window::MessageHandler(HWND hwnd,
                             WPARAM const wparam,
                             LPARAM const lparam) noexcept {
   switch (message) {
+    case WM_NCHITTEST: {
+      // 在 pinned 小窗模式下（无标题栏），让整个窗口（除右上角安全区域）
+      // 都被系统识别为「标题栏」，这样系统会自动处理窗口拖动，非常流畅跟手。
+      if (rt_is_pinned()) {
+        // 先调用默认处理获取标准结果
+        LRESULT default_result = DefWindowProc(hwnd, message, wparam, lparam);
+
+        // 如果在客户区，则判断是否需要视为标题栏
+        if (default_result == HTCLIENT) {
+          // 获取鼠标在屏幕上的坐标
+          POINT screen_pos{GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam)};
+
+          // 转换为窗口客户区坐标
+          POINT client_pos = screen_pos;
+          ScreenToClient(hwnd, &client_pos);
+
+          RECT client_rect{};
+          GetClientRect(hwnd, &client_rect);
+
+          // 在右上角预留一块区域给 Flutter 内部的 pin 按钮点击，
+          // 避免把 pin 按钮点击也拦截成拖动。
+          constexpr int kPinSafeWidth = 80;
+          constexpr int kPinSafeHeight = 80;
+          const bool in_pin_safe_region =
+              client_pos.x >= client_rect.right - kPinSafeWidth &&
+              client_pos.x <= client_rect.right &&
+              client_pos.y >= client_rect.top &&
+              client_pos.y <= client_rect.top + kPinSafeHeight;
+
+          if (!in_pin_safe_region) {
+            // 告诉系统这是标题栏，系统会自动处理拖动
+            return HTCAPTION;
+          }
+        }
+
+        return default_result;
+      }
+      break;
+    }
+
     case WM_CLOSE:
       // 如果当前处于 pinned 小窗模式，先恢复为原始窗口尺寸和样式，
       // 避免系统在关闭时记住的是小窗大小。
