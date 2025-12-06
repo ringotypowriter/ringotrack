@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:ringotrack/domain/dashboard_preferences.dart';
+import 'package:ringotrack/providers.dart';
 import 'package:ringotrack/widgets/heatmap_color_scale.dart';
 
 class RingoHeatmap extends StatelessWidget {
@@ -19,6 +21,7 @@ class RingoHeatmap extends StatelessWidget {
     this.monthLabelStyle,
     this.weekdayLabelStyle,
     this.emptyPlaceholder,
+    this.weekStartMode = WeekStartMode.sunday,
   });
 
   final DateTime start;
@@ -36,6 +39,7 @@ class RingoHeatmap extends StatelessWidget {
   final TextStyle? monthLabelStyle;
   final TextStyle? weekdayLabelStyle;
   final Widget? emptyPlaceholder;
+  final WeekStartMode weekStartMode;
 
   @override
   Widget build(BuildContext context) {
@@ -52,7 +56,7 @@ class RingoHeatmap extends StatelessWidget {
       }
     });
 
-    final calendarStart = _startOfWeek(normalizedStart);
+    final calendarStart = startOfWeek(normalizedStart, weekStartMode);
     final totalDays = normalizedEnd.difference(calendarStart).inDays + 1;
     final weekCount = (totalDays / 7).ceil();
 
@@ -210,11 +214,6 @@ class RingoHeatmap extends StatelessWidget {
     return DateTime(date.year, date.month, date.day);
   }
 
-  DateTime _startOfWeek(DateTime date) {
-    final normalized = _normalizeDate(date);
-    final weekday = normalized.weekday % 7; // 周日 = 0
-    return normalized.subtract(Duration(days: weekday));
-  }
 }
 
 class _MonthPosition {

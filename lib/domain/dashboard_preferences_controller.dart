@@ -36,6 +36,13 @@ class DashboardPreferencesController
     state = AsyncData(next);
     await _repository.save(next);
   }
+
+  Future<void> setWeekStartMode(WeekStartMode mode) async {
+    final current = state.value ?? const DashboardPreferences();
+    final next = current.copyWith(weekStartMode: mode);
+    state = AsyncData(next);
+    await _repository.save(next);
+  }
 }
 
 final dashboardPreferencesRepositoryProvider =

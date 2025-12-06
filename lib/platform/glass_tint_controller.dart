@@ -194,3 +194,4 @@ class GlassTintController {
     return resetTintColor();
   }
 }
+
