@@ -355,7 +355,8 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
   }) {
     final normalizedStart = DateTime(start.year, start.month, start.day);
     final normalizedEnd = DateTime(end.year, end.month, end.day);
-    final calendarStart = _startOfWeek(normalizedStart);
+    final weekStartMode = ref.watch(dashboardWeekStartModeProvider);
+    final calendarStart = startOfWeek(normalizedStart, weekStartMode);
     final totalDays = normalizedEnd.difference(calendarStart).inDays + 1;
     final weekCount = (totalDays / 7).ceil();
 
@@ -403,9 +404,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
             width: innerWidth,
             child: Align(
               alignment: Alignment.topCenter,
-              child: RingoHeatmap(
-                start: start,
-                end: end,
+            child: RingoHeatmap(
+              start: start,
+              end: end,
                 dailyTotals: totals,
                 baseColor: theme.colorScheme.primary,
                 tileSize: tileSize,
@@ -423,6 +424,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                   color: Colors.black54,
                 ),
                 emptyPlaceholder: placeholder,
+                weekStartMode: weekStartMode,
               ),
             ),
           );
@@ -707,12 +709,6 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
         );
       },
     );
-  }
-
-  DateTime _startOfWeek(DateTime date) {
-    final normalized = DateTime(date.year, date.month, date.day);
-    final weekday = normalized.weekday % 7; // 周日 = 0
-    return normalized.subtract(Duration(days: weekday));
   }
 
   Widget _buildLegend(ThemeData theme) {

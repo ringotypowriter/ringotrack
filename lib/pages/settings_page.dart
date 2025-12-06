@@ -961,6 +961,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       child: prefsAsync.when(
         data: (prefs) {
           final current = prefs.heatmapRangeMode;
+          final weekStartMode = prefs.weekStartMode;
 
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -990,6 +991,37 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               SizedBox(height: 8.h),
               Text(
                 '仅影响热力图范围，今日/本周/本月仍按自然时间。',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: onSurfaceVariant,
+                  height: 1.3,
+                ),
+              ),
+              SizedBox(height: 14.h),
+              DropdownButtonFormField<WeekStartMode>(
+                initialValue: weekStartMode,
+                decoration: const InputDecoration(
+                  prefixIcon: Icon(Icons.view_week_rounded),
+                ),
+                items: const [
+                  DropdownMenuItem(
+                    value: WeekStartMode.sunday,
+                    child: Text('周日为周起点'),
+                  ),
+                  DropdownMenuItem(
+                    value: WeekStartMode.monday,
+                    child: Text('周一为周起点'),
+                  ),
+                ],
+                onChanged: (value) {
+                  if (value == null) return;
+                  ref
+                      .read(dashboardPreferencesControllerProvider.notifier)
+                      .setWeekStartMode(value);
+                },
+              ),
+              SizedBox(height: 8.h),
+              Text(
+                '“本周”/热力图的起点会按此设置向前展开，方便和老板习惯的周历口径对齐。',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: onSurfaceVariant,
                   height: 1.3,

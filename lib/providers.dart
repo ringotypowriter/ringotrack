@@ -82,6 +82,13 @@ final appThemeProvider = appThemeControllerProvider;
 // Dashboard 偏好（热力图时间范围）
 final dashboardPrefsProvider = dashboardPreferencesControllerProvider;
 
+/// 关注本周起点，供热力图/指标使用。
+final dashboardWeekStartModeProvider = Provider<WeekStartMode>((ref) {
+  final prefsAsync = ref.watch(dashboardPreferencesControllerProvider);
+  return prefsAsync.value?.weekStartMode ??
+      const DashboardPreferences().weekStartMode;
+});
+
 /// 是否使用毛玻璃效果（macOS / Windows 且用户启用时为 true）
 final useGlassEffectProvider = Provider<bool>((ref) {
   final prefsAsync = ref.watch(dashboardPreferencesControllerProvider);
@@ -163,10 +170,11 @@ final yearlyUsageByDateProvider =
 /// 仪表盘指标：今日 / 本周 / 本月 / 连续天数 + 数据更新时间
 final dashboardMetricsProvider = Provider<AsyncValue<DashboardMetrics>>((ref) {
   final usageAsync = ref.watch(yearlyUsageByDateProvider);
+  final weekStartMode = ref.watch(dashboardWeekStartModeProvider);
 
   return usageAsync.whenData((usageByDate) {
     final today = _normalizeDay(DateTime.now());
-    final weekStart = _startOfWeekSundayFirst(today);
+    final weekStart = startOfWeek(today, weekStartMode);
     final monthStart = DateTime(today.year, today.month, 1);
 
     var todayTotal = Duration.zero;
@@ -219,14 +227,18 @@ class DashboardMetrics {
   final DateTime lastUpdatedAt;
 }
 
-DateTime _startOfWeekSundayFirst(DateTime date) {
-  final normalized = _normalizeDay(date);
-  final weekday = normalized.weekday % 7; // 周日 = 0
-  return normalized.subtract(Duration(days: weekday));
-}
-
 DateTime _normalizeDay(DateTime date) {
   return DateTime(date.year, date.month, date.day);
+}
+
+DateTime startOfWeek(DateTime date, WeekStartMode mode) {
+  final normalized = _normalizeDay(date);
+  if (mode == WeekStartMode.monday) {
+    final offset = (normalized.weekday - DateTime.monday) % 7;
+    return normalized.subtract(Duration(days: offset));
+  }
+  final weekday = normalized.weekday % 7; // 周日 = 0
+  return normalized.subtract(Duration(days: weekday));
 }
 
 int _calculateCurrentStreak(
