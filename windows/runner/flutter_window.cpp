@@ -1,5 +1,6 @@
 #include "flutter_window.h"
 
+#include <flutter_windows.h>
 #include <optional>
 #include <windowsx.h>
 
@@ -9,6 +10,25 @@
 extern "C" int rt_is_pinned();
 
 namespace {
+
+double GetFlutterWindowScaleFactor(HWND hwnd) {
+  HMONITOR monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+  if (monitor == nullptr) {
+    return 1.0;
+  }
+
+  const UINT dpi = FlutterDesktopGetDpiForMonitor(monitor);
+  if (dpi == 0) {
+    return 1.0;
+  }
+
+  return static_cast<double>(dpi) / 96.0;
+}
+
+int ScaleToDpiValue(int source, double scale_factor) {
+  const int scaled = static_cast<int>(source * scale_factor);
+  return scaled > 0 ? scaled : 1;
+}
 
 // 原始 Flutter View 窗口过程，用于在自定义处理后转发消息。
 WNDPROC g_flutter_view_wndproc = nullptr;
@@ -34,13 +54,18 @@ LRESULT CALLBACK FlutterViewWindowProc(HWND hwnd,
         GetClientRect(hwnd, &client_rect);
 
         // 在右上角预留一块区域给 Flutter 内部的 pin 按钮点击
-        constexpr int kPinSafeWidth = 80;
-        constexpr int kPinSafeHeight = 80;
+        constexpr int kPinSafeWidthDip = 80;
+        constexpr int kPinSafeHeightDip = 80;
+        const double scale_factor = GetFlutterWindowScaleFactor(hwnd);
+        const int kPinSafeWidthScaled =
+            ScaleToDpiValue(kPinSafeWidthDip, scale_factor);
+        const int kPinSafeHeightScaled =
+            ScaleToDpiValue(kPinSafeHeightDip, scale_factor);
         const bool in_pin_safe_region =
-            client_pos.x >= client_rect.right - kPinSafeWidth &&
+            client_pos.x >= client_rect.right - kPinSafeWidthScaled &&
             client_pos.x <= client_rect.right &&
             client_pos.y >= client_rect.top &&
-            client_pos.y <= client_rect.top + kPinSafeHeight;
+            client_pos.y <= client_rect.top + kPinSafeHeightScaled;
 
         if (!in_pin_safe_region) {
           // 返回 HTTRANSPARENT，让系统将命中测试传递给父窗口，

@@ -45,6 +45,25 @@ int Scale(int source, double scale_factor) {
   return static_cast<int>(source * scale_factor);
 }
 
+double GetWindowScaleFactor(HWND hwnd) {
+  HMONITOR monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+  if (monitor == nullptr) {
+    return 1.0;
+  }
+
+  const UINT dpi = FlutterDesktopGetDpiForMonitor(monitor);
+  if (dpi == 0) {
+    return 1.0;
+  }
+
+  return static_cast<double>(dpi) / 96.0;
+}
+
+int ScaleToDpi(int source, double scale_factor) {
+  const int scaled = Scale(source, scale_factor);
+  return scaled > 0 ? scaled : 1;
+}
+
 // Dynamically loads the |EnableNonClientDpiScaling| from the User32 module.
 // This API is only needed for PerMonitor V1 awareness mode.
 void EnableFullDpiSupportIfAvailable(HWND hwnd) {
@@ -208,22 +227,31 @@ Win32Window::MessageHandler(HWND hwnd,
 
           // 在右上角预留一块区域给 Flutter 内部的 pin 按钮点击，
           // 避免把 pin 按钮点击也拦截成拖动。
-          constexpr int kPinSafeWidth = 80;
-          constexpr int kPinSafeHeight = 80;
+          constexpr int kPinSafeWidthDip = 80;
+          constexpr int kPinSafeHeightDip = 80;
+          constexpr int kLockSafeWidthDip = 80;
+          constexpr int kLockSafeHeightDip = 80;
+          const double scale_factor = GetWindowScaleFactor(hwnd);
+          const int kPinSafeWidthScaled =
+              ScaleToDpi(kPinSafeWidthDip, scale_factor);
+          const int kPinSafeHeightScaled =
+              ScaleToDpi(kPinSafeHeightDip, scale_factor);
+          const int kLockSafeWidthScaled =
+              ScaleToDpi(kLockSafeWidthDip, scale_factor);
+          const int kLockSafeHeightScaled =
+              ScaleToDpi(kLockSafeHeightDip, scale_factor);
           const bool in_pin_safe_region =
-              client_pos.x >= client_rect.right - kPinSafeWidth &&
+              client_pos.x >= client_rect.right - kPinSafeWidthScaled &&
               client_pos.x <= client_rect.right &&
               client_pos.y >= client_rect.top &&
-              client_pos.y <= client_rect.top + kPinSafeHeight;
+              client_pos.y <= client_rect.top + kPinSafeHeightScaled;
 
           // 在右下角预留一块区域给 Flutter 内部的 lock 按钮点击，
           // 避免把 lock 按钮点击也拦截成拖动。
-          constexpr int kLockSafeWidth = 80;
-          constexpr int kLockSafeHeight = 80;
           const bool in_lock_safe_region =
-              client_pos.x >= client_rect.right - kLockSafeWidth &&
+              client_pos.x >= client_rect.right - kLockSafeWidthScaled &&
               client_pos.x <= client_rect.right &&
-              client_pos.y >= client_rect.bottom - kLockSafeHeight &&
+              client_pos.y >= client_rect.bottom - kLockSafeHeightScaled &&
               client_pos.y <= client_rect.bottom;
 
           if (!in_pin_safe_region && !in_lock_safe_region) {
