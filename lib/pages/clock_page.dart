@@ -6,6 +6,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ringotrack/providers.dart';
 import 'package:ringotrack/platform/window_pin_controller.dart';
+import 'package:ringotrack/platform/glass_tint_controller.dart';
 
 class ClockPage extends ConsumerStatefulWidget {
   const ClockPage({super.key});
@@ -17,6 +18,32 @@ class ClockPage extends ConsumerStatefulWidget {
 class _ClockPageState extends ConsumerState<ClockPage> {
   bool _isPinned = false;
   bool _isTogglingPin = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _updateGlassTint();
+  }
+
+  @override
+  void dispose() {
+    // 离开页面时恢复默认白色 tint
+    GlassTintController.instance.resetTintColor();
+    super.dispose();
+  }
+
+  /// 根据当前主题更新毛玻璃 tint 颜色
+  void _updateGlassTint() {
+    final useGlass = ref.read(useGlassEffectProvider);
+    if (!useGlass) return;
+
+    final theme = Theme.of(context);
+    final clockBgColor = HSLColor.fromColor(
+      theme.colorScheme.primary,
+    ).withSaturation(0.6).withLightness(0.6).toColor();
+
+    GlassTintController.instance.setTintColor(clockBgColor);
+  }
 
   Future<void> _togglePin() async {
     if (_isTogglingPin) {
@@ -64,6 +91,31 @@ class _ClockPageState extends ConsumerState<ClockPage> {
     final ref = this.ref;
     final theme = Theme.of(context);
     final pinSupported = WindowPinController.instance.isSupported;
+    final useGlass = ref.watch(useGlassEffectProvider);
+
+    // 监听毛玻璃设置变化
+    ref.listen(useGlassEffectProvider, (previous, next) {
+      if (mounted) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (next) {
+            // 开启毛玻璃：设置彩色 tint
+            _updateGlassTint();
+          } else {
+            // 关闭毛玻璃：恢复默认白色 tint
+            GlassTintController.instance.resetTintColor();
+          }
+        });
+      }
+    });
+
+    // 监听主题变化，更新 tint（仅在毛玻璃模式下）
+    ref.listen(appThemeProvider, (previous, next) {
+      if (useGlass && mounted) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _updateGlassTint();
+        });
+      }
+    });
 
     final timeTextStyle = theme.textTheme.displayLarge?.copyWith(
       fontSize: 160.sp,
@@ -72,10 +124,12 @@ class _ClockPageState extends ConsumerState<ClockPage> {
       fontFamily: 'JetBrainsMono',
     );
 
+    final clockBgColor = HSLColor.fromColor(
+      theme.colorScheme.primary,
+    ).withSaturation(0.6).withLightness(0.6).toColor();
+
     return Scaffold(
-      backgroundColor: HSLColor.fromColor(
-        theme.colorScheme.primary,
-      ).withSaturation(0.6).withLightness(0.6).toColor(),
+      backgroundColor: useGlass ? Colors.transparent : clockBgColor,
       body: SafeArea(
         child: Padding(
           padding: EdgeInsets.symmetric(horizontal: 32.w, vertical: 24.h),

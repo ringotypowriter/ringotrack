@@ -10,6 +10,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:ringotrack/widgets/ringo_hourly_line_heatmap.dart';
 import 'package:ringotrack/widgets/heatmap_color_scale.dart';
 import 'dart:io' show Platform;
+import 'package:ringotrack/platform/glass_tint_controller.dart';
 
 const double _heatmapTileSize = 13;
 const double _heatmapTileSpacing = 3;
@@ -89,6 +90,15 @@ class DashboardPage extends ConsumerStatefulWidget {
 
 class _DashboardPageState extends ConsumerState<DashboardPage> {
   DashboardTab _selectedTab = DashboardTab.overview;
+
+  @override
+  void initState() {
+    super.initState();
+    // 确保恢复默认白色 tint（从 ClockPage 返回时）
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      GlassTintController.instance.resetTintColor();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {

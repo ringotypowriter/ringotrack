@@ -10,6 +10,7 @@ import 'package:ringotrack/providers.dart';
 import 'package:ringotrack/theme/app_theme.dart';
 import 'package:ringotrack/widgets/logs_view_sheet.dart';
 import 'dart:io' show Platform;
+import 'package:ringotrack/platform/glass_tint_controller.dart';
 
 const _cardBorder = Color(0xFFE1E7DF);
 
@@ -35,6 +36,15 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     _addAppController.dispose();
     _trackedAppsScrollController.dispose();
     super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    // 确保恢复默认白色 tint（从 ClockPage 返回时）
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      GlassTintController.instance.resetTintColor();
+    });
   }
 
   @override
@@ -961,7 +971,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 
   Widget _appearanceSection(ThemeData theme) {
-    final dashboardPrefsAsync = ref.watch(dashboardPreferencesControllerProvider);
+    final dashboardPrefsAsync = ref.watch(
+      dashboardPreferencesControllerProvider,
+    );
     final enableGlass = dashboardPrefsAsync.value?.enableGlassEffect ?? true;
 
     return _sectionCard(
@@ -981,7 +993,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             SizedBox(height: 14.h),
             _dataTile(
               theme,
-              title: '毛玻璃效果',
+              title: '毛玻璃效果（实验性）',
               helper: '启用后窗口背景将呈现半透明模糊效果。',
               child: Row(
                 children: [

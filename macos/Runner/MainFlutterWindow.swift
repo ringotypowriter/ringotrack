@@ -14,6 +14,10 @@ class MainFlutterWindow: NSWindow {
   private var previousCloseButtonHidden: Bool?
   private var previousMiniaturizeButtonHidden: Bool?
   private var previousZoomButtonHidden: Bool?
+  
+  // 毛玻璃 tint 图层，用于动态修改颜色
+  private var glassTintView: NSView?
+  private var glassTintGradientLayer: CAGradientLayer?
 
   override func awakeFromNib() {
     NSLog("[RingoTrack] MainFlutterWindow awakeFromNib - setting up FlutterViewController")
@@ -57,6 +61,40 @@ class MainFlutterWindow: NSWindow {
       case "exitPinnedMode":
         let ok = self.exitPinnedMode()
         result(ok)
+      default:
+        result(FlutterMethodNotImplemented)
+      }
+    }
+
+    // 设置毛玻璃 tint 颜色控制的 MethodChannel
+    let glassTintChannel = FlutterMethodChannel(
+      name: "ringotrack/glass_tint",
+      binaryMessenger: binaryMessenger
+    )
+    glassTintChannel.setMethodCallHandler { [weak self] call, result in
+      guard let self = self else {
+        result(FlutterError(code: "window_deallocated",
+                            message: "MainFlutterWindow released",
+                            details: nil))
+        return
+      }
+
+      switch call.method {
+      case "setTintColor":
+        guard let args = call.arguments as? [String: Any],
+              let r = args["r"] as? Double,
+              let g = args["g"] as? Double,
+              let b = args["b"] as? Double else {
+          result(FlutterError(code: "invalid_arguments",
+                              message: "Expected r, g, b as doubles",
+                              details: nil))
+          return
+        }
+        self.setGlassTintColor(r: r, g: g, b: b)
+        result(true)
+      case "resetTintColor":
+        self.resetGlassTintColor()
+        result(true)
       default:
         result(FlutterMethodNotImplemented)
       }
@@ -120,11 +158,47 @@ class MainFlutterWindow: NSWindow {
       tintView.layer?.addSublayer(gradientLayer)
       blurView.addSubview(tintView)
 
+      // 保存引用，以便后续动态修改
+      self.glassTintView = tintView
+      self.glassTintGradientLayer = gradientLayer
+
       contentView.wantsLayer = true
       contentView.layer?.backgroundColor = NSColor.clear.cgColor
 
       contentView.addSubview(blurView, positioned: .below, relativeTo: nil)
     }
+  }
+
+  /// 设置毛玻璃 tint 颜色（传入 0-1 的 RGB 值）
+  private func setGlassTintColor(r: Double, g: Double, b: Double) {
+    guard let gradientLayer = self.glassTintGradientLayer else { return }
+    
+    let baseColor = NSColor(
+      calibratedRed: CGFloat(r),
+      green: CGFloat(g),
+      blue: CGFloat(b),
+      alpha: 1.0
+    )
+    
+    // 自定义颜色时使用纯色（统一透明度），不使用渐变
+    let tintColor = baseColor.withAlphaComponent(0.25).cgColor
+    gradientLayer.colors = [tintColor, tintColor, tintColor, tintColor]
+    
+    NSLog("[RingoTrack] Set glass tint to RGB(\(r), \(g), \(b)) - solid color")
+  }
+
+  /// 重置为默认白色 tint
+  private func resetGlassTintColor() {
+    guard let gradientLayer = self.glassTintGradientLayer else { return }
+    
+    gradientLayer.colors = [
+      NSColor.white.withAlphaComponent(0.78).cgColor,
+      NSColor.white.withAlphaComponent(0.46).cgColor,
+      NSColor.white.withAlphaComponent(0.18).cgColor,
+      NSColor.white.withAlphaComponent(0.02).cgColor,
+    ]
+    
+    NSLog("[RingoTrack] Reset glass tint to white")
   }
 
   private func enterPinnedMode() -> Bool {
