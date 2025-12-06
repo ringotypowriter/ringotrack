@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -141,6 +142,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
   Widget _buildSettingsGrid(ThemeData theme) {
     final prefsAsync = ref.watch(drawingAppPrefsControllerProvider);
+    final isDemoModeActive = ref.watch(demoModeControllerProvider);
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -153,7 +155,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             SizedBox(height: 16.h),
             _trackingSection(theme, prefsAsync),
             SizedBox(height: 16.h),
-            _dataSection(theme, prefsAsync),
+            _dataSection(theme, prefsAsync, isDemoModeActive),
           ],
         );
       },
@@ -181,8 +183,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       _dataTile(
         theme,
         title: '添加新软件',
-        helper:
-            '优先用“内置列表”。未包含时输入系统识别名（如 Photoshop.exe / com.adobe.photoshop）。',
+        helper: '优先用“内置列表”。未包含时输入系统识别名（如 Photoshop.exe / com.adobe.photoshop）。',
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -240,25 +241,31 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   Widget _dataSection(
     ThemeData theme,
     AsyncValue<DrawingAppPreferences> prefsAsync,
+    bool isDemoModeActive,
   ) {
     return _sectionCard(
       theme,
       title: '数据管理',
       icon: Icons.storage_rounded,
-      child: _buildDataDangerArea(theme, prefsAsync),
+      child: _buildDataDangerArea(theme, prefsAsync, isDemoModeActive),
     );
   }
 
   Widget _buildDataDangerArea(
     ThemeData theme,
     AsyncValue<DrawingAppPreferences> prefsAsync,
+    bool isDemoModeActive,
   ) {
     final dangerColor = theme.colorScheme.error;
     final dangerBackground = dangerColor.withValues(alpha: 0.08);
     final titleStyle = theme.textTheme.bodyLarge?.copyWith(
       fontWeight: FontWeight.w600,
     );
-    final managementTiles = _buildDataManagementTiles(theme, prefsAsync);
+    final managementTiles = _buildDataManagementTiles(
+      theme,
+      prefsAsync,
+      isDemoModeActive,
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -335,8 +342,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   List<Widget> _buildDataManagementTiles(
     ThemeData theme,
     AsyncValue<DrawingAppPreferences> prefsAsync,
+    bool isDemoModeActive,
   ) {
-    return [
+    final tiles = [
       _dataTile(
         theme,
         title: '删除某个软件的数据',
@@ -408,6 +416,41 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         ),
       ),
     ];
+
+    if (kDebugMode) {
+      tiles.add(_buildDemoDataTile(theme, isDemoModeActive));
+    }
+
+    return tiles;
+  }
+
+  Widget _buildDemoDataTile(ThemeData theme, bool isDemoModeActive) {
+    final label = isDemoModeActive ? '恢复真实数据' : '加载示例数据';
+    final icon = isDemoModeActive
+        ? Icons.restore_rounded
+        : Icons.auto_fix_high_rounded;
+    return _dataTile(
+      theme,
+      title: '示例数据',
+      helper: '切换后会使用内存中的画师日常记录，真实数据留在磁盘。',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '当前使用：${isDemoModeActive ? '示例数据' : '真实记录'}',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.8),
+            ),
+          ),
+          SizedBox(height: 8.h),
+          FilledButton.icon(
+            onPressed: _onToggleDemoMode,
+            icon: Icon(icon),
+            label: Text(label),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _sectionCard(
@@ -873,6 +916,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     _showSnack('所有数据已清空');
   }
 
+  void _onToggleDemoMode() {
+    final controller = ref.read(demoModeControllerProvider.notifier);
+    controller.toggleDemoMode();
+    final current = ref.read(demoModeControllerProvider);
+    _showSnack("已切换到 ${current ? '示例数据' : '真实记录'}");
+  }
+
   Future<void> _pickDate({required bool isStart}) async {
     final now = DateTime.now();
     final initial = isStart ? (_rangeStart ?? now) : (_rangeEnd ?? now);
@@ -1091,7 +1141,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       child: Divider(
         height: 1,
         thickness: 1,
-        color: theme.colorScheme.onSurface.withOpacity(0.16),
+        color: theme.colorScheme.onSurface.withValues(alpha: 0.16),
       ),
     );
   }

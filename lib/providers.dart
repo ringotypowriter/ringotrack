@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ringotrack/domain/app_database.dart';
+import 'package:ringotrack/domain/demo_mode_controller.dart';
+import 'package:ringotrack/domain/demo_usage_repository.dart';
 import 'package:ringotrack/domain/drawing_app_preferences.dart';
 import 'package:ringotrack/domain/drawing_app_preferences_controller.dart';
 import 'package:ringotrack/domain/dashboard_preferences.dart';
@@ -16,7 +18,19 @@ final appDatabaseProvider = Provider<AppDatabase>((ref) {
   return db;
 });
 
+final demoModeControllerProvider =
+    NotifierProvider<DemoModeController, bool>(DemoModeController.new);
+
+final demoUsageRepositoryProvider =
+    Provider.autoDispose<DemoUsageRepository>((ref) {
+  return DemoUsageRepository();
+});
+
 final usageRepositoryProvider = Provider<UsageRepository>((ref) {
+  final useDemoMode = ref.watch(demoModeControllerProvider);
+  if (useDemoMode) {
+    return ref.watch(demoUsageRepositoryProvider);
+  }
   final db = ref.watch(appDatabaseProvider);
   return SqliteUsageRepository(db);
 });
