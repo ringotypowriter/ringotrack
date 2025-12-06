@@ -43,6 +43,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   void initState() {
     super.initState();
     // 确保恢复默认白色 tint（从 ClockPage 返回时）
+    // macOS/Windows 都支持更新 tint 颜色
     WidgetsBinding.instance.addPostFrameCallback((_) {
       GlassTintController.instance.resetTintColor();
     });
@@ -1028,21 +1029,40 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           theme,
           title: '毛玻璃效果（实验性）',
           helper: '启用后窗口背景将呈现半透明模糊效果。',
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Switch(
-                value: enableGlass,
-                onChanged: (value) {
-                  ref
-                      .read(dashboardPreferencesControllerProvider.notifier)
-                      .setEnableGlassEffect(value);
-                },
+              Row(
+                children: [
+                  Switch(
+                    value: enableGlass,
+                    onChanged: (value) {
+                      ref
+                          .read(dashboardPreferencesControllerProvider.notifier)
+                          .setEnableGlassEffect(value);
+                      // Windows 平台提示用户需要重启
+                      if (Platform.isWindows) {
+                        _showSnack('设置已保存，重启应用后生效');
+                      }
+                    },
+                  ),
+                  SizedBox(width: 8.w),
+                  Text(
+                    enableGlass ? '已启用' : '已关闭',
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                ],
               ),
-              SizedBox(width: 8.w),
-              Text(
-                enableGlass ? '已启用' : '已关闭',
-                style: theme.textTheme.bodyMedium,
-              ),
+              // Windows 平台显示重启提示
+              if (Platform.isWindows) ...[
+                SizedBox(height: 6.h),
+                Text(
+                  '⚠️ 需要重启应用才能生效',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
             ],
           ),
         ),

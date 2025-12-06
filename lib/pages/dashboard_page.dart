@@ -87,6 +87,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
   void initState() {
     super.initState();
     // 确保恢复默认白色 tint（从 ClockPage 返回时）
+    // macOS/Windows 都支持更新 tint 颜色
     WidgetsBinding.instance.addPostFrameCallback((_) {
       GlassTintController.instance.resetTintColor();
     });

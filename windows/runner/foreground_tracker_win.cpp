@@ -514,4 +514,10 @@ __declspec(dllexport) std::int32_t rt_reset_glass_tint() {
   return EnableGlassWithColor(rgb, kAlpha) ? 1 : 0;
 }
 
+// 完全禁用毛玻璃效果（将 AccentState 设置为 DISABLED）。
+// 返回值：非 0 表示成功，0 表示失败。
+__declspec(dllexport) std::int32_t rt_disable_glass() {
+  return DisableGlass() ? 1 : 0;
+}
+
 }  // extern "C"
