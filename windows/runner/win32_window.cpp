@@ -5,6 +5,10 @@
 
 #include "resource.h"
 
+// 来自 foreground_tracker_win.cpp 的导出函数，用于退出 pinned 小窗模式。
+// 这里声明为 C 接口，方便在窗口关闭前做一次 cleanup，恢复正常窗口尺寸。
+extern "C" int rt_exit_pinned_mode();
+
 namespace {
 
 /// Window attribute that enables dark mode window decorations.
@@ -179,6 +183,12 @@ Win32Window::MessageHandler(HWND hwnd,
                             WPARAM const wparam,
                             LPARAM const lparam) noexcept {
   switch (message) {
+    case WM_CLOSE:
+      // 如果当前处于 pinned 小窗模式，先恢复为原始窗口尺寸和样式，
+      // 避免系统在关闭时记住的是小窗大小。
+      rt_exit_pinned_mode();
+      break;
+
     case WM_DESTROY:
       window_handle_ = nullptr;
       Destroy();
@@ -218,7 +228,7 @@ Win32Window::MessageHandler(HWND hwnd,
       return 0;
   }
 
-  return DefWindowProc(window_handle_, message, wparam, lparam);
+  return DefWindowProc(hwnd, message, wparam, lparam);
 }
 
 void Win32Window::Destroy() {

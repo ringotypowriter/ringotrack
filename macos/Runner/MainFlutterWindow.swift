@@ -14,10 +14,30 @@ class MainFlutterWindow: NSWindow {
   private var previousCloseButtonHidden: Bool?
   private var previousMiniaturizeButtonHidden: Bool?
   private var previousZoomButtonHidden: Bool?
-  
+
   // 毛玻璃 tint 图层，用于动态修改颜色
   private var glassTintView: NSView?
   private var glassTintGradientLayer: CAGradientLayer?
+
+  // 关闭窗口前，将窗口恢复成标准大窗尺寸，
+  // 避免系统记住 pinned 小窗或用户调整后的尺寸。
+  override func close() {
+    if let screen = self.screen ?? NSScreen.main {
+      let targetWidth: CGFloat = 1440
+      let targetHeight: CGFloat = 900
+      let screenFrame = screen.visibleFrame
+      let originX = screenFrame.origin.x + (screenFrame.width - targetWidth) / 2
+      let originY = screenFrame.origin.y + (screenFrame.height - targetHeight) / 2
+      let targetFrame = NSRect(
+        x: originX,
+        y: originY,
+        width: targetWidth,
+        height: targetHeight
+      )
+      self.setFrame(targetFrame, display: false)
+    }
+    super.close()
+  }
 
   override func awakeFromNib() {
     NSLog("[RingoTrack] MainFlutterWindow awakeFromNib - setting up FlutterViewController")
@@ -172,32 +192,32 @@ class MainFlutterWindow: NSWindow {
   /// 设置毛玻璃 tint 颜色（传入 0-1 的 RGB 值）
   private func setGlassTintColor(r: Double, g: Double, b: Double) {
     guard let gradientLayer = self.glassTintGradientLayer else { return }
-    
+
     let baseColor = NSColor(
       calibratedRed: CGFloat(r),
       green: CGFloat(g),
       blue: CGFloat(b),
       alpha: 1.0
     )
-    
+
     // 自定义颜色时使用纯色（统一透明度），不使用渐变
     let tintColor = baseColor.withAlphaComponent(0.25).cgColor
     gradientLayer.colors = [tintColor, tintColor, tintColor, tintColor]
-    
+
     NSLog("[RingoTrack] Set glass tint to RGB(\(r), \(g), \(b)) - solid color")
   }
 
   /// 重置为默认白色 tint
   private func resetGlassTintColor() {
     guard let gradientLayer = self.glassTintGradientLayer else { return }
-    
+
     gradientLayer.colors = [
       NSColor.white.withAlphaComponent(0.78).cgColor,
       NSColor.white.withAlphaComponent(0.46).cgColor,
       NSColor.white.withAlphaComponent(0.18).cgColor,
       NSColor.white.withAlphaComponent(0.02).cgColor,
     ]
-    
+
     NSLog("[RingoTrack] Reset glass tint to white")
   }
 
