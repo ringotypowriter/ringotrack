@@ -66,6 +66,13 @@ final appThemeProvider = appThemeControllerProvider;
 // Dashboard 偏好（热力图时间范围）
 final dashboardPrefsProvider = dashboardPreferencesControllerProvider;
 
+/// 是否使用毛玻璃效果（macOS 且用户启用时为 true）
+final useGlassEffectProvider = Provider<bool>((ref) {
+  final prefsAsync = ref.watch(dashboardPreferencesControllerProvider);
+  final prefs = prefsAsync.value ?? const DashboardPreferences();
+  return prefs.useGlassEffect;
+});
+
 /// 根据偏好计算当前热力图的时间窗口。
 /// - calendarYear: 当年 1/1 ~ 12/31
 /// - rolling12Months: 最近 12 个月，右侧对齐当前月

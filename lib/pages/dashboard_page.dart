@@ -99,16 +99,17 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
 
     final asyncUsage = ref.watch(yearlyUsageByDateProvider);
     final metricsAsync = ref.watch(dashboardMetricsProvider);
+    final useGlass = ref.watch(useGlassEffectProvider);
 
     return Scaffold(
-      backgroundColor: Platform.isMacOS ? Colors.transparent : Colors.grey[100],
+      backgroundColor: useGlass ? Colors.transparent : Colors.grey[100],
       body: Center(
         child: ConstrainedBox(
           constraints: BoxConstraints(maxWidth: 1440.w, maxHeight: 900.h),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _buildTopBar(context, theme),
+              _buildTopBar(context, theme, useGlass),
               const Divider(height: 1),
               Expanded(
                 child: Padding(
@@ -154,13 +155,14 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     );
   }
 
-  Widget _buildTopBar(BuildContext context, ThemeData theme) {
+  Widget _buildTopBar(BuildContext context, ThemeData theme, bool useGlass) {
     final horizontal = 64.w;
+    // padding 是 macOS fullSizeContentView 的需要，和毛玻璃无关
     final topPadding = Platform.isMacOS ? 40.h : 18.h;
     final bottomPadding = Platform.isMacOS ? 24.h : 18.h;
 
     return Container(
-      color: Platform.isMacOS ? Colors.transparent : Colors.white,
+      color: useGlass ? Colors.transparent : Colors.white,
       padding: EdgeInsets.fromLTRB(
         horizontal,
         topPadding,

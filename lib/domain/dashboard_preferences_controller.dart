@@ -12,7 +12,15 @@ class DashboardPreferencesController
   }
 
   Future<void> setHeatmapRangeMode(HeatmapRangeMode mode) async {
-    final next = DashboardPreferences(heatmapRangeMode: mode);
+    final current = state.value ?? const DashboardPreferences();
+    final next = current.copyWith(heatmapRangeMode: mode);
+    state = AsyncData(next);
+    await _repository.save(next);
+  }
+
+  Future<void> setEnableGlassEffect(bool enabled) async {
+    final current = state.value ?? const DashboardPreferences();
+    final next = current.copyWith(enableGlassEffect: enabled);
     state = AsyncData(next);
     await _repository.save(next);
   }

@@ -40,9 +40,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final useGlass = ref.watch(useGlassEffectProvider);
 
     return Scaffold(
-      backgroundColor: Platform.isMacOS
+      backgroundColor: useGlass
           ? Colors.transparent
           : theme.colorScheme.surface,
       body: Center(
@@ -51,7 +52,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _buildTopBar(theme, context),
+              _buildTopBar(theme, context, useGlass),
               const Divider(height: 1),
               Expanded(
                 child: Padding(
@@ -76,15 +77,16 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     );
   }
 
-  Widget _buildTopBar(ThemeData theme, BuildContext context) {
+  Widget _buildTopBar(ThemeData theme, BuildContext context, bool useGlass) {
     final onSurface = theme.colorScheme.onSurface;
 
+    // padding 是 macOS fullSizeContentView 的需要，和毛玻璃无关
     final horizontal = 45.w;
     final topPadding = Platform.isMacOS ? 44.h : 24.h;
     final bottomPadding = Platform.isMacOS ? 26.h : 24.h;
 
     return Container(
-      color: Platform.isMacOS ? Colors.transparent : theme.colorScheme.surface,
+      color: useGlass ? Colors.transparent : theme.colorScheme.surface,
       padding: EdgeInsets.fromLTRB(
         horizontal,
         topPadding,
@@ -135,12 +137,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _sectionCard(
-              theme,
-              title: '主题色',
-              icon: Icons.palette_outlined,
-              child: _buildThemePicker(theme),
-            ),
+            _appearanceSection(theme),
             SizedBox(height: 16.h),
             _rangeModeSection(theme),
             SizedBox(height: 16.h),
@@ -963,25 +960,67 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     );
   }
 
+  Widget _appearanceSection(ThemeData theme) {
+    final dashboardPrefsAsync = ref.watch(dashboardPreferencesControllerProvider);
+    final enableGlass = dashboardPrefsAsync.value?.enableGlassEffect ?? true;
+
+    return _sectionCard(
+      theme,
+      title: '外观',
+      icon: Icons.palette_outlined,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _dataTile(
+            theme,
+            title: '主题色',
+            helper: '选择你喜欢的颜色。',
+            child: _buildThemePicker(theme),
+          ),
+          if (Platform.isMacOS) ...[
+            SizedBox(height: 14.h),
+            _dataTile(
+              theme,
+              title: '毛玻璃效果',
+              helper: '启用后窗口背景将呈现半透明模糊效果。',
+              child: Row(
+                children: [
+                  Switch(
+                    value: enableGlass,
+                    onChanged: (value) {
+                      ref
+                          .read(dashboardPreferencesControllerProvider.notifier)
+                          .setEnableGlassEffect(value);
+                    },
+                  ),
+                  SizedBox(width: 8.w),
+                  Text(
+                    enableGlass ? '已启用' : '已关闭',
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   Widget _buildThemePicker(ThemeData theme) {
     final themeAsync = ref.watch(appThemeProvider);
     final currentId = themeAsync.asData?.value.id ?? AppThemeId.ringoGreen;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Wrap(
+      spacing: 12.w,
+      runSpacing: 12.h,
       children: [
-        Wrap(
-          spacing: 12.w,
-          runSpacing: 12.h,
-          children: [
-            for (final t in availableThemes)
-              _ThemeDot(
-                theme: t,
-                isSelected: t.id == currentId,
-                onTap: () => ref.read(appThemeProvider.notifier).setTheme(t.id),
-              ),
-          ],
-        ),
+        for (final t in availableThemes)
+          _ThemeDot(
+            theme: t,
+            isSelected: t.id == currentId,
+            onTap: () => ref.read(appThemeProvider.notifier).setTheme(t.id),
+          ),
       ],
     );
   }

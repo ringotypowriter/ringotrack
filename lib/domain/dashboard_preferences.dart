@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// 热力图时间范围模式。
@@ -8,13 +10,32 @@ enum HeatmapRangeMode { calendarYear, rolling12Months }
 class DashboardPreferences {
   const DashboardPreferences({
     this.heatmapRangeMode = HeatmapRangeMode.calendarYear,
+    this.enableGlassEffect = true,
   });
 
   final HeatmapRangeMode heatmapRangeMode;
+
+  /// 是否启用毛玻璃效果（仅 macOS 支持）。
+  final bool enableGlassEffect;
+
+  /// 当前平台是否实际使用毛玻璃效果。
+  /// 只有 macOS 且 enableGlassEffect 为 true 时才生效。
+  bool get useGlassEffect => Platform.isMacOS && enableGlassEffect;
+
+  DashboardPreferences copyWith({
+    HeatmapRangeMode? heatmapRangeMode,
+    bool? enableGlassEffect,
+  }) {
+    return DashboardPreferences(
+      heatmapRangeMode: heatmapRangeMode ?? this.heatmapRangeMode,
+      enableGlassEffect: enableGlassEffect ?? this.enableGlassEffect,
+    );
+  }
 }
 
 class DashboardPreferencesRepository {
   static const _keyRangeMode = 'ringotrack.dashboard.heatmapRangeMode';
+  static const _keyGlassEffect = 'ringotrack.dashboard.enableGlassEffect';
 
   Future<DashboardPreferences> load() async {
     final sp = await SharedPreferences.getInstance();
@@ -23,11 +44,16 @@ class DashboardPreferencesRepository {
       (m) => m.name == saved,
       orElse: () => HeatmapRangeMode.calendarYear,
     );
-    return DashboardPreferences(heatmapRangeMode: mode);
+    final enableGlass = sp.getBool(_keyGlassEffect) ?? true;
+    return DashboardPreferences(
+      heatmapRangeMode: mode,
+      enableGlassEffect: enableGlass,
+    );
   }
 
   Future<void> save(DashboardPreferences prefs) async {
     final sp = await SharedPreferences.getInstance();
     await sp.setString(_keyRangeMode, prefs.heatmapRangeMode.name);
+    await sp.setBool(_keyGlassEffect, prefs.enableGlassEffect);
   }
 }
