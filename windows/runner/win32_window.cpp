@@ -12,6 +12,8 @@ extern "C" int rt_exit_pinned_mode();
 
 // 来自 foreground_tracker_win.cpp：查询当前是否处于 pinned 模式。
 extern "C" int rt_is_pinned();
+// 查询当前是否锁定窗口。
+extern "C" int rt_is_locked();
 
 namespace {
 
@@ -43,6 +45,25 @@ using EnableNonClientDpiScaling = BOOL __stdcall(HWND hwnd);
 // scale factor
 int Scale(int source, double scale_factor) {
   return static_cast<int>(source * scale_factor);
+}
+
+double GetWindowScaleFactor(HWND hwnd) {
+  HMONITOR monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+  if (monitor == nullptr) {
+    return 1.0;
+  }
+
+  const UINT dpi = FlutterDesktopGetDpiForMonitor(monitor);
+  if (dpi == 0) {
+    return 1.0;
+  }
+
+  return static_cast<double>(dpi) / 96.0;
+}
+
+int ScaleToDpi(int source, double scale_factor) {
+  const int scaled = Scale(source, scale_factor);
+  return scaled > 0 ? scaled : 1;
 }
 
 // Dynamically loads the |EnableNonClientDpiScaling| from the User32 module.
@@ -190,7 +211,7 @@ Win32Window::MessageHandler(HWND hwnd,
     case WM_NCHITTEST: {
       // 在 pinned 小窗模式下（无标题栏），让整个窗口（除右上角安全区域）
       // 都被系统识别为「标题栏」，这样系统会自动处理窗口拖动，非常流畅跟手。
-      if (rt_is_pinned()) {
+      if (rt_is_pinned() && !rt_is_locked()) {
         // 先调用默认处理获取标准结果
         LRESULT default_result = DefWindowProc(hwnd, message, wparam, lparam);
 
@@ -208,15 +229,34 @@ Win32Window::MessageHandler(HWND hwnd,
 
           // 在右上角预留一块区域给 Flutter 内部的 pin 按钮点击，
           // 避免把 pin 按钮点击也拦截成拖动。
-          constexpr int kPinSafeWidth = 80;
-          constexpr int kPinSafeHeight = 80;
+          constexpr int kPinSafeWidthDip = 80;
+          constexpr int kPinSafeHeightDip = 80;
+          constexpr int kLockSafeWidthDip = 80;
+          constexpr int kLockSafeHeightDip = 80;
+          const double scale_factor = GetWindowScaleFactor(hwnd);
+          const int kPinSafeWidthScaled =
+              ScaleToDpi(kPinSafeWidthDip, scale_factor);
+          const int kPinSafeHeightScaled =
+              ScaleToDpi(kPinSafeHeightDip, scale_factor);
+          const int kLockSafeWidthScaled =
+              ScaleToDpi(kLockSafeWidthDip, scale_factor);
+          const int kLockSafeHeightScaled =
+              ScaleToDpi(kLockSafeHeightDip, scale_factor);
           const bool in_pin_safe_region =
-              client_pos.x >= client_rect.right - kPinSafeWidth &&
+              client_pos.x >= client_rect.right - kPinSafeWidthScaled &&
               client_pos.x <= client_rect.right &&
               client_pos.y >= client_rect.top &&
-              client_pos.y <= client_rect.top + kPinSafeHeight;
+              client_pos.y <= client_rect.top + kPinSafeHeightScaled;
 
-          if (!in_pin_safe_region) {
+          // 在右下角预留一块区域给 Flutter 内部的 lock 按钮点击，
+          // 避免把 lock 按钮点击也拦截成拖动。
+          const bool in_lock_safe_region =
+              client_pos.x >= client_rect.right - kLockSafeWidthScaled &&
+              client_pos.x <= client_rect.right &&
+              client_pos.y >= client_rect.bottom - kLockSafeHeightScaled &&
+              client_pos.y <= client_rect.bottom;
+
+          if (!in_pin_safe_region && !in_lock_safe_region) {
             // 告诉系统这是标题栏，系统会自动处理拖动
             return HTCAPTION;
           }

@@ -163,6 +163,7 @@ __declspec(dllexport) void rt_shutdown_stroke_hook() { UninstallMouseHook(); }
 namespace {
 
 std::atomic<bool> g_is_pinned{false};
+std::atomic<bool> g_is_locked{false};
 HWND g_pinned_hwnd = nullptr;
 WINDOWPLACEMENT g_prev_placement{};
 LONG g_prev_style = 0;
@@ -438,6 +439,12 @@ __declspec(dllexport) std::int32_t rt_is_pinned() {
   return g_is_pinned.load(std::memory_order_acquire) ? 1 : 0;
 }
 
+// 查询当前是否处于锁定状态。
+// 返回值：1 表示窗口已锁定，0 表示未锁定。
+__declspec(dllexport) std::int32_t rt_is_locked() {
+  return g_is_locked.load(std::memory_order_acquire) ? 1 : 0;
+}
+
 // 退出置顶小窗模式，恢复窗口原有位置和大小。
 // 返回值：非 0 表示成功，0 表示失败。
 __declspec(dllexport) std::int32_t rt_exit_pinned_mode() {
@@ -490,7 +497,51 @@ __declspec(dllexport) std::int32_t rt_exit_pinned_mode() {
   ::ZeroMemory(&g_prev_placement, sizeof(g_prev_placement));
   g_prev_style = 0;
   g_prev_ex_style = 0;
+  g_is_locked.store(false, std::memory_order_release);
 
+  return 1;
+}
+
+// 锁定窗口（禁止移动）
+// 返回值：非 0 表示成功，0 表示失败
+__declspec(dllexport) std::int32_t rt_lock_window() {
+  if (!g_is_pinned.load(std::memory_order_acquire)) {
+    return 0;  // 仅在pinned模式下允许锁定
+  }
+
+  if (g_is_locked.load(std::memory_order_acquire)) {
+    return 1;  // 已经锁定
+  }
+
+  if (g_pinned_hwnd == nullptr) {
+    return 0;
+  }
+
+  // 目前只需标记窗口处于锁定状态，拖拽行为由 hit-test 层检测。
+  g_is_locked.store(true, std::memory_order_release);
+  return 1;
+}
+
+// 解锁窗口（允许移动）
+// 返回值：非 0 表示成功，0 表示失败
+__declspec(dllexport) std::int32_t rt_unlock_window() {
+  if (!g_is_pinned.load(std::memory_order_acquire)) {
+    return 0;  // 仅在pinned模式下允许解锁
+  }
+
+  if (!g_is_locked.load(std::memory_order_acquire)) {
+    return 1;  // 已经解锁
+  }
+
+  if (g_pinned_hwnd == nullptr) {
+    return 0;
+  }
+
+  if (g_pinned_hwnd == nullptr) {
+    return 0;
+  }
+
+  g_is_locked.store(false, std::memory_order_release);
   return 1;
 }
 

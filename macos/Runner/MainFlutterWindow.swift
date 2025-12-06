@@ -5,6 +5,7 @@ class MainFlutterWindow: NSWindow {
   private var foregroundAppStreamHandler: ForegroundAppStreamHandler?
   private var strokeEventStreamHandler: StrokeEventStreamHandler?
   private var isPinnedWindow: Bool = false
+  private var isLockedWindow: Bool = false
   private var previousFrame: NSRect?
   private var previousLevel: NSWindow.Level?
   private var previousCollectionBehavior: NSWindow.CollectionBehavior?
@@ -80,6 +81,12 @@ class MainFlutterWindow: NSWindow {
         result(ok)
       case "exitPinnedMode":
         let ok = self.exitPinnedMode()
+        result(ok)
+      case "lockWindow":
+        let ok = self.lockWindow()
+        result(ok)
+      case "unlockWindow":
+        let ok = self.unlockWindow()
         result(ok)
       default:
         result(FlutterMethodNotImplemented)
@@ -284,6 +291,32 @@ class MainFlutterWindow: NSWindow {
     return true
   }
 
+  private func lockWindow() -> Bool {
+    if !isPinnedWindow || isLockedWindow {
+      return true
+    }
+    
+    self.isMovable = false
+    self.isMovableByWindowBackground = false
+    
+    isLockedWindow = true
+    NSLog("[RingoTrack] MainFlutterWindow lockWindow")
+    return true
+  }
+
+  private func unlockWindow() -> Bool {
+    if !isPinnedWindow || !isLockedWindow {
+      return true
+    }
+    
+    self.isMovable = true
+    self.isMovableByWindowBackground = true
+    
+    isLockedWindow = false
+    NSLog("[RingoTrack] MainFlutterWindow unlockWindow")
+    return true
+  }
+
   private func exitPinnedMode() -> Bool {
     if !isPinnedWindow {
       return true
@@ -321,6 +354,7 @@ class MainFlutterWindow: NSWindow {
     }
 
     isPinnedWindow = false
+    isLockedWindow = false
     previousFrame = nil
     previousLevel = nil
     previousCollectionBehavior = nil
