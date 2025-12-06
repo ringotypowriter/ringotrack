@@ -8,6 +8,8 @@
 
 // 来自 foreground_tracker_win.cpp：查询当前是否处于 pinned 模式。
 extern "C" int rt_is_pinned();
+// 查询当前是否处于锁定状态（lock 模式）。
+extern "C" int rt_is_locked();
 
 namespace {
 
@@ -42,7 +44,7 @@ LRESULT CALLBACK FlutterViewWindowProc(HWND hwnd,
                                        LPARAM const lparam) {
   switch (message) {
     case WM_NCHITTEST: {
-      if (rt_is_pinned()) {
+      if (rt_is_pinned() && !rt_is_locked()) {
         // 获取鼠标屏幕坐标
         POINT screen_pos{GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam)};
 

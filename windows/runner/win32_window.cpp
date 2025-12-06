@@ -12,6 +12,8 @@ extern "C" int rt_exit_pinned_mode();
 
 // 来自 foreground_tracker_win.cpp：查询当前是否处于 pinned 模式。
 extern "C" int rt_is_pinned();
+// 查询当前是否锁定窗口。
+extern "C" int rt_is_locked();
 
 namespace {
 
@@ -209,7 +211,7 @@ Win32Window::MessageHandler(HWND hwnd,
     case WM_NCHITTEST: {
       // 在 pinned 小窗模式下（无标题栏），让整个窗口（除右上角安全区域）
       // 都被系统识别为「标题栏」，这样系统会自动处理窗口拖动，非常流畅跟手。
-      if (rt_is_pinned()) {
+      if (rt_is_pinned() && !rt_is_locked()) {
         // 先调用默认处理获取标准结果
         LRESULT default_result = DefWindowProc(hwnd, message, wparam, lparam);
 
