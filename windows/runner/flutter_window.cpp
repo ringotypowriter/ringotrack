@@ -5,62 +5,47 @@
 
 #include "flutter/generated_plugin_registrant.h"
 
+// 来自 foreground_tracker_win.cpp：查询当前是否处于 pinned 模式。
+extern "C" int rt_is_pinned();
+
 namespace {
 
 // 原始 Flutter View 窗口过程，用于在自定义处理后转发消息。
 WNDPROC g_flutter_view_wndproc = nullptr;
 
 // 针对 Flutter 子窗口的自定义窗口过程：
-// - 在父窗口为无标题栏（即 pinned / 无边框）时，
-//   将除右上角一小块区域外的所有区域视为「拖动区域」。
-// - 用户在这些区域按下左键时，模拟对父窗口标题栏的点击，触发系统拖动。
+// 在 pinned 模式下，对 WM_NCHITTEST 返回 HTTRANSPARENT，
+// 让父窗口处理命中测试，从而实现流畅的窗口拖动。
 LRESULT CALLBACK FlutterViewWindowProc(HWND hwnd,
-                                      UINT const message,
-                                      WPARAM const wparam,
-                                      LPARAM const lparam) {
+                                       UINT const message,
+                                       WPARAM const wparam,
+                                       LPARAM const lparam) {
   switch (message) {
-    case WM_LBUTTONDOWN: {
-      HWND parent = GetAncestor(hwnd, GA_ROOT);
-      if (parent != nullptr) {
-        const LONG style =
-            static_cast<LONG>(GetWindowLongPtr(parent, GWL_STYLE));
-        const bool has_caption = (style & WS_CAPTION) != 0;
+    case WM_NCHITTEST: {
+      if (rt_is_pinned()) {
+        // 获取鼠标屏幕坐标
+        POINT screen_pos{GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam)};
 
-        // 仅当父窗口是无标题栏（即自绘无边框场景，例如 pinned 小窗）时，
-        // 才把点击视为拖动操作。
-        if (!has_caption) {
-          // 客户区坐标（对于 WM_LBUTTONDOWN，lParam 已经是客户端坐标）。
-          POINT client_pos{GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam)};
+        // 转换为客户区坐标
+        POINT client_pos = screen_pos;
+        ScreenToClient(hwnd, &client_pos);
 
-          RECT client_rect{};
-          GetClientRect(hwnd, &client_rect);
+        RECT client_rect{};
+        GetClientRect(hwnd, &client_rect);
 
-          // 在右上角预留一块区域给 Flutter 内部的 pin 按钮点击，
-          // 避免把 pin 按钮点击也拦截成拖动。
-          constexpr int kPinSafeWidth = 80;
-          constexpr int kPinSafeHeight = 80;
-          const bool in_pin_safe_region =
-              client_pos.x >= client_rect.right - kPinSafeWidth &&
-              client_pos.x <= client_rect.right &&
-              client_pos.y >= client_rect.top &&
-              client_pos.y <= client_rect.top + kPinSafeHeight;
+        // 在右上角预留一块区域给 Flutter 内部的 pin 按钮点击
+        constexpr int kPinSafeWidth = 80;
+        constexpr int kPinSafeHeight = 80;
+        const bool in_pin_safe_region =
+            client_pos.x >= client_rect.right - kPinSafeWidth &&
+            client_pos.x <= client_rect.right &&
+            client_pos.y >= client_rect.top &&
+            client_pos.y <= client_rect.top + kPinSafeHeight;
 
-          if (!in_pin_safe_region) {
-            // 将客户端坐标转换为屏幕坐标，用于构造 WM_NCLBUTTONDOWN 的 lParam。
-            POINT screen_pos = client_pos;
-            ClientToScreen(hwnd, &screen_pos);
-            const LPARAM screen_lparam =
-                MAKELPARAM(static_cast<short>(screen_pos.x),
-                           static_cast<short>(screen_pos.y));
-
-            // 释放当前捕获，并在父窗口上模拟一次对标题栏的点击，
-            // 让系统进入窗口拖动模式。
-            ReleaseCapture();
-            SendMessage(parent, WM_NCLBUTTONDOWN, HTCAPTION, screen_lparam);
-
-            // 不再将该事件传递给 Flutter，避免产生多余的点击反馈。
-            return 0;
-          }
+        if (!in_pin_safe_region) {
+          // 返回 HTTRANSPARENT，让系统将命中测试传递给父窗口，
+          // 父窗口会返回 HTCAPTION，从而触发系统原生拖动。
+          return HTTRANSPARENT;
         }
       }
       break;
@@ -108,8 +93,8 @@ bool FlutterWindow::OnCreate() {
   // window is shown. It is a no-op if the first frame hasn't completed yet.
   flutter_controller_->ForceRedraw();
 
-  // 子类化 Flutter View 的窗口过程，以便在无边框模式下拦截鼠标按下事件，
-  // 实现「全窗口可拖动」的小窗效果。
+  // 子类化 Flutter View 的窗口过程，以便在 pinned 模式下
+  // 对 WM_NCHITTEST 返回 HTTRANSPARENT，让父窗口处理拖动。
   HWND flutter_view_hwnd = flutter_controller_->view()->GetNativeWindow();
   g_flutter_view_wndproc = reinterpret_cast<WNDPROC>(
       SetWindowLongPtr(flutter_view_hwnd, GWLP_WNDPROC,

@@ -432,6 +432,12 @@ __declspec(dllexport) std::int32_t rt_enter_pinned_mode() {
   return 1;
 }
 
+// 查询当前是否处于 pinned 模式。
+// 返回值：1 表示处于 pinned 模式，0 表示非 pinned 模式。
+__declspec(dllexport) std::int32_t rt_is_pinned() {
+  return g_is_pinned.load(std::memory_order_acquire) ? 1 : 0;
+}
+
 // 退出置顶小窗模式，恢复窗口原有位置和大小。
 // 返回值：非 0 表示成功，0 表示失败。
 __declspec(dllexport) std::int32_t rt_exit_pinned_mode() {
@@ -506,6 +512,12 @@ __declspec(dllexport) std::int32_t rt_reset_glass_tint() {
   const COLORREF rgb = RGB(255, 255, 255);
   constexpr BYTE kAlpha = 0xC0;
   return EnableGlassWithColor(rgb, kAlpha) ? 1 : 0;
+}
+
+// 完全禁用毛玻璃效果（将 AccentState 设置为 DISABLED）。
+// 返回值：非 0 表示成功，0 表示失败。
+__declspec(dllexport) std::int32_t rt_disable_glass() {
+  return DisableGlass() ? 1 : 0;
 }
 
 }  // extern "C"

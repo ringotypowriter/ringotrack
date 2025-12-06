@@ -1,3 +1,4 @@
+import 'dart:io' show Platform;
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -27,7 +28,7 @@ class _ClockPageState extends ConsumerState<ClockPage> {
 
   @override
   void dispose() {
-    // 离开页面时恢复默认白色 tint
+    // 离开页面时恢复默认白色 tint（macOS/Windows 都支持更新 tint 颜色）
     GlassTintController.instance.resetTintColor();
     super.dispose();
   }
@@ -93,22 +94,24 @@ class _ClockPageState extends ConsumerState<ClockPage> {
     final pinSupported = WindowPinController.instance.isSupported;
     final useGlass = ref.watch(useGlassEffectProvider);
 
-    // 监听毛玻璃设置变化
-    ref.listen(useGlassEffectProvider, (previous, next) {
-      if (mounted) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (next) {
-            // 开启毛玻璃：设置彩色 tint
-            _updateGlassTint();
-          } else {
-            // 关闭毛玻璃：恢复默认白色 tint
-            GlassTintController.instance.resetTintColor();
-          }
-        });
-      }
-    });
+    // 监听毛玻璃设置变化（仅 macOS，Windows 不支持实时开/关）
+    if (Platform.isMacOS) {
+      ref.listen(useGlassEffectProvider, (previous, next) {
+        if (mounted) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (next) {
+              // 开启毛玻璃：设置彩色 tint
+              _updateGlassTint();
+            } else {
+              // 关闭毛玻璃：恢复默认白色 tint
+              GlassTintController.instance.resetTintColor();
+            }
+          });
+        }
+      });
+    }
 
-    // 监听主题变化，更新 tint（仅在毛玻璃模式下）
+    // 监听主题变化，更新 tint（仅在毛玻璃模式下，macOS/Windows 都支持）
     ref.listen(appThemeProvider, (previous, next) {
       if (useGlass && mounted) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
