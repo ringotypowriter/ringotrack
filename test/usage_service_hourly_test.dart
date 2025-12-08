@@ -88,8 +88,9 @@ class _TestForegroundAppTracker implements ForegroundAppTracker {
     _controller.add(event);
   }
 
-  Future<void> dispose() async {
-    await _controller.close();
+  @override
+  void dispose() {
+    unawaited(_controller.close());
   }
 }
 
@@ -124,7 +125,7 @@ void main() {
     tracker.emit(ForegroundAppEvent(appId: 'Browser', timestamp: end));
 
     await service.close();
-    await tracker.dispose();
+    tracker.dispose();
 
     final dayKey = DateTime(2025, 1, 1);
 

@@ -9,6 +9,9 @@ import 'package:ringotrack/domain/usage_models.dart';
 /// 统一的前台应用切换事件跟踪接口
 abstract class ForegroundAppTracker {
   Stream<ForegroundAppEvent> get events;
+
+  /// 清理资源，取消订阅和定时器
+  void dispose();
 }
 
 class _MacOsForegroundAppTracker implements ForegroundAppTracker {
@@ -20,7 +23,7 @@ class _MacOsForegroundAppTracker implements ForegroundAppTracker {
       );
     }
 
-    _eventChannel.receiveBroadcastStream().listen(
+    _subscription = _eventChannel.receiveBroadcastStream().listen(
       _handleEvent,
       onError: _handleError,
     );
@@ -29,6 +32,7 @@ class _MacOsForegroundAppTracker implements ForegroundAppTracker {
   static const _eventChannel = EventChannel('ringotrack/foreground_app_events');
 
   final _controller = StreamController<ForegroundAppEvent>.broadcast();
+  StreamSubscription<dynamic>? _subscription;
 
   @override
   Stream<ForegroundAppEvent> get events => _controller.stream;
@@ -69,11 +73,22 @@ class _MacOsForegroundAppTracker implements ForegroundAppTracker {
       'error: $error',
     );
   }
+
+  @override
+  void dispose() {
+    _subscription?.cancel();
+    _controller.close();
+  }
 }
 
 class _NoopForegroundAppTracker implements ForegroundAppTracker {
   @override
   Stream<ForegroundAppEvent> get events => const Stream.empty();
+
+  @override
+  void dispose() {
+    // No resources to dispose
+  }
 }
 
 // 与 Windows C 侧 RtForegroundAppInfo 对齐的 FFI 结构体
@@ -224,6 +239,12 @@ class _WindowsForegroundAppTracker implements ForegroundAppTracker {
         debugPrint('[ForegroundAppTracker][Windows] poll error: $e');
       }
     }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _controller.close();
   }
 
   String _extractAppIdFromPath(String fullPath) {

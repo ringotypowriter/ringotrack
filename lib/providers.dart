@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:ringotrack/domain/app_database.dart';
@@ -44,7 +45,9 @@ final usageRepositoryProvider = Provider<UsageRepository>((ref) {
 });
 
 final foregroundAppTrackerProvider = Provider<ForegroundAppTracker>((ref) {
-  return createForegroundAppTracker();
+  final tracker = createForegroundAppTracker();
+  ref.onDispose(tracker.dispose);
+  return tracker;
 });
 
 final strokeActivityTrackerProvider = Provider<StrokeActivityTracker>((ref) {
@@ -132,7 +135,9 @@ final heatmapRangeProvider = Provider<({DateTime start, DateTime end})>((ref) {
 
 /// 最近一年的使用数据（按日期 -> AppId -> Duration），带实时增量刷新
 final yearlyUsageByDateProvider =
-    StreamProvider<Map<DateTime, Map<String, Duration>>>((ref) async* {
+    StreamProvider.autoDispose<Map<DateTime, Map<String, Duration>>>((
+      ref,
+    ) async* {
       // 确保 UsageService 已启动
       final service = ref.watch(usageServiceProvider);
       final repo = ref.watch(usageRepositoryProvider);
@@ -145,31 +150,37 @@ final yearlyUsageByDateProvider =
       yield usageByDate;
 
       // 后续增量：使用 UsageService.deltaStream 做增量合并
-      await for (final delta in service.deltaStream) {
-        if (delta.isEmpty) continue;
+      try {
+        await for (final delta in service.deltaStream) {
+          if (delta.isEmpty) continue;
 
-        delta.forEach((day, perApp) {
-          final normalizedDay = _normalizeDay(day);
-          if (normalizedDay.isBefore(start) || normalizedDay.isAfter(end)) {
-            return;
-          }
+          delta.forEach((day, perApp) {
+            final normalizedDay = _normalizeDay(day);
+            if (normalizedDay.isBefore(start) || normalizedDay.isAfter(end)) {
+              return;
+            }
 
-          final existingPerApp = usageByDate.putIfAbsent(
-            normalizedDay,
-            () => <String, Duration>{},
-          );
+            final existingPerApp = usageByDate.putIfAbsent(
+              normalizedDay,
+              () => <String, Duration>{},
+            );
 
-          perApp.forEach((appId, duration) {
-            existingPerApp[appId] =
-                (existingPerApp[appId] ?? Duration.zero) + duration;
+            perApp.forEach((appId, duration) {
+              existingPerApp[appId] =
+                  (existingPerApp[appId] ?? Duration.zero) + duration;
+            });
           });
-        });
 
-        yield Map<DateTime, Map<String, Duration>>.fromEntries(
-          usageByDate.entries.map(
-            (e) => MapEntry(e.key, Map<String, Duration>.from(e.value)),
-          ),
-        );
+          yield Map<DateTime, Map<String, Duration>>.fromEntries(
+            usageByDate.entries.map(
+              (e) => MapEntry(e.key, Map<String, Duration>.from(e.value)),
+            ),
+          );
+        }
+      } catch (e) {
+        if (kDebugMode) {
+          debugPrint('[yearlyUsageByDateProvider] stream closed: $e');
+        }
       }
     });
 
