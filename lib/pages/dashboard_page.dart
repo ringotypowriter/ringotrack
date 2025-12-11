@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ringotrack/domain/drawing_app_preferences_controller.dart';
+import 'package:ringotrack/domain/dashboard_preferences_controller.dart';
+import 'package:ringotrack/domain/dashboard_preferences.dart';
 import 'package:ringotrack/providers.dart';
 import 'package:ringotrack/widgets/ringo_heatmap.dart';
 import 'package:ringotrack/domain/usage_analysis.dart';
@@ -16,6 +18,7 @@ const double _heatmapTileSize = 13;
 const double _heatmapTileSpacing = 3;
 const double _dashboardCardRadius = 12;
 const double _dashboardElementRadius = 4;
+const double _tabBarHeight = 48;
 
 enum DashboardTab { overview, perApp, analysis }
 
@@ -128,24 +131,52 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             _buildSummaryRow(context, theme, metricsAsync),
-                            const SizedBox(height: 40),
-                            _buildTabs(theme),
-                            const SizedBox(height: 16),
+                            const SizedBox(height: 32),
+                            _buildYearSelectorAndTabs(theme),
+                            const SizedBox(height: 12),
                             Expanded(
-                              child: _selectedTab == DashboardTab.analysis
-                                  ? _buildAnalysisList(theme, asyncUsage)
-                                  : _buildHeatmapShell(
-                                      theme,
-                                      start: start,
-                                      end: end,
-                                      asyncUsage: asyncUsage,
-                                      selectedTab: _selectedTab,
+                              child: AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 250),
+                                switchInCurve: Curves.easeOutCubic,
+                                switchOutCurve: Curves.easeInCubic,
+                                transitionBuilder: (child, animation) {
+                                  return FadeTransition(
+                                    opacity: animation,
+                                    child: ScaleTransition(
+                                      scale:
+                                          Tween<double>(
+                                            begin: 0.98,
+                                            end: 1.0,
+                                          ).animate(
+                                            CurvedAnimation(
+                                              parent: animation,
+                                              curve: Curves.easeOutCubic,
+                                            ),
+                                          ),
+                                      child: child,
                                     ),
+                                  );
+                                },
+                                child: Container(
+                                  key: ValueKey(
+                                    'tab-content-${_selectedTab.name}',
+                                  ),
+                                  child: _selectedTab == DashboardTab.analysis
+                                      ? _buildAnalysisList(theme, asyncUsage)
+                                      : _buildHeatmapShell(
+                                          theme,
+                                          start: start,
+                                          end: end,
+                                          asyncUsage: asyncUsage,
+                                          selectedTab: _selectedTab,
+                                        ),
+                                ),
+                              ),
                             ),
                           ],
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 12),
                       _buildFooter(theme, metricsAsync, ref),
                     ],
                   ),
@@ -300,50 +331,58 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     );
   }
 
+  Widget _buildYearSelectorAndTabs(ThemeData theme) {
+    return _InlineTabsAndYear(
+      tabsBuilder: () => _buildTabs(theme),
+      yearSelectorBuilder: () => _buildYearSelector(theme),
+    );
+  }
+
   Widget _buildTabs(ThemeData theme) {
     final selectedColor = theme.colorScheme.primary;
 
-    return Row(
-      children: [
-        GestureDetector(
-          onTap: () {
-            setState(() {
-              _selectedTab = DashboardTab.overview;
-            });
-          },
-          child: _TabButton(
+    return SizedBox(
+      height: _tabBarHeight.h,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: [
+          _IntegratedTabButton(
             label: '总览',
             isSelected: _selectedTab == DashboardTab.overview,
             selectedColor: selectedColor,
+            borderRadius: BorderRadius.circular(18),
+            onTap: () {
+              setState(() {
+                _selectedTab = DashboardTab.overview;
+              });
+            },
           ),
-        ),
-        SizedBox(width: 8.w),
-        GestureDetector(
-          onTap: () {
-            setState(() {
-              _selectedTab = DashboardTab.perApp;
-            });
-          },
-          child: _TabButton(
+          SizedBox(width: 8.w),
+          _IntegratedTabButton(
             label: '按软件',
             isSelected: _selectedTab == DashboardTab.perApp,
             selectedColor: selectedColor,
+            borderRadius: BorderRadius.circular(18),
+            onTap: () {
+              setState(() {
+                _selectedTab = DashboardTab.perApp;
+              });
+            },
           ),
-        ),
-        SizedBox(width: 8.w),
-        GestureDetector(
-          onTap: () {
-            setState(() {
-              _selectedTab = DashboardTab.analysis;
-            });
-          },
-          child: _TabButton(
+          SizedBox(width: 8.w),
+          _IntegratedTabButton(
             label: '分析',
             isSelected: _selectedTab == DashboardTab.analysis,
             selectedColor: selectedColor,
+            borderRadius: BorderRadius.circular(18),
+            onTap: () {
+              setState(() {
+                _selectedTab = DashboardTab.analysis;
+              });
+            },
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -431,9 +470,19 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
           );
         }
 
+        ref.watch(drawingAppPrefsControllerProvider);
+        final selectedYearPref = ref
+            .watch(dashboardPreferencesControllerProvider)
+            .value;
+        final currentYear = DateTime.now().year;
+        final selectedYear = selectedYearPref?.selectedYear ?? currentYear;
+        final viewingCurrentYear = selectedYear == currentYear;
+
         Widget buildEmptyPlaceholder() {
           return Text(
-            '开始打开你喜欢的绘画软件，RingoTrack 会在这里记录你的创作小绿砖',
+            viewingCurrentYear
+                ? '开始打开你喜欢的绘画软件，RingoTrack 会在这里记录你的创作小绿砖'
+                : '$selectedYear 年暂无绘画记录',
             style: theme.textTheme.bodyMedium?.copyWith(color: Colors.black54),
             textAlign: TextAlign.center,
           );
@@ -469,6 +518,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                   return totalFor(b).compareTo(totalFor(a));
                 });
               return ListView.builder(
+                key: const PageStorageKey('dashboard-per-app-list'),
                 padding: EdgeInsets.fromLTRB(
                   horizontalPadding,
                   32.h,
@@ -775,117 +825,143 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
       return displayNameMap[appId.toLowerCase()] ?? appId;
     }
 
+    final selectedYearPref = ref
+        .watch(dashboardPreferencesControllerProvider)
+        .value;
+    final currentYear = DateTime.now().year;
+    final selectedYear = selectedYearPref?.selectedYear ?? currentYear;
+    final bool viewingCurrentYear = selectedYear == currentYear;
+    final range = ref.watch(heatmapRangeProvider);
+    final analysisEnd = _normalizeDayDashboard(range.end);
+    final analysisStart = _normalizeDayDashboard(range.start);
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(_dashboardCardRadius),
         border: Border.all(color: const Color(0xFFE3E3E3)),
       ),
-      child: asyncUsage.when(
-        loading: () =>
-            const Center(child: CircularProgressIndicator(strokeWidth: 2)),
-        error: (err, _) => Center(
-          child: Text(
-            '加载数据出错了',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: Colors.redAccent,
-            ),
-          ),
-        ),
-        data: (usageByDate) {
-          if (usageByDate.isEmpty) {
-            return Center(
-              child: Text(
-                '还没有可分析的绘画时长，先去画两笔吧～',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: Colors.black54,
-                ),
+      child: Column(
+        children: [
+          Expanded(
+            child: asyncUsage.when(
+              loading: () => const Center(
+                child: CircularProgressIndicator(strokeWidth: 2),
               ),
-            );
-          }
-
-          final today = DateTime.now();
-          final normalizedToday = DateTime(today.year, today.month, today.day);
-          final last30Start = normalizedToday.subtract(
-            const Duration(days: 29),
-          );
-          final weekStart = _weekStartMonday(normalizedToday);
-          final weekRangeStart = weekStart.subtract(
-            const Duration(days: 7 * 7),
-          ); // 向前含 8 周
-
-          final analysis = UsageAnalysis(usageByDate);
-          final daily = analysis.dailyTotals(last30Start, normalizedToday);
-          final weekly = analysis.weeklyTotals(weekRangeStart, normalizedToday);
-          final perApp = analysis.appTotals(last30Start, normalizedToday);
-          final weekdayAvg = analysis.weekdayAverages(
-            last30Start,
-            normalizedToday,
-          );
-
-          return ListView(
-            padding: EdgeInsets.fromLTRB(24.w, 24.h, 24.w, 16.h),
-            children: [
-              _AnalysisCard(
-                title: '最近 30 天趋势',
-                subtitle: '日总时长折线',
-                child: SizedBox(
-                  height: 220.h,
-                  child: LineChart(_buildDailyLineChartData(theme, daily)),
-                ),
-              ),
-              SizedBox(height: 16.h),
-              _AnalysisCard(
-                title: '最近 8 周周总时长',
-                subtitle: '按周汇总，周一为起点',
-                child: SizedBox(
-                  height: 220.h,
-                  child: BarChart(_buildWeeklyBarData(theme, weekly)),
-                ),
-              ),
-              SizedBox(height: 16.h),
-              _AnalysisCard(
-                title: '应用占比',
-                subtitle: '最近 30 天各软件总时长占比',
-                child: SizedBox(
-                  height: 240.h,
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: PieChart(_buildAppPieData(theme, perApp)),
-                      ),
-                      SizedBox(width: 12.w),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          for (final entry in perApp.take(4))
-                            Padding(
-                              padding: EdgeInsets.symmetric(vertical: 4.h),
-                              child: Text(
-                                '${displayName(entry.appId)} · ${_formatDuration(entry.total)}',
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: Colors.black87,
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ],
+              error: (err, _) => Center(
+                child: Text(
+                  '加载数据出错了',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: Colors.redAccent,
                   ),
                 ),
               ),
-              SizedBox(height: 16.h),
-              _AnalysisCard(
-                title: '星期分布',
-                subtitle: '最近 30 天平均到星期几的用时',
-                child: SizedBox(
-                  height: 220.h,
-                  child: BarChart(_buildWeekdayBarData(theme, weekdayAvg)),
-                ),
-              ),
-            ],
-          );
-        },
+              data: (usageByDate) {
+                if (usageByDate.isEmpty) {
+                  return Center(
+                    child: Text(
+                      viewingCurrentYear
+                          ? '还没有可分析的绘画时长，先去画两笔吧～'
+                          : '$selectedYear 年没有可分析的绘画记录',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: Colors.black54,
+                      ),
+                    ),
+                  );
+                }
+
+                final DateTime windowEnd = analysisEnd;
+                DateTime last30Start =
+                    windowEnd.subtract(const Duration(days: 29));
+                if (last30Start.isBefore(analysisStart)) {
+                  last30Start = analysisStart;
+                }
+                final weekStart = _weekStartMonday(windowEnd);
+                DateTime weekRangeStart =
+                    weekStart.subtract(const Duration(days: 7 * 7)); // 向前含 8 周
+                if (weekRangeStart.isBefore(analysisStart)) {
+                  weekRangeStart = analysisStart;
+                }
+
+                final analysis = UsageAnalysis(usageByDate);
+                final daily = analysis.dailyTotals(last30Start, windowEnd);
+                final weekly = analysis.weeklyTotals(weekRangeStart, windowEnd);
+                final perApp = analysis.appTotals(last30Start, windowEnd);
+                final weekdayAvg =
+                    analysis.weekdayAverages(last30Start, windowEnd);
+
+                return ListView(
+                  key: const PageStorageKey('dashboard-analysis-list'),
+                  padding: EdgeInsets.fromLTRB(20.w, 20.h, 20.w, 12.h),
+                  children: [
+                    _AnalysisCard(
+                      title: '最近 30 天趋势',
+                      subtitle: '日总时长折线',
+                      child: SizedBox(
+                        height: 180.h,
+                        child: LineChart(
+                          _buildDailyLineChartData(theme, daily),
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 12.h),
+                    _AnalysisCard(
+                      title: '最近 8 周周总时长',
+                      subtitle: '按周汇总，周一为起点',
+                      child: SizedBox(
+                        height: 180.h,
+                        child: BarChart(_buildWeeklyBarData(theme, weekly)),
+                      ),
+                    ),
+                    SizedBox(height: 12.h),
+                    _AnalysisCard(
+                      title: '应用占比',
+                      subtitle: '最近 30 天各软件总时长占比',
+                      child: SizedBox(
+                        height: 200.h,
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: PieChart(_buildAppPieData(theme, perApp)),
+                            ),
+                            SizedBox(width: 12.w),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                for (final entry in perApp.take(4))
+                                  Padding(
+                                    padding: EdgeInsets.symmetric(
+                                      vertical: 4.h,
+                                    ),
+                                    child: Text(
+                                      '${displayName(entry.appId)} · ${_formatDuration(entry.total)}',
+                                      style: theme.textTheme.bodyMedium
+                                          ?.copyWith(color: Colors.black87),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 12.h),
+                    _AnalysisCard(
+                      title: '星期分布',
+                      subtitle: '最近 30 天平均到星期几的用时',
+                      child: SizedBox(
+                        height: 180.h,
+                        child: BarChart(
+                          _buildWeekdayBarData(theme, weekdayAvg),
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1351,6 +1427,154 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     String twoDigits(int v) => v.toString().padLeft(2, '0');
     return '${timestamp.month}月${timestamp.day}日 ${twoDigits(timestamp.hour)}:${twoDigits(timestamp.minute)}';
   }
+
+  Widget _buildYearSelector(ThemeData theme) {
+    final prefs =
+        ref.watch(dashboardPreferencesControllerProvider).value ??
+        const DashboardPreferences();
+    final currentYear = DateTime.now().year;
+    final selectedYear = prefs.selectedYear ?? currentYear;
+
+    final availableYears =
+        List.generate(
+            13,
+            (index) => currentYear - 10 + index,
+          ).where((y) => y >= 2020 && y <= currentYear + 2).toList()
+          ..sort((a, b) => b.compareTo(a));
+
+    Future<void> showPicker() async {
+      final picked = await showModalBottomSheet<int>(
+        context: context,
+        isScrollControlled: false,
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        builder: (ctx) {
+          return SafeArea(
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(16.w, 12.h, 16.w, 12.h),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 44,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE0E0E0),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 12.h),
+                  Text(
+                    '选择年份',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  SizedBox(height: 4.h),
+                  Text(
+                    '切换热力图和分析展示的年份',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: Colors.black54,
+                    ),
+                  ),
+                  SizedBox(height: 12.h),
+                  ConstrainedBox(
+                    constraints: BoxConstraints(maxHeight: 420.h),
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      itemCount: availableYears.length,
+                      separatorBuilder: (_, __) =>
+                          Divider(height: 1, color: const Color(0xFFF0F0F0)),
+                      itemBuilder: (ctx, i) {
+                        final year = availableYears[i];
+                        final active = year == selectedYear;
+                        final isCurrent = year == currentYear;
+                        return ListTile(
+                          dense: true,
+                          contentPadding: EdgeInsets.symmetric(horizontal: 4.w),
+                          onTap: () => Navigator.of(ctx).pop(year),
+                          title: Row(
+                            children: [
+                              Text(
+                                '$year年',
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  fontWeight: active
+                                      ? FontWeight.w700
+                                      : FontWeight.w500,
+                                  color: active
+                                      ? theme.colorScheme.primary
+                                      : Colors.black87,
+                                ),
+                              ),
+                              if (isCurrent) ...[
+                                SizedBox(width: 8.w),
+                                Container(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 8.w,
+                                    vertical: 4.h,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: theme.colorScheme.primary.withAlpha(
+                                      24,
+                                    ),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    '今年',
+                                    style: theme.textTheme.labelMedium
+                                        ?.copyWith(
+                                          color: theme.colorScheme.primary,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                  ),
+                                ),
+                              ],
+                              const Spacer(),
+                              if (active)
+                                Icon(
+                                  Icons.check_circle_rounded,
+                                  size: 18.r,
+                                  color: theme.colorScheme.primary,
+                                ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  SizedBox(height: 8.h),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: () => Navigator.of(ctx).pop(),
+                      child: const Text('取消'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+      if (picked != null) {
+        ref
+            .read(dashboardPreferencesControllerProvider.notifier)
+            .setSelectedYear(picked);
+      }
+    }
+
+    return _InlineYearSelector(
+      selectedYear: selectedYear,
+      currentYear: currentYear,
+      onOpenPicker: showPicker,
+      onSelectThisYear: null,
+      theme: theme,
+    );
+  }
 }
 
 class _TabButton extends StatefulWidget {
@@ -1389,7 +1613,7 @@ class _TabButtonState extends State<_TabButton> {
           ? theme.colorScheme.surfaceContainerLow
           : Colors.white;
       borderColor = _hovered
-          ? theme.colorScheme.outline.withValues(alpha: 0.6)
+          ? theme.colorScheme.outline.withValues(alpha: 0.5)
           : const Color(0xFFE3E3E3);
       textColor = Colors.black87;
     }
@@ -1401,19 +1625,394 @@ class _TabButtonState extends State<_TabButton> {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 120),
         curve: Curves.easeOut,
-        height: 36.h,
-        padding: EdgeInsets.symmetric(horizontal: 24.w),
+        height: 32.h,
+        padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 6.h),
         decoration: BoxDecoration(
           color: backgroundColor,
-          borderRadius: BorderRadius.circular(_dashboardCardRadius),
-          border: Border.all(color: borderColor),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: borderColor, width: 1),
+          boxShadow: isSelected && !_hovered
+              ? [
+                  BoxShadow(
+                    color: widget.selectedColor.withAlpha(77),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
         ),
         alignment: Alignment.center,
         child: Text(
           widget.label,
-          style: theme.textTheme.bodyMedium?.copyWith(color: textColor),
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: textColor,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+            fontSize: 13.sp,
+          ),
         ),
       ),
+    );
+  }
+}
+
+class _ModernTabButton extends StatefulWidget {
+  const _ModernTabButton({
+    required this.label,
+    required this.isSelected,
+    required this.selectedColor,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool isSelected;
+  final Color selectedColor;
+  final VoidCallback onTap;
+
+  @override
+  State<_ModernTabButton> createState() => _ModernTabButtonState();
+}
+
+class _ModernTabButtonState extends State<_ModernTabButton> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final bool isSelected = widget.isSelected;
+
+    return GestureDetector(
+      onTap: widget.onTap,
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeInOutCubic,
+          height: 32.h,
+          padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 6.h),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? widget.selectedColor
+                : _hovered
+                ? theme.colorScheme.surfaceContainerHigh.withAlpha(102)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(6),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: widget.selectedColor.withAlpha(51),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                      spreadRadius: 2,
+                    ),
+                  ]
+                : null,
+          ),
+          alignment: Alignment.center,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AnimatedDefaultTextStyle(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeInOutCubic,
+                style:
+                    theme.textTheme.bodySmall?.copyWith(
+                      color: isSelected ? Colors.white : Colors.black87,
+                      fontWeight: isSelected
+                          ? FontWeight.w600
+                          : FontWeight.w500,
+                      fontSize: 13.sp,
+                    ) ??
+                    const TextStyle(),
+                child: Text(widget.label),
+              ),
+              if (isSelected) ...[
+                const SizedBox(width: 8),
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeInOutCubic,
+                  width: 4,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withAlpha(179),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _IntegratedTabButton extends StatefulWidget {
+  const _IntegratedTabButton({
+    required this.label,
+    required this.isSelected,
+    required this.selectedColor,
+    required this.onTap,
+    required this.borderRadius,
+  });
+
+  final String label;
+  final bool isSelected;
+  final Color selectedColor;
+  final VoidCallback onTap;
+  final BorderRadius borderRadius;
+
+  @override
+  State<_IntegratedTabButton> createState() => _IntegratedTabButtonState();
+}
+
+class _IntegratedTabButtonState extends State<_IntegratedTabButton> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final bool isSelected = widget.isSelected;
+
+    return GestureDetector(
+      onTap: widget.onTap,
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeInOutCubic,
+          height: 40.h,
+          padding: EdgeInsets.symmetric(horizontal: 22.w, vertical: 10.h),
+          decoration: BoxDecoration(
+            color: isSelected ? widget.selectedColor : Colors.white,
+            borderRadius: widget.borderRadius,
+            border: Border.all(
+              color: isSelected
+                  ? widget.selectedColor
+                  : const Color(0xFFE0E0E0),
+              width: 1,
+            ),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: widget.selectedColor.withAlpha(64),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ]
+                : (_hovered
+                      ? [
+                          BoxShadow(
+                            color: Colors.black.withAlpha(12),
+                            blurRadius: 10,
+                            offset: const Offset(0, 3),
+                          ),
+                        ]
+                      : null),
+          ),
+          alignment: Alignment.center,
+          child: AnimatedDefaultTextStyle(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeInOutCubic,
+            style:
+                theme.textTheme.bodySmall?.copyWith(
+                  color: isSelected ? Colors.white : Colors.black87,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                  fontSize: 13.sp,
+                ) ??
+                const TextStyle(),
+            child: Text(widget.label),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _InlineTabsAndYear extends StatelessWidget {
+  const _InlineTabsAndYear({
+    required this.tabsBuilder,
+    required this.yearSelectorBuilder,
+  });
+
+  final Widget Function() tabsBuilder;
+  final Widget Function() yearSelectorBuilder;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 0),
+      child: Row(
+        children: [tabsBuilder(), const Spacer(), yearSelectorBuilder()],
+      ),
+    );
+  }
+}
+
+class _InlineYearSelector extends StatelessWidget {
+  const _InlineYearSelector({
+    required this.selectedYear,
+    required this.currentYear,
+    required this.onOpenPicker,
+    required this.onSelectThisYear,
+    required this.theme,
+  });
+
+  final int selectedYear;
+  final int currentYear;
+  final VoidCallback onOpenPicker;
+  final VoidCallback? onSelectThisYear;
+  final ThemeData theme;
+
+  @override
+  Widget build(BuildContext context) {
+    final pillColor = theme.colorScheme.primary;
+
+    return Container(
+      height: 40.h,
+      padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 8.h),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE4E4E4)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(8),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '$selectedYear年',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+              color: Colors.black87,
+            ),
+          ),
+          SizedBox(width: 12.w),
+          GestureDetector(
+            onTap: onOpenPicker,
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+              decoration: BoxDecoration(
+                color: pillColor.withAlpha(24),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: pillColor.withAlpha(90)),
+              ),
+              child: Icon(Icons.calendar_today, size: 12, color: pillColor),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ModernTabContainer extends StatefulWidget {
+  const _ModernTabContainer({
+    required this.child,
+    required this.isSelected,
+    required this.selectedColor,
+  });
+
+  final Widget child;
+  final bool isSelected;
+  final Color selectedColor;
+
+  @override
+  State<_ModernTabContainer> createState() => _ModernTabContainerState();
+}
+
+class _ModernTabContainerState extends State<_ModernTabContainer>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+  late Animation<double> _opacityAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+    _scaleAnimation = Tween<double>(
+      begin: 0.98,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutBack));
+    _opacityAnimation = Tween<double>(
+      begin: 0.9,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
+
+    if (widget.isSelected) {
+      _controller.forward();
+    }
+  }
+
+  @override
+  void didUpdateWidget(_ModernTabContainer oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isSelected != oldWidget.isSelected) {
+      if (widget.isSelected) {
+        _controller.forward();
+      } else {
+        _controller.reverse();
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Transform.scale(
+          scale: _scaleAnimation.value,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(0),
+                topRight: Radius.circular(0),
+                bottomLeft: Radius.circular(_dashboardCardRadius),
+                bottomRight: Radius.circular(_dashboardCardRadius),
+              ),
+              boxShadow: widget.isSelected
+                  ? [
+                      BoxShadow(
+                        color: widget.selectedColor.withAlpha(26),
+                        blurRadius: 20,
+                        offset: const Offset(0, 8),
+                        spreadRadius: 4,
+                      ),
+                    ]
+                  : [
+                      BoxShadow(
+                        color: Colors.black.withAlpha(5),
+                        blurRadius: 10,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+            ),
+            child: Opacity(opacity: _opacityAnimation.value, child: child),
+          ),
+        );
+      },
+      child: widget.child,
     );
   }
 }

@@ -124,12 +124,21 @@ final heatmapRangeProvider = Provider<({DateTime start, DateTime end})>((ref) {
     end = DateTime(normalizedToday.year, normalizedToday.month + 1, 0);
     start = DateTime(end.year, end.month - 11, 1);
   } else {
-    start = DateTime(normalizedToday.year, 1, 1);
-    end = DateTime(normalizedToday.year, 12, 31);
+    final selectedYear = prefsAsync.value?.selectedYear ?? today.year;
+    start = DateTime(selectedYear, 1, 1);
+    end = DateTime(selectedYear, 12, 31);
   }
 
   start = _normalizeDay(start);
   end = _normalizeDay(end);
+  return (start: start, end: end);
+});
+
+/// Summary 指标固定使用当年数据，不随年份切换
+final metricsRangeProvider = Provider<({DateTime start, DateTime end})>((ref) {
+  final today = DateTime.now();
+  final start = _normalizeDay(DateTime(today.year, 1, 1));
+  final end = _normalizeDay(DateTime(today.year, 12, 31));
   return (start: start, end: end);
 });
 
@@ -184,9 +193,57 @@ final yearlyUsageByDateProvider =
       }
     });
 
+/// 当年使用数据（供 Summary 指标），不受年份选择器影响
+final currentYearUsageByDateProvider =
+    StreamProvider.autoDispose<Map<DateTime, Map<String, Duration>>>((
+      ref,
+    ) async* {
+      final service = ref.watch(usageServiceProvider);
+      final repo = ref.watch(usageRepositoryProvider);
+      final range = ref.watch(metricsRangeProvider);
+      final start = range.start;
+      final end = range.end;
+
+      final usageByDate = await repo.loadRange(start, end);
+      yield usageByDate;
+
+      try {
+        await for (final delta in service.deltaStream) {
+          if (delta.isEmpty) continue;
+
+          delta.forEach((day, perApp) {
+            final normalizedDay = _normalizeDay(day);
+            if (normalizedDay.isBefore(start) || normalizedDay.isAfter(end)) {
+              return;
+            }
+
+            final existingPerApp = usageByDate.putIfAbsent(
+              normalizedDay,
+              () => <String, Duration>{},
+            );
+
+            perApp.forEach((appId, duration) {
+              existingPerApp[appId] =
+                  (existingPerApp[appId] ?? Duration.zero) + duration;
+            });
+          });
+
+          yield Map<DateTime, Map<String, Duration>>.fromEntries(
+            usageByDate.entries.map(
+              (e) => MapEntry(e.key, Map<String, Duration>.from(e.value)),
+            ),
+          );
+        }
+      } catch (e) {
+        if (kDebugMode) {
+          debugPrint('[currentYearUsageByDateProvider] stream closed: $e');
+        }
+      }
+    });
+
 /// 仪表盘指标：今日 / 本周 / 本月 / 连续天数 + 数据更新时间
 final dashboardMetricsProvider = Provider<AsyncValue<DashboardMetrics>>((ref) {
-  final usageAsync = ref.watch(yearlyUsageByDateProvider);
+  final usageAsync = ref.watch(currentYearUsageByDateProvider);
   final weekStartMode = ref.watch(dashboardWeekStartModeProvider);
 
   return usageAsync.whenData((usageByDate) {

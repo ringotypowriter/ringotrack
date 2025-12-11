@@ -43,6 +43,13 @@ class DashboardPreferencesController
     state = AsyncData(next);
     await _repository.save(next);
   }
+
+  Future<void> setSelectedYear(int? year) async {
+    final current = state.value ?? const DashboardPreferences();
+    final next = current.copyWith(selectedYear: year);
+    state = AsyncData(next);
+    await _repository.save(next);
+  }
 }
 
 final dashboardPreferencesRepositoryProvider =

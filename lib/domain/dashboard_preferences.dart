@@ -15,6 +15,7 @@ class DashboardPreferences {
     this.heatmapRangeMode = HeatmapRangeMode.calendarYear,
     this.enableGlassEffect = false,
     this.weekStartMode = WeekStartMode.monday,
+    this.selectedYear,
   });
 
   final HeatmapRangeMode heatmapRangeMode;
@@ -25,6 +26,9 @@ class DashboardPreferences {
   /// 一周从哪一天开始。
   final WeekStartMode weekStartMode;
 
+  /// 选择的年份（用于日历年份模式）。如果为 null，则使用当前年份。
+  final int? selectedYear;
+
   /// 当前平台是否实际使用毛玻璃效果。
   /// 只有 macOS / Windows 且 enableGlassEffect 为 true 时才生效。
   bool get useGlassEffect =>
@@ -34,11 +38,13 @@ class DashboardPreferences {
     HeatmapRangeMode? heatmapRangeMode,
     bool? enableGlassEffect,
     WeekStartMode? weekStartMode,
+    int? selectedYear,
   }) {
     return DashboardPreferences(
       heatmapRangeMode: heatmapRangeMode ?? this.heatmapRangeMode,
       enableGlassEffect: enableGlassEffect ?? this.enableGlassEffect,
       weekStartMode: weekStartMode ?? this.weekStartMode,
+      selectedYear: selectedYear ?? this.selectedYear,
     );
   }
 }
@@ -51,6 +57,7 @@ class DashboardPreferencesRepository {
       'ringotrack.dashboard.enableGlassEffect.pending';
 
   static const _keyWeekStartMode = 'ringotrack.dashboard.weekStartMode';
+  static const _keySelectedYear = 'ringotrack.dashboard.selectedYear';
 
   Future<DashboardPreferences> load() async {
     final sp = await SharedPreferences.getInstance();
@@ -65,10 +72,12 @@ class DashboardPreferencesRepository {
       (m) => m.name == savedWeekStart,
       orElse: () => const DashboardPreferences().weekStartMode,
     );
+    final selectedYear = sp.getInt(_keySelectedYear);
     return DashboardPreferences(
       heatmapRangeMode: mode,
       enableGlassEffect: enableGlass,
       weekStartMode: weekStartMode,
+      selectedYear: selectedYear,
     );
   }
 
@@ -77,6 +86,11 @@ class DashboardPreferencesRepository {
     await sp.setString(_keyRangeMode, prefs.heatmapRangeMode.name);
     await sp.setBool(_keyGlassEffect, prefs.enableGlassEffect);
     await sp.setString(_keyWeekStartMode, prefs.weekStartMode.name);
+    if (prefs.selectedYear != null) {
+      await sp.setInt(_keySelectedYear, prefs.selectedYear!);
+    } else {
+      await sp.remove(_keySelectedYear);
+    }
   }
 
   /// Windows 平台：设置待生效的玻璃效果值（下次启动时应用）
