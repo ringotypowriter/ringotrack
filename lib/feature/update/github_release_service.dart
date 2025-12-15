@@ -22,6 +22,7 @@ class Version {
   ///   "0.1.3+20" -> Version(major: 0, minor: 1, patch: 3, build: 20)  // App version
   ///   "v0.1.3+23" -> Version(major: 0, minor: 1, patch: 3, build: 23)  // GitHub tag
   ///   "windows-v0.1.3+23" -> Version(major: 0, minor: 1, patch: 3, build: 23)  // Platform tag
+  ///   "v0.1.3" -> Version(major: 0, minor: 1, patch: 3, build: 0)  // Default build when missing
   static Version? parse(String versionString) {
     debugPrint('[Version.parse] Input: $versionString');
 
@@ -42,13 +43,16 @@ class Version {
 
     // Split by '+' to separate version and build number
     final parts = versionWithoutV.split('+');
-    if (parts.length != 2) {
-      debugPrint('[Version.parse] Invalid format: missing "+" separator');
+    if (parts.length > 2) {
+      debugPrint('[Version.parse] Invalid format: too many "+" separators');
       return null;
     }
 
     final versionPart = parts[0];
-    final buildPart = parts[1];
+    final buildPart = parts.length == 2 ? parts[1] : '0';
+    if (parts.length == 1) {
+      debugPrint('[Version.parse] No build number found, defaulting to 0');
+    }
     debugPrint(
       '[Version.parse] Version part: $versionPart, Build part: $buildPart',
     );
