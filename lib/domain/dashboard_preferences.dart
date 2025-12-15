@@ -16,6 +16,7 @@ class DashboardPreferences {
     this.enableGlassEffect = false,
     this.weekStartMode = WeekStartMode.monday,
     this.selectedYear,
+    this.focusMonth,
   });
 
   final HeatmapRangeMode heatmapRangeMode;
@@ -29,6 +30,9 @@ class DashboardPreferences {
   /// 选择的年份（用于日历年份模式）。如果为 null，则使用当前年份。
   final int? selectedYear;
 
+  /// 焦点月份（用于滚动12个月模式）。如果为 null，则使用当前月份。
+  final DateTime? focusMonth;
+
   /// 当前平台是否实际使用毛玻璃效果。
   /// 只有 macOS / Windows 且 enableGlassEffect 为 true 时才生效。
   bool get useGlassEffect =>
@@ -39,12 +43,14 @@ class DashboardPreferences {
     bool? enableGlassEffect,
     WeekStartMode? weekStartMode,
     int? selectedYear,
+    DateTime? focusMonth,
   }) {
     return DashboardPreferences(
       heatmapRangeMode: heatmapRangeMode ?? this.heatmapRangeMode,
       enableGlassEffect: enableGlassEffect ?? this.enableGlassEffect,
       weekStartMode: weekStartMode ?? this.weekStartMode,
       selectedYear: selectedYear ?? this.selectedYear,
+      focusMonth: focusMonth ?? this.focusMonth,
     );
   }
 }
@@ -58,6 +64,7 @@ class DashboardPreferencesRepository {
 
   static const _keyWeekStartMode = 'ringotrack.dashboard.weekStartMode';
   static const _keySelectedYear = 'ringotrack.dashboard.selectedYear';
+  static const _keyFocusMonth = 'ringotrack.dashboard.focusMonth';
 
   Future<DashboardPreferences> load() async {
     final sp = await SharedPreferences.getInstance();
@@ -73,11 +80,21 @@ class DashboardPreferencesRepository {
       orElse: () => const DashboardPreferences().weekStartMode,
     );
     final selectedYear = sp.getInt(_keySelectedYear);
+    final focusMonthString = sp.getString(_keyFocusMonth);
+    DateTime? focusMonth;
+    if (focusMonthString != null) {
+      try {
+        focusMonth = DateTime.parse(focusMonthString);
+      } catch (_) {
+        // 解析失败则忽略
+      }
+    }
     return DashboardPreferences(
       heatmapRangeMode: mode,
       enableGlassEffect: enableGlass,
       weekStartMode: weekStartMode,
       selectedYear: selectedYear,
+      focusMonth: focusMonth,
     );
   }
 
@@ -90,6 +107,11 @@ class DashboardPreferencesRepository {
       await sp.setInt(_keySelectedYear, prefs.selectedYear!);
     } else {
       await sp.remove(_keySelectedYear);
+    }
+    if (prefs.focusMonth != null) {
+      await sp.setString(_keyFocusMonth, prefs.focusMonth!.toIso8601String());
+    } else {
+      await sp.remove(_keyFocusMonth);
     }
   }
 

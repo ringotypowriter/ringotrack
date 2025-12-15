@@ -1564,7 +1564,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                     child: ListView.separated(
                       shrinkWrap: true,
                       itemCount: availableYears.length,
-                      separatorBuilder: (_, __) =>
+                      separatorBuilder: (_, _) =>
                           Divider(height: 1, color: const Color(0xFFF0F0F0)),
                       itemBuilder: (ctx, i) {
                         final year = availableYears[i];

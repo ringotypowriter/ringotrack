@@ -50,6 +50,13 @@ class DashboardPreferencesController
     state = AsyncData(next);
     await _repository.save(next);
   }
+
+  Future<void> setFocusMonth(DateTime? month) async {
+    final current = state.value ?? const DashboardPreferences();
+    final next = current.copyWith(focusMonth: month);
+    state = AsyncData(next);
+    await _repository.save(next);
+  }
 }
 
 final dashboardPreferencesRepositoryProvider =

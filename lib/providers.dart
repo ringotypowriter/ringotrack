@@ -109,7 +109,7 @@ final useGlassEffectProvider = Provider<bool>((ref) {
 
 /// 根据偏好计算当前热力图的时间窗口。
 /// - calendarYear: 当年 1/1 ~ 12/31
-/// - rolling12Months: 最近 12 个月，右侧对齐当前月
+/// - rolling12Months: 以焦点月份为结束点的 12 个月窗口
 final heatmapRangeProvider = Provider<({DateTime start, DateTime end})>((ref) {
   final prefsAsync = ref.watch(dashboardPreferencesControllerProvider);
   final mode =
@@ -117,13 +117,16 @@ final heatmapRangeProvider = Provider<({DateTime start, DateTime end})>((ref) {
       const DashboardPreferences().heatmapRangeMode;
 
   final today = DateTime.now();
-  final normalizedToday = _normalizeDay(today);
 
   DateTime start;
   DateTime end;
 
   if (mode == HeatmapRangeMode.rolling12Months) {
-    end = DateTime(normalizedToday.year, normalizedToday.month + 1, 0);
+    // 使用焦点月份，默认当前月份
+    final focusMonth =
+        prefsAsync.value?.focusMonth ?? DateTime(today.year, today.month, 1);
+    // 以焦点月份为结束点，往前推11个月
+    end = DateTime(focusMonth.year, focusMonth.month + 1, 0);
     start = DateTime(end.year, end.month - 11, 1);
   } else {
     final selectedYear = prefsAsync.value?.selectedYear ?? today.year;
