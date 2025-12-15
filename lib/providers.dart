@@ -3,18 +3,24 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:ringotrack/feature/update/github_release_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:ringotrack/domain/app_database.dart';
-import 'package:ringotrack/domain/demo_mode_controller.dart';
-import 'package:ringotrack/domain/demo_usage_repository.dart';
-import 'package:ringotrack/domain/drawing_app_preferences.dart';
-import 'package:ringotrack/domain/drawing_app_preferences_controller.dart';
-import 'package:ringotrack/domain/dashboard_preferences.dart';
-import 'package:ringotrack/domain/dashboard_preferences_controller.dart';
-import 'package:ringotrack/domain/theme_controller.dart';
-import 'package:ringotrack/domain/usage_repository.dart';
-import 'package:ringotrack/domain/usage_service.dart';
+import 'package:ringotrack/feature/database/services/app_database.dart';
+import 'package:ringotrack/feature/settings/demo/controllers/demo_mode_controller.dart';
+import 'package:ringotrack/feature/usage/repositories/demo_usage_repository.dart';
+import 'package:ringotrack/feature/settings/drawing_app/models/drawing_app_preferences.dart';
+import 'package:ringotrack/feature/settings/drawing_app/controllers/drawing_app_preferences_controller.dart';
+import 'package:ringotrack/feature/dashboard/providers/dashboard_providers.dart'
+    as dashboard_providers;
+import 'package:ringotrack/feature/dashboard/models/dashboard_preferences.dart';
+import 'package:ringotrack/feature/settings/theme/controllers/theme_controller.dart';
+
+import 'package:ringotrack/feature/usage/repositories/usage_repository.dart';
+import 'package:ringotrack/feature/usage/services/usage_service.dart';
 import 'package:ringotrack/platform/foreground_app_tracker.dart';
 import 'package:ringotrack/platform/stroke_activity_tracker.dart';
+
+// ============================================================================
+// Core Infrastructure Providers
+// ============================================================================
 
 final appDatabaseProvider = Provider<AppDatabase>((ref) {
   final db = AppDatabase();
@@ -22,14 +28,53 @@ final appDatabaseProvider = Provider<AppDatabase>((ref) {
   return db;
 });
 
-final demoModeControllerProvider = NotifierProvider<DemoModeController, bool>(
-  DemoModeController.new,
-);
+final foregroundAppTrackerProvider = Provider<ForegroundAppTracker>((ref) {
+  final tracker = createForegroundAppTracker();
+  ref.onDispose(tracker.dispose);
+  return tracker;
+});
+
+final strokeActivityTrackerProvider = Provider<StrokeActivityTracker>((ref) {
+  final tracker = createStrokeActivityTracker();
+  ref.onDispose(tracker.dispose);
+  return tracker;
+});
 
 /// 应用版本信息
 final packageInfoProvider = FutureProvider<PackageInfo>((ref) async {
   return await PackageInfo.fromPlatform();
 });
+
+// ============================================================================
+// Settings Providers
+// ============================================================================
+
+final demoModeControllerProvider = NotifierProvider<DemoModeController, bool>(
+  DemoModeController.new,
+);
+
+// drawingAppPrefsControllerProvider is defined in drawing_app_preferences_controller.dart
+
+// Theme controller is defined in theme_controller.dart
+
+// ============================================================================
+// Theme Providers (imported from theme_controller.dart)
+// ============================================================================
+
+final appThemeProvider = appThemeControllerProvider;
+
+// ============================================================================
+// Dashboard Providers (imported from dashboard_providers.dart)
+// ============================================================================
+
+final dashboardPreferencesControllerProvider =
+    dashboard_providers.dashboardPreferencesControllerProvider;
+final windowsGlassEffectDisplayProvider =
+    dashboard_providers.windowsGlassEffectDisplayProvider;
+
+// ============================================================================
+// Usage Providers
+// ============================================================================
 
 final demoUsageRepositoryProvider = Provider.autoDispose<DemoUsageRepository>((
   ref,
@@ -46,24 +91,11 @@ final usageRepositoryProvider = Provider<UsageRepository>((ref) {
   return SqliteUsageRepository(db);
 });
 
-final foregroundAppTrackerProvider = Provider<ForegroundAppTracker>((ref) {
-  final tracker = createForegroundAppTracker();
-  ref.onDispose(tracker.dispose);
-  return tracker;
-});
-
-final strokeActivityTrackerProvider = Provider<StrokeActivityTracker>((ref) {
-  final tracker = createStrokeActivityTracker();
-  ref.onDispose(tracker.dispose);
-  return tracker;
-});
-
 final drawingAppFilterProvider = Provider<bool Function(String)>((ref) {
   final prefsAsync = ref.watch(drawingAppPrefsControllerProvider);
   final prefs =
       prefsAsync.value ??
       const DrawingAppPreferences(trackedApps: defaultTrackedApps);
-
   return buildAppFilter(prefs);
 });
 
@@ -87,11 +119,9 @@ final usageServiceProvider = Provider<UsageService>((ref) {
   return service;
 });
 
-// 主题
-final appThemeProvider = appThemeControllerProvider;
-
-// Dashboard 偏好（热力图时间范围）
-final dashboardPrefsProvider = dashboardPreferencesControllerProvider;
+// ============================================================================
+// Dashboard Computed Providers
+// ============================================================================
 
 /// 关注本周起点，供热力图/指标使用。
 final dashboardWeekStartModeProvider = Provider<WeekStartMode>((ref) {
@@ -290,75 +320,9 @@ final dashboardMetricsProvider = Provider<AsyncValue<DashboardMetrics>>((ref) {
   });
 });
 
-class DashboardMetrics {
-  DashboardMetrics({
-    required this.today,
-    required this.thisWeek,
-    required this.thisMonth,
-    required this.streakDays,
-    required this.lastUpdatedAt,
-  });
-
-  final Duration today;
-  final Duration thisWeek;
-  final Duration thisMonth;
-  final int streakDays;
-  final DateTime lastUpdatedAt;
-}
-
-DateTime _normalizeDay(DateTime date) {
-  return DateTime(date.year, date.month, date.day);
-}
-
-DateTime startOfWeek(DateTime date, WeekStartMode mode) {
-  final normalized = _normalizeDay(date);
-  if (mode == WeekStartMode.monday) {
-    final offset = (normalized.weekday - DateTime.monday) % 7;
-    return normalized.subtract(Duration(days: offset));
-  }
-  final weekday = normalized.weekday % 7; // 周日 = 0
-  return normalized.subtract(Duration(days: weekday));
-}
-
-int _calculateCurrentStreak(
-  Map<DateTime, Map<String, Duration>> usageByDate,
-  DateTime today,
-) {
-  bool hasUsageOn(DateTime day) {
-    final dayKey = _normalizeDay(day);
-    final perApp = usageByDate[dayKey];
-    return perApp != null &&
-        perApp.values.any((duration) => duration > Duration.zero);
-  }
-
-  final normalizedToday = _normalizeDay(today);
-
-  // 允许「昨天有画、今天还没画」这种情况继续显示连续天数：
-  // - 如果今天有使用记录，从今天往前算；
-  // - 否则如果昨天有使用记录，从昨天往前算；
-  // - 否则认为当前没有进行中的连续天数（返回 0）。
-  DateTime? anchor;
-  if (hasUsageOn(normalizedToday)) {
-    anchor = normalizedToday;
-  } else {
-    final yesterday = normalizedToday.subtract(const Duration(days: 1));
-    if (hasUsageOn(yesterday)) {
-      anchor = yesterday;
-    } else {
-      return 0;
-    }
-  }
-
-  var streak = 0;
-  var cursor = anchor;
-
-  while (hasUsageOn(cursor)) {
-    streak++;
-    cursor = cursor.subtract(const Duration(days: 1));
-  }
-
-  return streak;
-}
+// ============================================================================
+// Update Providers
+// ============================================================================
 
 /// GitHub release update check provider
 /// Returns the latest version if an update is available, null otherwise
@@ -457,3 +421,77 @@ final manualUpdateCheckProvider =
     NotifierProvider<ManualUpdateCheckController, AsyncValue<Version?>>(
       ManualUpdateCheckController.new,
     );
+
+// ============================================================================
+// Helper Classes and Functions
+// ============================================================================
+
+class DashboardMetrics {
+  DashboardMetrics({
+    required this.today,
+    required this.thisWeek,
+    required this.thisMonth,
+    required this.streakDays,
+    required this.lastUpdatedAt,
+  });
+
+  final Duration today;
+  final Duration thisWeek;
+  final Duration thisMonth;
+  final int streakDays;
+  final DateTime lastUpdatedAt;
+}
+
+DateTime _normalizeDay(DateTime date) {
+  return DateTime(date.year, date.month, date.day);
+}
+
+DateTime startOfWeek(DateTime date, WeekStartMode mode) {
+  final normalized = _normalizeDay(date);
+  if (mode == WeekStartMode.monday) {
+    final offset = (normalized.weekday - DateTime.monday) % 7;
+    return normalized.subtract(Duration(days: offset));
+  }
+  final weekday = normalized.weekday % 7; // 周日 = 0
+  return normalized.subtract(Duration(days: weekday));
+}
+
+int _calculateCurrentStreak(
+  Map<DateTime, Map<String, Duration>> usageByDate,
+  DateTime today,
+) {
+  bool hasUsageOn(DateTime day) {
+    final dayKey = _normalizeDay(day);
+    final perApp = usageByDate[dayKey];
+    return perApp != null &&
+        perApp.values.any((duration) => duration > Duration.zero);
+  }
+
+  final normalizedToday = _normalizeDay(today);
+
+  // 允许「昨天有画、今天还没画」这种情况继续显示连续天数：
+  // - 如果今天有使用记录，从今天往前算；
+  // - 否则如果昨天有使用记录，从昨天往前算；
+  // - 否则认为当前没有进行中的连续天数（返回 0）。
+  DateTime? anchor;
+  if (hasUsageOn(normalizedToday)) {
+    anchor = normalizedToday;
+  } else {
+    final yesterday = normalizedToday.subtract(const Duration(days: 1));
+    if (hasUsageOn(yesterday)) {
+      anchor = yesterday;
+    } else {
+      return 0;
+    }
+  }
+
+  var streak = 0;
+  var cursor = anchor;
+
+  while (hasUsageOn(cursor)) {
+    streak++;
+    cursor = cursor.subtract(const Duration(days: 1));
+  }
+
+  return streak;
+}

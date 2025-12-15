@@ -1,11 +1,11 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
-import 'package:ringotrack/domain/usage_models.dart';
-import 'package:ringotrack/domain/usage_repository.dart';
+import 'package:ringotrack/feature/usage/models/usage_models.dart';
+import 'package:ringotrack/feature/usage/repositories/usage_repository.dart';
 import 'package:ringotrack/platform/foreground_app_tracker.dart';
 import 'package:ringotrack/platform/stroke_activity_tracker.dart';
-import 'package:ringotrack/domain/app_log_service.dart';
+import 'package:ringotrack/feature/logging/services/app_log_service.dart';
 
 /// 负责把「前台 App 事件」转换成「按日统计 + 持久化」的应用服务
 class UsageService {

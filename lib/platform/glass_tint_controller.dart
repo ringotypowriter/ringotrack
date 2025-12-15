@@ -2,7 +2,7 @@ import 'dart:ffi' as ffi;
 import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:ringotrack/domain/dashboard_preferences.dart';
+import 'package:ringotrack/feature/dashboard/models/dashboard_preferences.dart';
 
 typedef _RtSetGlassTintNative =
     ffi.Int32 Function(ffi.Uint8 r, ffi.Uint8 g, ffi.Uint8 b);

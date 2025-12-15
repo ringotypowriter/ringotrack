@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:ringotrack/domain/drawing_app_preferences.dart';
+import 'package:ringotrack/feature/settings/drawing_app/models/drawing_app_preferences.dart';
 
 import 'package:flutter/foundation.dart';
 

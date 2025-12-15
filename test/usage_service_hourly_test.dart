@@ -1,9 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ringotrack/domain/usage_models.dart';
-import 'package:ringotrack/domain/usage_repository.dart';
-import 'package:ringotrack/domain/usage_service.dart';
+import 'package:ringotrack/feature/usage/models/usage_models.dart';
+import 'package:ringotrack/feature/usage/repositories/usage_repository.dart';
+import 'package:ringotrack/feature/usage/services/usage_service.dart';
 import 'package:ringotrack/platform/foreground_app_tracker.dart';
 import 'package:ringotrack/platform/stroke_activity_tracker.dart';
 

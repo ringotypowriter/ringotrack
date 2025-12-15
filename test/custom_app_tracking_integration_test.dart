@@ -1,9 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:ringotrack/domain/drawing_app_preferences.dart';
-import 'package:ringotrack/domain/drawing_app_preferences_controller.dart';
-import 'package:ringotrack/domain/usage_models.dart';
+import 'package:ringotrack/feature/settings/drawing_app/models/drawing_app_preferences.dart';
+import 'package:ringotrack/feature/settings/drawing_app/controllers/drawing_app_preferences_controller.dart';
+import 'package:ringotrack/feature/usage/models/usage_models.dart';
 
 void main() {
   group('Custom App Tracking Integration Tests', () {

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:ringotrack/domain/dashboard_preferences.dart';
+import 'package:ringotrack/feature/dashboard/models/dashboard_preferences.dart';
 import 'package:ringotrack/providers.dart';
 import 'package:ringotrack/widgets/heatmap_color_scale.dart';
 

@@ -3,7 +3,7 @@ import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ringotrack/app.dart';
-import 'package:ringotrack/domain/dashboard_preferences.dart';
+import 'package:ringotrack/feature/dashboard/models/dashboard_preferences.dart';
 import 'package:ringotrack/platform/glass_tint_controller.dart';
 
 void main() async {

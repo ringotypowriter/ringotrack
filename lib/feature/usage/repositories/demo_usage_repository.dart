@@ -1,6 +1,6 @@
 import 'dart:math';
 
-import 'package:ringotrack/domain/usage_repository.dart';
+import 'package:ringotrack/feature/usage/repositories/usage_repository.dart';
 
 /// 用于调试截图的内存示例数据仓库。
 class DemoUsageRepository implements UsageRepository {

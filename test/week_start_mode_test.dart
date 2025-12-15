@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ringotrack/domain/dashboard_preferences.dart';
-import 'package:ringotrack/domain/dashboard_preferences_controller.dart';
+import 'package:ringotrack/feature/dashboard/models/dashboard_preferences.dart';
+
 import 'package:ringotrack/providers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

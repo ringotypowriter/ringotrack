@@ -1,6 +1,6 @@
 import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
-import 'package:ringotrack/domain/usage_hourly_backfill.dart';
+import 'package:ringotrack/feature/usage/models/usage_hourly_backfill.dart';
 
 part 'app_database.g.dart';
 

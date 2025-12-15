@@ -1,6 +1,6 @@
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ringotrack/domain/app_database.dart';
+import 'package:ringotrack/feature/database/services/app_database.dart';
 
 void main() {
   group('AppDatabase hourly migration backfill', () {

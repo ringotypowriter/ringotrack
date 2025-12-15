@@ -11,20 +11,72 @@ RingoTrack is a cross-platform desktop application (Windows + macOS) for trackin
   - Windows: win32 API via Dart FFI for foreground window tracking
   - macOS: Swift + AppKit for NSWorkspace notifications
 - **Language**: Dart 3.10.1 with Flutter 3.38.3
-- **Architecture**: Domain-driven design with clear separation of concerns
+- **Architecture**: Feature-based architecture with clear separation of concerns
 
 ## Project Structure
 
 ```
 lib/
 ├── main.dart                    # Application entry point
+├── app.dart                     # Application setup and configuration
+├── providers.dart               # Centralized Riverpod providers
 ├── pages/
-│   └── dashboard_page.dart      # Main dashboard UI
+│   ├── clock_page.dart          # Clock display page
+│   ├── dashboard_page.dart      # Main dashboard UI
+│   └── settings_page.dart       # Settings configuration page
 ├── widgets/
-│   └── ringo_heatmap.dart       # Calendar heatmap component
-└── domain/
-    ├── usage_models.dart        # Core data models and business logic
-    └── usage_repository.dart    # Data persistence layer
+│   ├── heatmap_color_scale.dart # Color scale for heatmaps
+│   ├── logs_view_sheet.dart     # Logs display sheet
+│   ├── ringo_heatmap.dart       # Calendar heatmap component
+│   ├── ringo_hourly_line_heatmap.dart # Hourly line heatmap
+│   └── year_selector.dart       # Year selection widget
+├── theme/
+│   └── app_theme.dart           # Application theming
+├── platform/
+│   ├── foreground_app_tracker.dart    # Platform-specific app tracking
+│   ├── glass_tint_controller.dart     # Glass tint effects
+│   ├── stroke_activity_tracker.dart   # Stroke activity monitoring
+│   └── window_pin_controller.dart     # Window pinning controls
+└── feature/
+    ├── dashboard/
+    │   ├── controllers/
+    │   │   └── dashboard_preferences_controller.dart
+    │   ├── models/
+    │   │   └── dashboard_preferences.dart
+    │   └── providers/
+    │       └── dashboard_providers.dart
+    ├── database/
+    │   └── services/
+    │       ├── app_database.dart       # Drift database definition
+    │       └── app_database.g.dart     # Auto-generated database code
+    ├── logging/
+    │   ├── models/
+    │   │   └── app_log_entry.dart
+    │   └── services/
+    │       └── app_log_service.dart
+    ├── settings/
+    │   ├── demo/
+    │   │   └── controllers/            # Demo settings controllers
+    │   ├── drawing_app/
+    │   │   ├── controllers/            # Drawing app settings
+    │   │   └── models/                 # Drawing app models
+    │   └── theme/
+    │       ├── controllers/            # Theme settings controllers
+    │       └── models/                 # Theme models
+    ├── update/
+    │   └── github_release_service.dart # GitHub release checking
+    └── usage/
+        ├── models/
+        │   ├── usage_hourly_backfill.dart
+        │   └── usage_models.dart       # Core usage data models
+        ├── providers/
+        │   └── usage_providers.dart    # Usage-related providers
+        ├── repositories/
+        │   ├── demo_usage_repository.dart
+        │   └── usage_repository.dart   # Usage data persistence
+        └── services/
+            ├── usage_analysis.dart     # Usage analytics
+            └── usage_service.dart      # Usage tracking service
 ```
 
 ## Core Architecture
@@ -47,19 +99,11 @@ lib/
 ```bash
 # Install dependencies
 flutter pub get
-
-# Run the application
-flutter run
-
 # Run tests
 flutter test
 
 # Analyze code
 flutter analyze
-
-# Build for production
-flutter build windows  # Windows
-flutter build macos    # macOS
 ```
 
 ## Testing Strategy

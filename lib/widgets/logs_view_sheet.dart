@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:ringotrack/domain/app_log_service.dart';
+import 'package:ringotrack/feature/logging/services/app_log_service.dart';
+import 'package:ringotrack/feature/logging/models/app_log_entry.dart';
 
 class LogsViewSheet extends StatefulWidget {
   const LogsViewSheet({super.key});

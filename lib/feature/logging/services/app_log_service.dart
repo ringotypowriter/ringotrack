@@ -1,20 +1,6 @@
 import 'dart:async';
 import 'dart:io';
-
-/// 单条日志记录
-class AppLogEntry {
-  AppLogEntry({
-    required this.timestamp,
-    required this.level,
-    required this.tag,
-    required this.message,
-  });
-
-  final DateTime timestamp;
-  final String level; // DEBUG / INFO / WARN / ERROR
-  final String tag; // 模块名，比如 foreground_tracker_windows
-  final String message;
-}
+import 'package:ringotrack/feature/logging/models/app_log_entry.dart';
 
 /// 简单的文件 + 内存双通道日志服务，用于在 release 下调试采集逻辑。
 class AppLogService {

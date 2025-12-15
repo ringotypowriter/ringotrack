@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ringotrack/domain/usage_analysis.dart';
+import 'package:ringotrack/feature/usage/services/usage_analysis.dart';
 
 void main() {
   group('UsageAnalysis', () {

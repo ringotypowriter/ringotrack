@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:ringotrack/domain/dashboard_preferences.dart';
-import 'package:ringotrack/domain/dashboard_preferences_controller.dart';
+import 'package:ringotrack/feature/dashboard/models/dashboard_preferences.dart';
+import 'package:ringotrack/providers.dart';
 
 /// 年份/月份选择器组件
 /// 根据热力图模式显示不同的选择器：

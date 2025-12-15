@@ -4,7 +4,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-import 'package:ringotrack/domain/app_log_service.dart';
+import 'package:ringotrack/feature/logging/services/app_log_service.dart';
 
 typedef _RtEnterPinnedModeNative = ffi.Int32 Function();
 typedef _RtEnterPinnedModeDart = int Function();

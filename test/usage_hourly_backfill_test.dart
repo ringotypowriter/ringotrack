@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ringotrack/domain/usage_hourly_backfill.dart';
+import 'package:ringotrack/feature/usage/models/usage_hourly_backfill.dart';
 
 void main() {
   group('backfillDailyToHourly', () {

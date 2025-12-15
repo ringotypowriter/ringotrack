@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ringotrack/domain/usage_models.dart';
+import 'package:ringotrack/feature/usage/models/usage_models.dart';
 
 void main() {
   group('UsageAggregator', () {

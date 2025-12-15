@@ -1,4 +1,4 @@
-import 'package:ringotrack/domain/app_database.dart';
+import 'package:ringotrack/feature/database/services/app_database.dart';
 
 /// UsageRepository 抽象，后续如果需要可以有内存版 / SQLite 版等多种实现。
 abstract class UsageRepository {

@@ -3,8 +3,8 @@ import 'dart:ffi' as ffi;
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-import 'package:ringotrack/domain/app_log_service.dart';
-import 'package:ringotrack/domain/usage_models.dart';
+import 'package:ringotrack/feature/logging/services/app_log_service.dart';
+import 'package:ringotrack/feature/usage/models/usage_models.dart';
 
 /// 统一的前台应用切换事件跟踪接口
 abstract class ForegroundAppTracker {

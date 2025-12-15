@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:ringotrack/domain/theme_preferences.dart';
+import 'package:ringotrack/feature/settings/theme/models/theme_preferences.dart';
 import 'package:ringotrack/theme/app_theme.dart';
 
 class ThemeController extends AsyncNotifier<AppTheme> {
