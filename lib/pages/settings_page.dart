@@ -12,6 +12,8 @@ import 'package:ringotrack/theme/app_theme.dart';
 import 'package:ringotrack/widgets/logs_view_sheet.dart';
 import 'dart:io' show Platform;
 import 'package:ringotrack/platform/glass_tint_controller.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:ringotrack/feature/update/github_release_service.dart';
 
 const _cardBorder = Color(0xFFE1E7DF);
 
@@ -150,7 +152,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _appearanceSection(theme),
+            _generalSection(theme),
             SizedBox(height: 16.h),
             _rangeModeSection(theme),
             SizedBox(height: 16.h),
@@ -1040,8 +1042,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     );
   }
 
-  Widget _appearanceSection(ThemeData theme) {
+  Widget _generalSection(ThemeData theme) {
     final tiles = <Widget>[
+      _dataTile(
+        theme,
+        title: '检查更新',
+        helper: '手动检查应用是否有新版本。',
+        child: _buildUpdateCheckTile(theme),
+      ),
       _dataTile(
         theme,
         title: '主题色',
@@ -1056,8 +1064,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
     return _sectionCard(
       theme,
-      title: '外观',
-      icon: Icons.palette_outlined,
+      title: '通用',
+      icon: Icons.settings_outlined,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: _withDividers(tiles, theme),
@@ -1138,6 +1146,141 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             onTap: () => ref.read(appThemeProvider.notifier).setTheme(t.id),
           ),
       ],
+    );
+  }
+
+  Widget _buildUpdateCheckTile(ThemeData theme) {
+    final updateCheckAsync = ref.watch(manualUpdateCheckProvider);
+
+    return updateCheckAsync.when(
+      data: (latestVersion) {
+        if (latestVersion != null) {
+          // 有新版本
+          return Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '发现新版本 v${latestVersion.toString()}',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    SizedBox(height: 4.h),
+                    Text(
+                      '点击查看更新详情',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              TextButton.icon(
+                onPressed: () async {
+                  final service = GitHubReleaseService();
+                  final url = Uri.parse(service.releasesUrl);
+                  await launchUrl(url);
+                },
+                icon: const Icon(Icons.open_in_browser, size: 18),
+                label: const Text('查看'),
+              ),
+            ],
+          );
+        } else {
+          // 没有新版本或已是最新
+          return Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '已是最新版本',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurface,
+                      ),
+                    ),
+                    SizedBox(height: 4.h),
+                    Text(
+                      '最后检查时间：刚刚',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              FilledButton.icon(
+                onPressed: () async {
+                  // 手动触发检查更新
+                  await ref
+                      .read(manualUpdateCheckProvider.notifier)
+                      .checkForUpdates();
+                  _showSnack('正在检查更新...');
+                },
+                icon: const Icon(Icons.refresh, size: 18),
+                label: const Text('检查'),
+              ),
+            ],
+          );
+        }
+      },
+      loading: () => Row(
+        children: [
+          Expanded(
+            child: Text(
+              '正在检查更新...',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurface,
+              ),
+            ),
+          ),
+          const SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ],
+      ),
+      error: (error, stack) => Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '检查更新失败',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.error,
+                  ),
+                ),
+                SizedBox(height: 4.h),
+                Text(
+                  '网络连接问题，请稍后重试',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          FilledButton.icon(
+            onPressed: () async {
+              // 手动触发检查更新
+              await ref
+                  .read(manualUpdateCheckProvider.notifier)
+                  .checkForUpdates();
+              _showSnack('正在检查更新...');
+            },
+            icon: const Icon(Icons.refresh, size: 18),
+            label: const Text('重试'),
+          ),
+        ],
+      ),
     );
   }
 

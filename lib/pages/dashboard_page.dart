@@ -13,6 +13,8 @@ import 'package:ringotrack/widgets/ringo_hourly_line_heatmap.dart';
 import 'package:ringotrack/widgets/heatmap_color_scale.dart';
 import 'dart:io' show Platform;
 import 'package:ringotrack/platform/glass_tint_controller.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:ringotrack/feature/update/github_release_service.dart';
 
 const double _heatmapTileSize = 13;
 const double _heatmapTileSpacing = 3;
@@ -871,14 +873,16 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                 }
 
                 final DateTime windowEnd = analysisEnd;
-                DateTime last30Start =
-                    windowEnd.subtract(const Duration(days: 29));
+                DateTime last30Start = windowEnd.subtract(
+                  const Duration(days: 29),
+                );
                 if (last30Start.isBefore(analysisStart)) {
                   last30Start = analysisStart;
                 }
                 final weekStart = _weekStartMonday(windowEnd);
-                DateTime weekRangeStart =
-                    weekStart.subtract(const Duration(days: 7 * 7)); // 向前含 8 周
+                DateTime weekRangeStart = weekStart.subtract(
+                  const Duration(days: 7 * 7),
+                ); // 向前含 8 周
                 if (weekRangeStart.isBefore(analysisStart)) {
                   weekRangeStart = analysisStart;
                 }
@@ -887,8 +891,10 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                 final daily = analysis.dailyTotals(last30Start, windowEnd);
                 final weekly = analysis.weeklyTotals(weekRangeStart, windowEnd);
                 final perApp = analysis.appTotals(last30Start, windowEnd);
-                final weekdayAvg =
-                    analysis.weekdayAverages(last30Start, windowEnd);
+                final weekdayAvg = analysis.weekdayAverages(
+                  last30Start,
+                  windowEnd,
+                );
 
                 return ListView(
                   key: const PageStorageKey('dashboard-analysis-list'),
@@ -1350,6 +1356,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     WidgetRef ref,
   ) {
     final packageInfoAsync = ref.watch(packageInfoProvider);
+    final updateAsync = ref.watch(githubReleaseProvider);
 
     final statusText = metricsAsync.when(
       data: (metrics) => '数据更新于 ${_formatLastUpdated(metrics.lastUpdatedAt)}',
@@ -1357,37 +1364,107 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
       error: (error, stackTrace) => '数据加载失败，稍后自动重试',
     );
 
-    return Column(
-      children: [
-        Center(
-          child: Text(
-            statusText,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: Colors.black54,
-              fontSize: theme.textTheme.bodySmall?.fontSize?.sp,
+    return SizedBox(
+      width: double.infinity,
+      child: Column(
+        children: [
+          Center(
+            child: Text(
+              statusText,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: Colors.black54,
+                fontSize: theme.textTheme.bodySmall?.fontSize?.sp,
+              ),
             ),
           ),
-        ),
-        const SizedBox(height: 6),
-        packageInfoAsync.when(
-          data: (packageInfo) {
-            final versionText =
-                'v${packageInfo.version}+${packageInfo.buildNumber}';
-            return Center(
-              child: Text(
-                versionText,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: Colors.black38,
-                  fontSize:
-                      (theme.textTheme.bodySmall?.fontSize?.sp ?? 12) * 0.9,
-                ),
-              ),
-            );
-          },
-          loading: () => const SizedBox.shrink(),
-          error: (error, stackTrace) => const SizedBox.shrink(),
-        ),
-      ],
+          const SizedBox(height: 6),
+          updateAsync.when(
+            data: (latestVersion) {
+              if (latestVersion != null) {
+                // 有新版本可用，显示更新提示
+                return Center(
+                  child: GestureDetector(
+                    onTap: () async {
+                      final service = GitHubReleaseService();
+                      final url = service.releasesUrl;
+                      if (await canLaunchUrl(Uri.parse(url))) {
+                        await launchUrl(Uri.parse(url));
+                      }
+                    },
+                    child: Text(
+                      '发现新版本 v${latestVersion.toString()}，点击查看',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.primary,
+                        fontWeight: FontWeight.w500,
+                        fontSize:
+                            (theme.textTheme.bodySmall?.fontSize?.sp ?? 12) *
+                            0.9,
+                      ),
+                    ),
+                  ),
+                );
+              } else {
+                // 没有新版本，显示当前版本号
+                return packageInfoAsync.when(
+                  data: (packageInfo) {
+                    final versionText =
+                        'v${packageInfo.version}+${packageInfo.buildNumber}';
+                    return Center(
+                      child: Text(
+                        versionText,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: Colors.black38,
+                          fontSize:
+                              (theme.textTheme.bodySmall?.fontSize?.sp ?? 12) *
+                              0.9,
+                        ),
+                      ),
+                    );
+                  },
+                  loading: () => const SizedBox.shrink(),
+                  error: (error, stackTrace) => const SizedBox.shrink(),
+                );
+              }
+            },
+            loading: () => packageInfoAsync.when(
+              data: (packageInfo) {
+                final versionText =
+                    'v${packageInfo.version}+${packageInfo.buildNumber}';
+                return Center(
+                  child: Text(
+                    versionText,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: Colors.black38,
+                      fontSize:
+                          (theme.textTheme.bodySmall?.fontSize?.sp ?? 12) * 0.9,
+                    ),
+                  ),
+                );
+              },
+              loading: () => const SizedBox.shrink(),
+              error: (error, stackTrace) => const SizedBox.shrink(),
+            ),
+            error: (error, stackTrace) => packageInfoAsync.when(
+              data: (packageInfo) {
+                final versionText =
+                    'v${packageInfo.version}+${packageInfo.buildNumber}';
+                return Center(
+                  child: Text(
+                    versionText,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: Colors.black38,
+                      fontSize:
+                          (theme.textTheme.bodySmall?.fontSize?.sp ?? 12) * 0.9,
+                    ),
+                  ),
+                );
+              },
+              loading: () => const SizedBox.shrink(),
+              error: (error, stackTrace) => const SizedBox.shrink(),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

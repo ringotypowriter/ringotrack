@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:ringotrack/feature/update/github_release_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ringotrack/domain/app_database.dart';
 import 'package:ringotrack/domain/demo_mode_controller.dart';
 import 'package:ringotrack/domain/demo_usage_repository.dart';
@@ -354,3 +356,101 @@ int _calculateCurrentStreak(
 
   return streak;
 }
+
+/// GitHub release update check provider
+/// Returns the latest version if an update is available, null otherwise
+final githubReleaseProvider = FutureProvider<Version?>((ref) async {
+  final packageInfo = await ref.watch(packageInfoProvider.future);
+
+  // Parse current app version
+  final currentVersionString =
+      '${packageInfo.version}+${packageInfo.buildNumber}';
+  debugPrint(
+    '[GitHubReleaseProvider] Raw version string: $currentVersionString',
+  );
+
+  final currentVersion = Version.parse(currentVersionString);
+  debugPrint(
+    '[GitHubReleaseProvider] Parsed current version: ${currentVersion?.toString() ?? 'null'}',
+  );
+
+  if (currentVersion == null) {
+    // If we can't parse our own version, don't check for updates
+    debugPrint(
+      '[GitHubReleaseProvider] Failed to parse current version, skipping update check',
+    );
+    return null;
+  }
+
+  // Get shared preferences for caching
+  final prefs = await SharedPreferences.getInstance();
+
+  // Create service and check for updates (normal check with caching)
+  final service = GitHubReleaseService();
+  final result = await service.checkForUpdates(currentVersion, prefs);
+  debugPrint(
+    '[GitHubReleaseProvider] Update check result: ${result?.toString() ?? 'null'}',
+  );
+  return result;
+});
+
+/// Manual update check controller
+class ManualUpdateCheckController extends Notifier<AsyncValue<Version?>> {
+  @override
+  AsyncValue<Version?> build() {
+    // Start with no data - don't check automatically
+    return const AsyncValue.data(null);
+  }
+
+  Future<void> checkForUpdates() async {
+    state = const AsyncValue.loading();
+
+    try {
+      final packageInfo = await PackageInfo.fromPlatform();
+
+      // Parse current app version
+      final currentVersionString =
+          '${packageInfo.version}+${packageInfo.buildNumber}';
+      debugPrint(
+        '[ManualUpdateCheck] Raw version string: $currentVersionString',
+      );
+
+      final currentVersion = Version.parse(currentVersionString);
+      debugPrint(
+        '[ManualUpdateCheck] Parsed current version: ${currentVersion?.toString() ?? 'null'}',
+      );
+
+      if (currentVersion == null) {
+        debugPrint('[ManualUpdateCheck] Failed to parse current version');
+        state = const AsyncValue.data(null);
+        return;
+      }
+
+      // Get shared preferences for caching
+      final prefs = await SharedPreferences.getInstance();
+
+      // Create service and check for updates (force check, bypass cache)
+      final service = GitHubReleaseService();
+      final result = await service.checkForUpdates(
+        currentVersion,
+        prefs,
+        forceCheck: true,
+      );
+      debugPrint(
+        '[ManualUpdateCheck] Manual update check result: ${result?.toString() ?? 'null'}',
+      );
+
+      state = AsyncValue.data(result);
+    } catch (error, stackTrace) {
+      debugPrint('[ManualUpdateCheck] Error: $error');
+      state = AsyncValue.error(error, stackTrace);
+    }
+  }
+}
+
+/// Manual update check provider
+/// Only checks when user explicitly triggers it
+final manualUpdateCheckProvider =
+    NotifierProvider<ManualUpdateCheckController, AsyncValue<Version?>>(
+      ManualUpdateCheckController.new,
+    );
