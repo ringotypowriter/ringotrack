@@ -4,13 +4,13 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ringotrack/domain/drawing_app_preferences_controller.dart';
 import 'package:ringotrack/domain/dashboard_preferences_controller.dart';
-import 'package:ringotrack/domain/dashboard_preferences.dart';
 import 'package:ringotrack/providers.dart';
 import 'package:ringotrack/widgets/ringo_heatmap.dart';
 import 'package:ringotrack/domain/usage_analysis.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:ringotrack/widgets/ringo_hourly_line_heatmap.dart';
 import 'package:ringotrack/widgets/heatmap_color_scale.dart';
+import 'package:ringotrack/widgets/year_selector.dart';
 import 'dart:io' show Platform;
 import 'package:ringotrack/platform/glass_tint_controller.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -336,7 +336,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
   Widget _buildYearSelectorAndTabs(ThemeData theme) {
     return _InlineTabsAndYear(
       tabsBuilder: () => _buildTabs(theme),
-      yearSelectorBuilder: () => _buildYearSelector(theme),
+      yearSelectorBuilder: () => YearSelector(),
     );
   }
 
@@ -1504,154 +1504,6 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     String twoDigits(int v) => v.toString().padLeft(2, '0');
     return '${timestamp.month}月${timestamp.day}日 ${twoDigits(timestamp.hour)}:${twoDigits(timestamp.minute)}';
   }
-
-  Widget _buildYearSelector(ThemeData theme) {
-    final prefs =
-        ref.watch(dashboardPreferencesControllerProvider).value ??
-        const DashboardPreferences();
-    final currentYear = DateTime.now().year;
-    final selectedYear = prefs.selectedYear ?? currentYear;
-
-    final availableYears =
-        List.generate(
-            13,
-            (index) => currentYear - 10 + index,
-          ).where((y) => y >= 2020 && y <= currentYear + 2).toList()
-          ..sort((a, b) => b.compareTo(a));
-
-    Future<void> showPicker() async {
-      final picked = await showModalBottomSheet<int>(
-        context: context,
-        isScrollControlled: false,
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-        builder: (ctx) {
-          return SafeArea(
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(16.w, 12.h, 16.w, 12.h),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 44,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFE0E0E0),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                    ),
-                  ),
-                  SizedBox(height: 12.h),
-                  Text(
-                    '选择年份',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: Colors.black87,
-                    ),
-                  ),
-                  SizedBox(height: 4.h),
-                  Text(
-                    '切换热力图和分析展示的年份',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: Colors.black54,
-                    ),
-                  ),
-                  SizedBox(height: 12.h),
-                  ConstrainedBox(
-                    constraints: BoxConstraints(maxHeight: 420.h),
-                    child: ListView.separated(
-                      shrinkWrap: true,
-                      itemCount: availableYears.length,
-                      separatorBuilder: (_, __) =>
-                          Divider(height: 1, color: const Color(0xFFF0F0F0)),
-                      itemBuilder: (ctx, i) {
-                        final year = availableYears[i];
-                        final active = year == selectedYear;
-                        final isCurrent = year == currentYear;
-                        return ListTile(
-                          dense: true,
-                          contentPadding: EdgeInsets.symmetric(horizontal: 4.w),
-                          onTap: () => Navigator.of(ctx).pop(year),
-                          title: Row(
-                            children: [
-                              Text(
-                                '$year年',
-                                style: theme.textTheme.titleMedium?.copyWith(
-                                  fontWeight: active
-                                      ? FontWeight.w700
-                                      : FontWeight.w500,
-                                  color: active
-                                      ? theme.colorScheme.primary
-                                      : Colors.black87,
-                                ),
-                              ),
-                              if (isCurrent) ...[
-                                SizedBox(width: 8.w),
-                                Container(
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: 8.w,
-                                    vertical: 4.h,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: theme.colorScheme.primary.withAlpha(
-                                      24,
-                                    ),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Text(
-                                    '今年',
-                                    style: theme.textTheme.labelMedium
-                                        ?.copyWith(
-                                          color: theme.colorScheme.primary,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                  ),
-                                ),
-                              ],
-                              const Spacer(),
-                              if (active)
-                                Icon(
-                                  Icons.check_circle_rounded,
-                                  size: 18.r,
-                                  color: theme.colorScheme.primary,
-                                ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  SizedBox(height: 8.h),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton(
-                      onPressed: () => Navigator.of(ctx).pop(),
-                      child: const Text('取消'),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      );
-      if (picked != null) {
-        ref
-            .read(dashboardPreferencesControllerProvider.notifier)
-            .setSelectedYear(picked);
-      }
-    }
-
-    return _InlineYearSelector(
-      selectedYear: selectedYear,
-      currentYear: currentYear,
-      onOpenPicker: showPicker,
-      onSelectThisYear: null,
-      theme: theme,
-    );
-  }
 }
 
 class _TabButton extends StatefulWidget {
@@ -1924,69 +1776,6 @@ class _InlineTabsAndYear extends StatelessWidget {
       padding: EdgeInsets.symmetric(horizontal: 0),
       child: Row(
         children: [tabsBuilder(), const Spacer(), yearSelectorBuilder()],
-      ),
-    );
-  }
-}
-
-class _InlineYearSelector extends StatelessWidget {
-  const _InlineYearSelector({
-    required this.selectedYear,
-    required this.currentYear,
-    required this.onOpenPicker,
-    required this.onSelectThisYear,
-    required this.theme,
-  });
-
-  final int selectedYear;
-  final int currentYear;
-  final VoidCallback onOpenPicker;
-  final VoidCallback? onSelectThisYear;
-  final ThemeData theme;
-
-  @override
-  Widget build(BuildContext context) {
-    final pillColor = theme.colorScheme.primary;
-
-    return Container(
-      height: 40.h,
-      padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 8.h),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE4E4E4)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(8),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            '$selectedYear年',
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w700,
-              color: Colors.black87,
-            ),
-          ),
-          SizedBox(width: 12.w),
-          GestureDetector(
-            onTap: onOpenPicker,
-            child: Container(
-              padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
-              decoration: BoxDecoration(
-                color: pillColor.withAlpha(24),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: pillColor.withAlpha(90)),
-              ),
-              child: Icon(Icons.calendar_today, size: 12, color: pillColor),
-            ),
-          ),
-        ],
       ),
     );
   }
